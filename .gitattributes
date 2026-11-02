@@ -1,8 +1,8 @@
 # Line endings.
 #
-# The repository stores LF, and every tool in the gate expects LF: phpcs PSR-12
-# fails a file outright on "End of line character is invalid", and Prettier
-# rewrites CRLF on sight. Windows checkouts, however, get CRLF from
+# The repository stores LF, and every tool in the gate expects LF: PHP CS
+# Fixer's PER-CS rules (and phpcs before it) fail a file on CRLF line endings,
+# and Prettier rewrites CRLF on sight. Windows checkouts, however, get CRLF from
 # core.autocrlf=true — so `composer lint` failed on 34 files nobody had edited,
 # and `git checkout` kept undoing what Prettier had just fixed.
 #

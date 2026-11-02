@@ -334,6 +334,7 @@ async function uploadFiles() {
                     class="input"
                     :class="{ 'is-danger': authError }"
                     type="password"
+                    aria-label="Admin password"
                     placeholder="Password"
                     @keyup.enter="login"
                   />
@@ -344,6 +345,7 @@ async function uploadFiles() {
                 </p>
               </div>
               <button
+                type="button"
                 class="button is-primary is-fullwidth"
                 :class="{ 'is-loading': authLoading }"
                 :disabled="authLoading || !passwordInput"
@@ -367,13 +369,18 @@ async function uploadFiles() {
         <div
           class="drop-zone"
           :class="{ 'is-drag-over': dragOver, 'has-files': hasFiles }"
+          role="button"
+          tabindex="0"
           @drop.prevent="onDrop"
           @dragover.prevent="onDragOver"
           @dragleave="onDragLeave"
           @click="($refs.fileInput as HTMLInputElement).click()"
+          @keydown.enter.prevent="($refs.fileInput as HTMLInputElement).click()"
+          @keydown.space.prevent="($refs.fileInput as HTMLInputElement).click()"
         >
           <input
             ref="fileInput"
+            aria-label="Choose files to upload"
             type="file"
             :accept="acceptString"
             multiple
@@ -416,7 +423,12 @@ async function uploadFiles() {
             </div>
             <div class="level-right">
               <div class="level-item">
-                <button class="button is-small" :disabled="uploading" @click="clearFiles">
+                <button
+                  type="button"
+                  class="button is-small"
+                  :disabled="uploading"
+                  @click="clearFiles"
+                >
                   <span class="icon"><i class="fa-solid fa-xmark" /></span>
                   <span>Clear All</span>
                 </button>
@@ -472,6 +484,7 @@ async function uploadFiles() {
                 </span>
                 <button
                   v-else
+                  type="button"
                   class="delete is-small"
                   :disabled="uploading"
                   title="Remove"
@@ -484,6 +497,7 @@ async function uploadFiles() {
           <!-- Upload Button -->
           <div class="mt-4">
             <button
+              type="button"
               class="button is-primary is-medium"
               :class="{ 'is-loading': uploading }"
               :disabled="uploading || !hasFiles"

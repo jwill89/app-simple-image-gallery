@@ -2,20 +2,20 @@
 
 namespace Gallery\Structure\Api;
 
-use OpenApi\Attributes as OA;
+use OpenApi\Spec as OAS;
 
 /**
  * Result of a bulk media delete (POST /media/bulk-delete). Doc-only schema.
  */
-#[OA\Schema(schema: 'BulkDeleteResult', description: 'Outcome of a bulk media delete.')]
+#[OAS\Schema(schema: 'BulkDeleteResult', description: 'Outcome of a bulk media delete.')]
 class BulkDeleteResult
 {
     /** @var array<int, int> */
-    #[OA\Property(type: 'array', items: new OA\Items(type: 'integer'), description: 'IDs successfully deleted.')]
+    #[OAS\Property(schema: new OAS\Schema(type: 'array', items: new OAS\Schema\Items(type: 'integer'), description: 'IDs successfully deleted.'))]
     public array $deleted = [];
     /** @var array<int, int> */
-    #[OA\Property(type: 'array', items: new OA\Items(type: 'integer'), description: 'IDs that could not be deleted.')]
+    #[OAS\Property(schema: new OAS\Schema(type: 'array', items: new OAS\Schema\Items(type: 'integer'), description: 'IDs that could not be deleted.'))]
     public array $failed = [];
-    #[OA\Property(type: 'integer')]
+    #[OAS\Property(schema: new OAS\Schema(type: 'integer'))]
     public int $total_deleted = 0;
 }

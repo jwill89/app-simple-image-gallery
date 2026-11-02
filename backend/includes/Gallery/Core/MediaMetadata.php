@@ -34,15 +34,15 @@ class MediaMetadata
 
         $size = @filesize($path);
         if ($size !== false) {
-            $meta['file_size'] = (int) $size;
+            $meta['file_size'] = $size;
         }
 
         // Still images: dimensions via getimagesize(), no duration.
         if ($mediaType === 'image') {
             $info = @getimagesize($path);
             if ($info !== false) {
-                $meta['width']  = (int) $info[0];
-                $meta['height'] = (int) $info[1];
+                $meta['width']  = $info[0];
+                $meta['height'] = $info[1];
             }
             return $meta;
         }
@@ -57,8 +57,8 @@ class MediaMetadata
             // Fallback for dimensions if ffprobe is unavailable (e.g. GIF).
             $info = @getimagesize($path);
             if ($info !== false) {
-                $meta['width']  = (int) $info[0];
-                $meta['height'] = (int) $info[1];
+                $meta['width']  = $info[0];
+                $meta['height'] = $info[1];
             }
         }
 

@@ -6,9 +6,10 @@ use PDO;
 use Slim\Http\ServerRequest as Request;
 use Slim\Http\Response;
 use Gallery\Collection\MediaCollection;
+use Gallery\Core\Configuration;
 use Gallery\Core\DatabaseConnection;
 use Gallery\Core\DuplicateScanner;
-use OpenApi\Attributes as OA;
+use OpenApi\Spec as OAS;
 
 /**
  * DuplicatesController
@@ -18,27 +19,24 @@ use OpenApi\Attributes as OA;
  */
 class DuplicatesController extends AbstractController
 {
-    private MediaCollection $media_collection;
-
     private const string DUPES_DIRECTORY = 'dupes/';
 
-    public function __construct(MediaCollection $media_collection)
+    public function __construct(private readonly MediaCollection $media_collection)
     {
         parent::__construct();
-        $this->media_collection = $media_collection;
     }
 
     /**
      * GET /duplicates/report — The latest duplicate-scan report, with dismissed
      * pairs filtered out and each pair enriched with media file names/hashes.
      */
-    #[OA\Get(
+    #[OAS\Operation\Get(
         path: '/duplicates/report',
         summary: 'Latest duplicate report',
         tags: ['Duplicates'],
         responses: [
-            new OA\Response(response: 200, description: 'The report', content: new OA\JsonContent(ref: '#/components/schemas/DuplicateReport')),
-            new OA\Response(response: 404, description: 'NoReportsFound', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'The report', content: new OAS\MediaType\Json(ref: '#/components/schemas/DuplicateReport')),
+            new OAS\Response(response: 404, description: 'NoReportsFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function getLatestReport(Request $request, Response $response): Response
@@ -51,7 +49,7 @@ class DuplicatesController extends AbstractController
 
         $files = glob($dupes_dir . 'dupes-*.json');
 
-        if (empty($files)) {
+        if ($files === false || $files === []) {
             return $this->error($response, 'NoReportsFound', 404, 'No duplicate reports found. Run a scan first.');
         }
 
@@ -73,11 +71,11 @@ class DuplicatesController extends AbstractController
             $db = DatabaseConnection::getInstance();
             $stmt = $db->query('SELECT media_id_1, media_id_2 FROM dismissed_duplicates');
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $a = min((int)$row['media_id_1'], (int)$row['media_id_2']);
-                $b = max((int)$row['media_id_1'], (int)$row['media_id_2']);
+                $a = min((int) $row['media_id_1'], (int) $row['media_id_2']);
+                $b = max((int) $row['media_id_1'], (int) $row['media_id_2']);
                 $dismissed[$a . ':' . $b] = true;
             }
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             // Table may not exist yet — skip filtering
         }
 
@@ -105,7 +103,7 @@ class DuplicatesController extends AbstractController
 
         // Single batched fetch, indexed by media_id for O(1) lookup
         $mediaById = [];
-        if (!empty($neededIds)) {
+        if ($neededIds !== []) {
             foreach ($this->media_collection->getByIds(array_keys($neededIds)) as $media) {
                 $mediaById[$media->media_id] = $media;
             }
@@ -151,14 +149,14 @@ class DuplicatesController extends AbstractController
      * POST /duplicates/scan — Run the perceptual-hash duplicate scanner and
      * return summary stats (images compared, candidates, duplicates found).
      */
-    #[OA\Post(
+    #[OAS\Operation\Post(
         path: '/duplicates/scan',
         summary: 'Run a duplicate scan',
         tags: ['Duplicates'],
-        security: [['bearerAuth' => []]],
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
         responses: [
-            new OA\Response(response: 200, description: 'Scan stats', content: new OA\JsonContent(ref: '#/components/schemas/ScanResult')),
-            new OA\Response(response: 500, description: 'ScanFailed', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'Scan stats', content: new OAS\MediaType\Json(ref: '#/components/schemas/ScanResult')),
+            new OAS\Response(response: 500, description: 'ScanFailed', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function runScan(Request $request, Response $response): Response
@@ -166,7 +164,11 @@ class DuplicatesController extends AbstractController
         $this->logger->info('Duplicate scan initiated');
 
         try {
-            $scanner = new DuplicateScanner($this->getConnection());
+            $scanner = new DuplicateScanner(
+                $this->getConnection(),
+                maxDistance: Configuration::getDuplicateMaxDistance(),
+                maxRegionDiff: Configuration::getDuplicateMaxRegionDiff(),
+            );
             $result = $scanner->run();
 
             $this->logger->info('Duplicate scan completed', $result);
@@ -188,21 +190,21 @@ class DuplicatesController extends AbstractController
      * POST /duplicates/dismissals — Dismiss a pair of media items as not-duplicates.
      * Body: { media_id_1, media_id_2 }.
      */
-    #[OA\Post(
+    #[OAS\Operation\Post(
         path: '/duplicates/dismissals',
         summary: 'Dismiss a duplicate pair',
         tags: ['Duplicates'],
-        security: [['bearerAuth' => []]],
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(
             required: ['media_id_1', 'media_id_2'],
             properties: [
-                new OA\Property(property: 'media_id_1', type: 'integer'),
-                new OA\Property(property: 'media_id_2', type: 'integer'),
+                new OAS\Property(property: 'media_id_1', schema: new OAS\Schema(type: 'integer')),
+                new OAS\Property(property: 'media_id_2', schema: new OAS\Schema(type: 'integer')),
             ]
         )),
         responses: [
-            new OA\Response(response: 201, description: 'Dismissed', content: new OA\JsonContent(ref: '#/components/schemas/DismissResult')),
-            new OA\Response(response: 400, description: 'InvalidInput', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 201, description: 'Dismissed', content: new OAS\MediaType\Json(ref: '#/components/schemas/DismissResult')),
+            new OAS\Response(response: 400, description: 'InvalidInput', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function dismissPair(Request $request, Response $response): Response

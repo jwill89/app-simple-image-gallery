@@ -83,10 +83,11 @@ withDefaults(
   margin-left: var(--sp-3);
 }
 
-@media screen and (max-width: 640px) {
+@media screen and (width <= 640px) {
   .page-header {
     align-items: flex-start;
   }
+
   .page-meta,
   .page-actions {
     margin-left: 0;

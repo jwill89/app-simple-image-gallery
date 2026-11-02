@@ -58,6 +58,7 @@ const iconMap: Record<string, string> = {
   border-radius: var(--r-md);
   font-size: var(--t-md);
   color: var(--text-1);
+
   /* No shadow, no border, no severity stripe — all three belong to the toast.
      An alert sits flush in the page and carries its severity as a wash of the
      colour itself, which is the one treatment a toast never uses. */
@@ -67,12 +68,15 @@ const iconMap: Record<string, string> = {
 .alert[data-severity='danger'] {
   background: var(--danger-soft);
 }
+
 .alert[data-severity='warning'] {
   background: var(--warning-soft);
 }
+
 .alert[data-severity='success'] {
   background: var(--success-soft);
 }
+
 .alert[data-severity='info'] {
   background: var(--info-soft);
 }
@@ -84,12 +88,15 @@ const iconMap: Record<string, string> = {
 .alert[data-severity='danger'] .alert-icon {
   color: var(--danger);
 }
+
 .alert[data-severity='warning'] .alert-icon {
   color: var(--warning);
 }
+
 .alert[data-severity='success'] .alert-icon {
   color: var(--success);
 }
+
 .alert[data-severity='info'] .alert-icon {
   color: var(--info);
 }

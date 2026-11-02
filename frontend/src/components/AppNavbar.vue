@@ -89,6 +89,14 @@ const viewMode = computed({
   },
 })
 
+// Real hrefs make the nav links focusable and openable in a new tab. A plain
+// click still goes through the handlers below, which also reset navbar state.
+const mediaHref = computed(
+  () => router.resolve({ name: 'media', params: { page: 1, perPage: perPage.value } }).href,
+)
+const tagsHref = router.resolve({ name: 'tags' }).href
+const favoritesHref = router.resolve({ name: 'favorites' }).href
+
 function navigateMedia() {
   selectedTags.value = []
   // Force a fresh top-of-list load even if the kept-alive gallery is already
@@ -223,8 +231,8 @@ router.afterEach((to) => {
     aria-label="main-menu"
   >
     <div class="navbar-brand">
-      <a
-        role="button"
+      <button
+        type="button"
         class="navbar-burger"
         :class="{ 'is-active': burgerActive }"
         aria-label="menu"
@@ -235,31 +243,52 @@ router.afterEach((to) => {
         <span aria-hidden="true" />
         <span aria-hidden="true" />
         <span aria-hidden="true" />
-      </a>
+      </button>
     </div>
 
     <!-- Only the destination links collapse into the burger. -->
     <div class="navbar-menu" :class="{ 'is-active': burgerActive }">
       <div class="navbar-start">
-        <a class="navbar-item" :class="{ 'is-selected': isMediaActive }" @click="navigateMedia">
+        <a
+          :href="mediaHref"
+          class="navbar-item"
+          :class="{ 'is-selected': isMediaActive }"
+          @click.prevent="navigateMedia"
+        >
           <span class="icon"><i class="fa-solid fa-images" /></span>
           <span>Media</span>
         </a>
 
-        <a class="navbar-item" :class="{ 'is-selected': isRandomActive }" @click="navigateRandom">
+        <!-- An action, not a destination: there's no URL to link to until the
+             random item has been fetched. -->
+        <a
+          role="button"
+          tabindex="0"
+          class="navbar-item"
+          :class="{ 'is-selected': isRandomActive }"
+          @click="navigateRandom"
+          @keydown.enter="navigateRandom"
+          @keydown.space.prevent="navigateRandom"
+        >
           <span class="icon"><i class="fa-solid fa-shuffle" /></span>
           <span>Random</span>
         </a>
 
-        <a class="navbar-item" :class="{ 'is-selected': isTagsActive }" @click="navigateTags">
+        <a
+          :href="tagsHref"
+          class="navbar-item"
+          :class="{ 'is-selected': isTagsActive }"
+          @click.prevent="navigateTags"
+        >
           <span class="icon"><i class="fa-solid fa-tags" /></span>
           <span>Tags</span>
         </a>
 
         <a
+          :href="favoritesHref"
           class="navbar-item"
           :class="{ 'is-selected': isFavoritesActive }"
-          @click="navigateFavorites"
+          @click.prevent="navigateFavorites"
         >
           <span class="icon"><i class="fa-solid fa-heart" /></span>
           <span>Favorites</span>
@@ -389,15 +418,17 @@ router.afterEach((to) => {
 
 /* Below Bulma's navbar breakpoint the labels go but the controls stay —
    search and blur are the two you reach for constantly. */
-@media screen and (max-width: 1023px) {
+@media screen and (width <= 1023px) {
   .nav-toolbar {
     flex: 1 1 auto;
     padding-right: var(--sp-1);
   }
+
   .nav-toggle-label,
   .nav-login-label {
     display: none;
   }
+
   .nav-viewmode {
     display: none;
   }

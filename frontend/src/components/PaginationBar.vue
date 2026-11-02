@@ -183,15 +183,15 @@ function submitJump() {
   height: 2.125rem;
   text-align: center;
   appearance: textfield;
-  -moz-appearance: textfield;
 }
+
 .pager-jump-input::-webkit-outer-spin-button,
 .pager-jump-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
+  appearance: none;
   margin: 0;
 }
 
-@media screen and (max-width: 640px) {
+@media screen and (width <= 640px) {
   .pager-btn-label {
     display: none;
   }

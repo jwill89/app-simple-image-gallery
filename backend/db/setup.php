@@ -111,14 +111,10 @@ function baselineLegacyDatabase(string $dbPath): void
     echo "[baseline] Legacy database detected (no phinx_migrations table).\n";
     echo "[baseline] Recording already-applied migrations...\n";
 
-    $columnExists = static function (PDO $pdo, string $table, string $column): bool {
-        foreach ($pdo->query('PRAGMA table_info(' . $table . ')') as $row) {
-            if ($row['name'] === $column) {
-                return true;
-            }
-        }
-        return false;
-    };
+    $columnExists = static fn(PDO $pdo, string $table, string $column): bool => array_any(
+        $pdo->query('PRAGMA table_info(' . $table . ')')->fetchAll(PDO::FETCH_ASSOC),
+        fn(array $row): bool => $row['name'] === $column
+    );
 
     // version => [migration class name, "already present?" probe]
     // Only migrations that existed at adoption time need probes; anything newer

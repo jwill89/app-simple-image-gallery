@@ -39,7 +39,6 @@ abstract class AbstractStructure implements JsonSerializable
      * This method sets the properties of the object based on the provided associative array.
      *
      * @param array<string, mixed> $params An associative array of properties to set on the object.
-     * @return void
      */
     public function setProperties(array $params = []): void
     {
@@ -48,7 +47,7 @@ abstract class AbstractStructure implements JsonSerializable
                 // Assign via reflection: properties are private to the concrete
                 // subclass, so a direct `$this->$property =` from this parent
                 // scope would be rejected. Reflection writes them across scope.
-                (new ReflectionProperty($this, $property))->setValue($this, $value);
+                new ReflectionProperty($this, $property)->setValue($this, $value);
             }
         }
     }
@@ -65,9 +64,7 @@ abstract class AbstractStructure implements JsonSerializable
     {
         $class = static::class;
 
-        if (!isset(self::$propertyCache[$class])) {
-            self::$propertyCache[$class] = (new ReflectionClass($this))->getProperties();
-        }
+        self::$propertyCache[$class] ??= new ReflectionClass($this)->getProperties();
 
         $data = [];
         foreach (self::$propertyCache[$class] as $property) {

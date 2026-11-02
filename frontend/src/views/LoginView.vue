@@ -42,9 +42,12 @@ async function login() {
           <div class="box">
             <h2 class="title is-4 has-text-centered">Admin Login</h2>
             <div class="field">
-              <label class="label">Password</label>
+              <label class="label" for="login-password">Password</label>
               <div class="control has-icons-left">
+                <!-- The page's only field: focusing it is what arriving at a login page is for. -->
+                <!-- eslint-disable vuejs-accessibility/no-autofocus -->
                 <input
+                  id="login-password"
                   v-model="passwordInput"
                   class="input"
                   type="password"
@@ -52,6 +55,7 @@ async function login() {
                   autofocus
                   @keyup.enter="login"
                 />
+                <!-- eslint-enable vuejs-accessibility/no-autofocus -->
                 <span class="icon is-left">
                   <i class="fa-solid fa-lock" />
                 </span>
@@ -61,6 +65,7 @@ async function login() {
               </p>
             </div>
             <button
+              type="button"
               class="button is-primary is-fullwidth"
               :class="{ 'is-loading': authLoading }"
               @click="login"

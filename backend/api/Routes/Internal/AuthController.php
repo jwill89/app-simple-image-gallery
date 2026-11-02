@@ -7,7 +7,7 @@ use Slim\Http\Response;
 use Gallery\Core\Configuration;
 use Gallery\Core\DatabaseConnection;
 use Gallery\Core\RateLimiter;
-use OpenApi\Attributes as OA;
+use OpenApi\Spec as OAS;
 
 /**
  * AuthController
@@ -22,26 +22,26 @@ class AuthController extends AbstractController
      * POST /auth/login — Exchange the admin password for a bearer token.
      * Body: { password }. Returns { token } valid for 24 hours.
      */
-    #[OA\Post(
+    #[OAS\Operation\Post(
         path: '/auth/login',
         summary: 'Log in as admin',
         tags: ['Auth'],
-        requestBody: new OA\RequestBody(
+        requestBody: new OAS\RequestBody(
             required: true,
-            content: new OA\JsonContent(
+            content: new OAS\MediaType\Json(
                 required: ['password'],
-                properties: [new OA\Property(property: 'password', type: 'string')]
+                properties: [new OAS\Property(property: 'password', schema: new OAS\Schema(type: 'string'))]
             )
         ),
         responses: [
-            new OA\Response(
+            new OAS\Response(
                 response: 200,
                 description: 'Issued token',
-                content: new OA\JsonContent(ref: '#/components/schemas/LoginResponse')
+                content: new OAS\MediaType\Json(ref: '#/components/schemas/LoginResponse')
             ),
-            new OA\Response(response: 401, description: 'InvalidPassword', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
-            new OA\Response(response: 429, description: 'TooManyAttempts', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
-            new OA\Response(response: 503, description: 'AdminNotConfigured', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 401, description: 'InvalidPassword', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 429, description: 'TooManyAttempts', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 503, description: 'AdminNotConfigured', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function login(Request $request, Response $response): Response

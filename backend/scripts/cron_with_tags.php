@@ -76,7 +76,6 @@ function danbooruGet(string $url): ?array
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
 
     if ($httpCode === 200 && is_string($response)) {
         return json_decode($response, true);
@@ -95,7 +94,7 @@ function importTagsForMedia(int $mediaId, string $md5, PDO $db, array &$category
     $url = DANBOORU_API_BASE . '/posts.json?tags=md5:' . urlencode($md5);
     $posts = danbooruGet($url);
 
-    if (empty($posts)) {
+    if ($posts === null || $posts === []) {
         return;
     }
 
@@ -104,40 +103,29 @@ function importTagsForMedia(int $mediaId, string $md5, PDO $db, array &$category
 
     $categorizedTags = [];
 
-    if (!empty($post['tag_string_artist'])) {
-        foreach (explode(' ', $post['tag_string_artist']) as $t) {
-            if ($t) {
-                $categorizedTags[$t] = 1;
-            }
+    // Danbooru tag-string field => Danbooru category id. Later fields win when a
+    // tag appears in more than one.
+    $fieldCategories = [
+        'tag_string_artist' => 1,
+        'tag_string_character' => 4,
+        'tag_string_copyright' => 3,
+        'tag_string_general' => 0,
+    ];
+    foreach ($fieldCategories as $field => $danbooruCategory) {
+        $tagString = $post[$field] ?? '';
+        if (!is_string($tagString)) {
+            continue;
         }
-    }
-    if (!empty($post['tag_string_character'])) {
-        foreach (explode(' ', $post['tag_string_character']) as $t) {
-            if ($t) {
-                $categorizedTags[$t] = 4;
-            }
-        }
-    }
-    if (!empty($post['tag_string_copyright'])) {
-        foreach (explode(' ', $post['tag_string_copyright']) as $t) {
-            if ($t) {
-                $categorizedTags[$t] = 3;
-            }
-        }
-    }
-    if (!empty($post['tag_string_general'])) {
-        foreach (explode(' ', $post['tag_string_general']) as $t) {
-            if ($t) {
-                $categorizedTags[$t] = 0;
+        foreach (explode(' ', $tagString) as $t) {
+            if ($t !== '') {
+                $categorizedTags[$t] = $danbooruCategory;
             }
         }
     }
 
     // Prepared statement for media_tags
     static $mediaTagStmt = null;
-    if ($mediaTagStmt === null) {
-        $mediaTagStmt = $db->prepare('INSERT OR IGNORE INTO media_tags (media_id, tag_id) VALUES (:mid, :tid)');
-    }
+    $mediaTagStmt ??= $db->prepare('INSERT OR IGNORE INTO media_tags (media_id, tag_id) VALUES (:mid, :tid)');
 
     foreach ($categorizedTags as $danbooruTag => $danbooruCategory) {
         // $danbooruCategory is always one of the DANBOORU_CATEGORY_MAP keys
@@ -164,16 +152,16 @@ function importTagsForMedia(int $mediaId, string $md5, PDO $db, array &$category
             $stmt->execute([':name' => $galleryTagName, ':cat' => $ourCategoryId]);
 
             if ($db->lastInsertId() > 0) {
-                $tagId = (int)$db->lastInsertId();
+                $tagId = (int) $db->lastInsertId();
                 $tagStats['tags_created']++;
             } else {
                 $stmt = $db->prepare('SELECT tag_id FROM tags WHERE tag_name = :name COLLATE NOCASE');
                 $stmt->execute([':name' => $galleryTagName]);
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
-                if (!$row) {
+                if ($row === false) {
                     continue;
                 }
-                $tagId = (int)$row['tag_id'];
+                $tagId = (int) $row['tag_id'];
             }
             $tagCache[$key] = $tagId;
         }
@@ -186,15 +174,17 @@ function importTagsForMedia(int $mediaId, string $md5, PDO $db, array &$category
 // ============================================================
 // Setup Collection
 // ============================================================
-$container = (new \DI\ContainerBuilder())->addDefinitions(__DIR__ . '/../api/dependencies.php')->build();
+$container = new \DI\ContainerBuilder()->addDefinitions(__DIR__ . '/../api/dependencies.php')->build();
 $media_collection = $container->get(MediaCollection::class);
 
 $media_dir = MediaCollection::MEDIA_DIRECTORY;
 $media_dir_full = MediaCollection::MEDIA_DIRECTORY_FULL;
 
 // Supported file extensions
-$supported_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif', 'avif',
-                         'mp4', 'webm', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'm4v'];
+$supported_extensions = [
+    'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif', 'avif',
+    'mp4', 'webm', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'm4v',
+];
 
 // ============================================================
 // Scan Input Folder
@@ -266,13 +256,13 @@ unset($all_summaries);
 $categoryCache = [];
 $catStmt = $db->query('SELECT category_id, category_name FROM tag_categories');
 while ($row = $catStmt->fetch(PDO::FETCH_ASSOC)) {
-    $categoryCache[$row['category_name']] = (int)$row['category_id'];
+    $categoryCache[$row['category_name']] = (int) $row['category_id'];
 }
 
 $tagCache = [];
 $tagStmt = $db->query('SELECT tag_id, tag_name FROM tags');
 while ($row = $tagStmt->fetch(PDO::FETCH_ASSOC)) {
-    $tagCache[strtolower($row['tag_name'])] = (int)$row['tag_id'];
+    $tagCache[strtolower($row['tag_name'])] = (int) $row['tag_id'];
 }
 
 // ============================================================
@@ -356,7 +346,7 @@ try {
 // Import Danbooru Tags for Newly Added Images
 // ============================================================
 
-if (!empty($newImageMedia)) {
+if ($newImageMedia !== []) {
     $imageCount = count($newImageMedia);
     echo "Importing Danbooru tags for {$imageCount} new image(s)...\n";
 

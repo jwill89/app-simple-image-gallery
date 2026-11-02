@@ -622,7 +622,12 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Migrate a tag's media to another tag, then delete it */
+        /**
+         * Migrate a tag's media to another tag, then delete it
+         * @description DELETE /tags/{tag_id} — Delete a tag.
+         *     DELETE /tags/{tag_id}/migrate-to/{target_tag_id} — migrate this tag's media
+         *     to the target first, then delete this tag.
+         */
         delete: operations["3fc0029729ae4febe19a3d71da0d5cd6"];
         options?: never;
         head?: never;

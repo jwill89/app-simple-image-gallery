@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useGalleryStore } from '../stores/gallery'
 
 interface Crumb {
@@ -26,7 +26,6 @@ function formatTagLabel(tagsParam: string): { label: string; title?: string } {
 }
 
 const route = useRoute()
-const router = useRouter()
 const store = useGalleryStore()
 
 const crumbs = computed<Crumb[]>(() => {
@@ -85,10 +84,6 @@ const crumbs = computed<Crumb[]>(() => {
 
   return list
 })
-
-function navigate(crumb: Crumb) {
-  if (crumb.to) void router.push(crumb.to)
-}
 </script>
 
 <template>
@@ -99,14 +94,10 @@ function navigate(crumb: Crumb) {
         :key="idx"
         :class="{ 'is-active': idx === crumbs.length - 1 }"
       >
-        <a
-          v-if="crumb.to && idx < crumbs.length - 1"
-          :title="crumb.title"
-          @click.prevent="navigate(crumb)"
-        >
+        <RouterLink v-if="crumb.to && idx < crumbs.length - 1" :to="crumb.to" :title="crumb.title">
           <span class="icon is-small"><i :class="crumb.icon" /></span>
           <span>{{ crumb.label }}</span>
-        </a>
+        </RouterLink>
         <a v-else aria-current="page" :title="crumb.title">
           <span class="icon is-small"><i :class="crumb.icon" /></span>
           <span>{{ crumb.label }}</span>
@@ -136,6 +127,7 @@ function navigate(crumb: Crumb) {
 
 /* The last crumb is the page title, rendered by PageHeader directly beneath —
    repeating it here would say the same word twice in a row. */
+
 /* Bulma draws the separator as `li + li::before`, so hiding the item takes its
    separator with it — nothing dangles. */
 .app-breadcrumb :deep(li:last-child) {

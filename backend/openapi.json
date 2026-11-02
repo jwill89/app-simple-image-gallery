@@ -21,22 +21,22 @@
                 "description": "POST /auth/login — Exchange the admin password for a bearer token.\nBody: { password }. Returns { token } valid for 24 hours.",
                 "operationId": "d19b53098572bc1c035e34307fd6a7d3",
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "password"
-                                ],
+                                "type": "object",
                                 "properties": {
                                     "password": {
                                         "type": "string"
                                     }
                                 },
-                                "type": "object"
+                                "required": [
+                                    "password"
+                                ]
                             }
                         }
-                    }
+                    },
+                    "required": true
                 },
                 "responses": {
                     "200": {
@@ -114,15 +114,10 @@
                 "description": "POST /danbooru/category-mappings — Map a Danbooru category to a gallery\ncategory. Body: { danbooru_category_id, danbooru_category_name, gallery_category_id }.",
                 "operationId": "e6f08412d1beec7a2bc9e36fdeadd2f8",
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "danbooru_category_id",
-                                    "danbooru_category_name",
-                                    "gallery_category_id"
-                                ],
+                                "type": "object",
                                 "properties": {
                                     "danbooru_category_id": {
                                         "type": "integer"
@@ -134,10 +129,15 @@
                                         "type": "integer"
                                     }
                                 },
-                                "type": "object"
+                                "required": [
+                                    "danbooru_category_id",
+                                    "danbooru_category_name",
+                                    "gallery_category_id"
+                                ]
                             }
                         }
-                    }
+                    },
+                    "required": true
                 },
                 "responses": {
                     "201": {
@@ -250,14 +250,10 @@
                 "description": "POST /danbooru/tag-mappings — Map a Danbooru tag name to a gallery tag name.\nBody: { danbooru_tag, gallery_tag }.",
                 "operationId": "c74f706262d1d4bde1d22ca6ffa8f306",
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "danbooru_tag",
-                                    "gallery_tag"
-                                ],
+                                "type": "object",
                                 "properties": {
                                     "danbooru_tag": {
                                         "type": "string"
@@ -266,10 +262,14 @@
                                         "type": "string"
                                     }
                                 },
-                                "type": "object"
+                                "required": [
+                                    "danbooru_tag",
+                                    "gallery_tag"
+                                ]
                             }
                         }
-                    }
+                    },
+                    "required": true
                 },
                 "responses": {
                     "201": {
@@ -319,14 +319,10 @@
                     }
                 ],
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "danbooru_tag",
-                                    "gallery_tag"
-                                ],
+                                "type": "object",
                                 "properties": {
                                     "danbooru_tag": {
                                         "type": "string"
@@ -335,10 +331,14 @@
                                         "type": "string"
                                     }
                                 },
-                                "type": "object"
+                                "required": [
+                                    "danbooru_tag",
+                                    "gallery_tag"
+                                ]
                             }
                         }
-                    }
+                    },
+                    "required": true
                 },
                 "responses": {
                     "200": {
@@ -485,14 +485,10 @@
                 "description": "POST /duplicates/dismissals — Dismiss a pair of media items as not-duplicates.\nBody: { media_id_1, media_id_2 }.",
                 "operationId": "70b30de80982dfb5b34e060d84757c9f",
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "media_id_1",
-                                    "media_id_2"
-                                ],
+                                "type": "object",
                                 "properties": {
                                     "media_id_1": {
                                         "type": "integer"
@@ -501,10 +497,14 @@
                                         "type": "integer"
                                     }
                                 },
-                                "type": "object"
+                                "required": [
+                                    "media_id_1",
+                                    "media_id_2"
+                                ]
                             }
                         }
-                    }
+                    },
+                    "required": true
                 },
                 "responses": {
                     "201": {
@@ -558,8 +558,8 @@
                         "required": true,
                         "schema": {
                             "type": "integer",
-                            "maximum": 200,
-                            "minimum": 1
+                            "minimum": 1,
+                            "maximum": 200
                         }
                     }
                 ],
@@ -610,8 +610,8 @@
                         "required": true,
                         "schema": {
                             "type": "integer",
-                            "maximum": 200,
-                            "minimum": 1
+                            "minimum": 1,
+                            "maximum": 200
                         }
                     }
                 ],
@@ -671,8 +671,8 @@
                         "required": true,
                         "schema": {
                             "type": "integer",
-                            "maximum": 200,
-                            "minimum": 1
+                            "minimum": 1,
+                            "maximum": 200
                         }
                     }
                 ],
@@ -843,13 +843,10 @@
                 "description": "POST /media/by-ids — Get multiple media items by an array of IDs.\nBody: { ids: int[] } (max 200). Missing IDs are silently skipped.\nA public batched read (uses POST only to carry a large id list).",
                 "operationId": "b370f569a77c422bb41e6d7977479e4a",
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "ids"
-                                ],
+                                "type": "object",
                                 "properties": {
                                     "ids": {
                                         "type": "array",
@@ -858,10 +855,13 @@
                                         }
                                     }
                                 },
-                                "type": "object"
+                                "required": [
+                                    "ids"
+                                ]
                             }
                         }
-                    }
+                    },
+                    "required": true
                 },
                 "responses": {
                     "200": {
@@ -899,13 +899,10 @@
                 "description": "POST /media/bulk-delete — Delete one or more media items by ID.\nBody: { media_ids: int[] }. Returns the deleted and failed ID lists.",
                 "operationId": "6aedfe7046057e8d9cc4373a58f46be3",
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "media_ids"
-                                ],
+                                "type": "object",
                                 "properties": {
                                     "media_ids": {
                                         "type": "array",
@@ -914,10 +911,13 @@
                                         }
                                     }
                                 },
-                                "type": "object"
+                                "required": [
+                                    "media_ids"
+                                ]
                             }
                         }
-                    }
+                    },
+                    "required": true
                 },
                 "responses": {
                     "200": {
@@ -1010,13 +1010,10 @@
                     }
                 ],
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "tag_ids"
-                                ],
+                                "type": "object",
                                 "properties": {
                                     "tag_ids": {
                                         "type": "array",
@@ -1025,10 +1022,13 @@
                                         }
                                     }
                                 },
-                                "type": "object"
+                                "required": [
+                                    "tag_ids"
+                                ]
                             }
                         }
-                    }
+                    },
+                    "required": true
                 },
                 "responses": {
                     "200": {
@@ -1129,10 +1129,10 @@
                     }
                 ],
                 "requestBody": {
-                    "required": false,
                     "content": {
                         "application/json": {
                             "schema": {
+                                "type": "object",
                                 "properties": {
                                     "danbooru_post_id": {
                                         "type": [
@@ -1140,11 +1140,11 @@
                                             "null"
                                         ]
                                     }
-                                },
-                                "type": "object"
+                                }
                             }
                         }
-                    }
+                    },
+                    "required": false
                 },
                 "responses": {
                     "200": {
@@ -1292,13 +1292,10 @@
                 "description": "POST /tag-categories — Create a tag category. Returns the created category.\nBody: { category_name, color?, description?, sort_order? }",
                 "operationId": "dc114b35e6a6392f6c75717bf3f23651",
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "category_name"
-                                ],
+                                "type": "object",
                                 "properties": {
                                     "category_name": {
                                         "type": "string"
@@ -1313,10 +1310,13 @@
                                         "type": "integer"
                                     }
                                 },
-                                "type": "object"
+                                "required": [
+                                    "category_name"
+                                ]
                             }
                         }
-                    }
+                    },
+                    "required": true
                 },
                 "responses": {
                     "201": {
@@ -1366,13 +1366,10 @@
                     }
                 ],
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "category_name"
-                                ],
+                                "type": "object",
                                 "properties": {
                                     "category_name": {
                                         "type": "string"
@@ -1387,10 +1384,13 @@
                                         "type": "integer"
                                     }
                                 },
-                                "type": "object"
+                                "required": [
+                                    "category_name"
+                                ]
                             }
                         }
-                    }
+                    },
+                    "required": true
                 },
                 "responses": {
                     "200": {
@@ -1501,13 +1501,10 @@
                 "description": "POST /tags — Create a tag. Body: { tag_name, category_id? (default 1) }.\nReturns the created tag.",
                 "operationId": "595b6c6e60d4db82867b9aac8fccd85c",
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "tag_name"
-                                ],
+                                "type": "object",
                                 "properties": {
                                     "tag_name": {
                                         "type": "string"
@@ -1517,10 +1514,13 @@
                                         "default": 1
                                     }
                                 },
-                                "type": "object"
+                                "required": [
+                                    "tag_name"
+                                ]
                             }
                         }
-                    }
+                    },
+                    "required": true
                 },
                 "responses": {
                     "201": {
@@ -1635,13 +1635,10 @@
                     }
                 ],
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "tag_name"
-                                ],
+                                "type": "object",
                                 "properties": {
                                     "tag_name": {
                                         "type": "string"
@@ -1651,10 +1648,13 @@
                                         "default": 1
                                     }
                                 },
-                                "type": "object"
+                                "required": [
+                                    "tag_name"
+                                ]
                             }
                         }
-                    }
+                    },
+                    "required": true
                 },
                 "responses": {
                     "200": {
@@ -1729,6 +1729,7 @@
                     "Tags"
                 ],
                 "summary": "Migrate a tag's media to another tag, then delete it",
+                "description": "DELETE /tags/{tag_id} — Delete a tag.\nDELETE /tags/{tag_id}/migrate-to/{target_tag_id} — migrate this tag's media\nto the target first, then delete this tag.",
                 "operationId": "3fc0029729ae4febe19a3d71da0d5cd6",
                 "parameters": [
                     {
@@ -1790,22 +1791,22 @@
                     }
                 ],
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "target_tag_id"
-                                ],
+                                "type": "object",
                                 "properties": {
                                     "target_tag_id": {
                                         "type": "integer"
                                     }
                                 },
-                                "type": "object"
+                                "required": [
+                                    "target_tag_id"
+                                ]
                             }
                         }
-                    }
+                    },
+                    "required": true
                 },
                 "responses": {
                     "200": {
@@ -1868,14 +1869,10 @@
                 "description": "POST /tag-implications — Add \"tag_id implies implied_tag_id\".\nBody: { tag_id, implied_tag_id }. Rejects cycles and self-implication.\nReturns the created implication.",
                 "operationId": "9ed70fe6fc2fe1fdc19be3a497665936",
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "required": [
-                                    "tag_id",
-                                    "implied_tag_id"
-                                ],
+                                "type": "object",
                                 "properties": {
                                     "tag_id": {
                                         "type": "integer"
@@ -1884,10 +1881,14 @@
                                         "type": "integer"
                                     }
                                 },
-                                "type": "object"
+                                "required": [
+                                    "tag_id",
+                                    "implied_tag_id"
+                                ]
                             }
                         }
-                    }
+                    },
+                    "required": true
                 },
                 "responses": {
                     "201": {
@@ -1985,10 +1986,10 @@
                 "description": "POST /media — Upload one or more files (multipart/form-data with files[]).\nMedia type is auto-detected from each file's extension.",
                 "operationId": "da47a0a080049a9a1698c19e03cae289",
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "multipart/form-data": {
                             "schema": {
+                                "type": "object",
                                 "properties": {
                                     "files[]": {
                                         "type": "array",
@@ -1998,14 +1999,14 @@
                                         }
                                     },
                                     "fetch_tags": {
-                                        "description": "Fetch Danbooru tags for uploaded images.",
-                                        "type": "boolean"
+                                        "type": "boolean",
+                                        "description": "Fetch Danbooru tags for uploaded images."
                                     }
-                                },
-                                "type": "object"
+                                }
                             }
                         }
-                    }
+                    },
+                    "required": true
                 },
                 "responses": {
                     "201": {
@@ -2040,18 +2041,19 @@
     "components": {
         "schemas": {
             "BulkDeleteResult": {
+                "type": "object",
                 "description": "Outcome of a bulk media delete.",
                 "properties": {
                     "deleted": {
-                        "description": "IDs successfully deleted.",
                         "type": "array",
+                        "description": "IDs successfully deleted.",
                         "items": {
                             "type": "integer"
                         }
                     },
                     "failed": {
-                        "description": "IDs that could not be deleted.",
                         "type": "array",
+                        "description": "IDs that could not be deleted.",
                         "items": {
                             "type": "integer"
                         }
@@ -2059,10 +2061,10 @@
                     "total_deleted": {
                         "type": "integer"
                     }
-                },
-                "type": "object"
+                }
             },
             "CategoryMapping": {
+                "type": "object",
                 "description": "A Danbooru-to-gallery category mapping.",
                 "properties": {
                     "danbooru_category_id": {
@@ -2080,38 +2082,38 @@
                             "null"
                         ]
                     }
-                },
-                "type": "object"
+                }
             },
             "Count": {
+                "type": "object",
                 "description": "A count wrapper.",
                 "properties": {
                     "count": {
                         "type": "integer"
                     }
-                },
-                "type": "object"
+                }
             },
             "DanbooruFetchResult": {
+                "type": "object",
                 "description": "Outcome of a Danbooru tag import.",
                 "properties": {
                     "tags": {
-                        "description": "The media item's tags after import.",
                         "type": "array",
+                        "description": "The media item's tags after import.",
                         "items": {
                             "$ref": "#/components/schemas/Tag"
                         }
                     },
                     "all_tags": {
-                        "description": "The full tag list (new tags may have been created).",
                         "type": "array",
+                        "description": "The full tag list (new tags may have been created).",
                         "items": {
                             "$ref": "#/components/schemas/Tag"
                         }
                     },
                     "method": {
-                        "description": "Lookup method used (md5 / iqdb / post).",
-                        "type": "string"
+                        "type": "string",
+                        "description": "Lookup method used (md5 / iqdb / post)."
                     },
                     "tags_applied": {
                         "type": "integer"
@@ -2119,10 +2121,10 @@
                     "tags_created": {
                         "type": "integer"
                     }
-                },
-                "type": "object"
+                }
             },
             "DismissResult": {
+                "type": "object",
                 "description": "A dismissed duplicate pair.",
                 "properties": {
                     "dismissed": {
@@ -2134,13 +2136,14 @@
                     "media_id_2": {
                         "type": "integer"
                     }
-                },
-                "type": "object"
+                }
             },
             "DuplicateMatch": {
+                "type": "object",
                 "description": "A duplicate media pair with similarity scores.",
                 "properties": {
                     "media_1": {
+                        "type": "object",
                         "properties": {
                             "media_id": {
                                 "type": "integer"
@@ -2151,10 +2154,10 @@
                             "hash": {
                                 "type": "string"
                             }
-                        },
-                        "type": "object"
+                        }
                     },
                     "media_2": {
+                        "type": "object",
                         "properties": {
                             "media_id": {
                                 "type": "integer"
@@ -2165,39 +2168,38 @@
                             "hash": {
                                 "type": "string"
                             }
-                        },
-                        "type": "object"
+                        }
                     },
                     "distance": {
-                        "description": "Hamming distance between fingerprints.",
                         "type": [
                             "integer",
                             "null"
-                        ]
+                        ],
+                        "description": "Hamming distance between fingerprints."
                     },
                     "ssim": {
-                        "description": "Structural similarity (SSIM) score.",
                         "type": [
                             "number",
                             "null"
                         ],
-                        "format": "float"
+                        "format": "float",
+                        "description": "Structural similarity (SSIM) score."
                     }
-                },
-                "type": "object"
+                }
             },
             "DuplicateReport": {
+                "type": "object",
                 "description": "The latest duplicate-detection report.",
                 "properties": {
                     "report_file": {
                         "type": "string"
                     },
                     "generated_at": {
-                        "description": "ISO timestamp the report was generated.",
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "description": "ISO timestamp the report was generated."
                     },
                     "images_compared": {
                         "type": [
@@ -2214,34 +2216,34 @@
                             "$ref": "#/components/schemas/DuplicateMatch"
                         }
                     }
-                },
-                "type": "object"
+                }
             },
             "ErrorResponse": {
+                "type": "object",
                 "description": "Standard error envelope.",
                 "properties": {
                     "error": {
-                        "description": "Stable PascalCase machine code (e.g. MediaNotFound).",
-                        "type": "string"
+                        "type": "string",
+                        "description": "Stable PascalCase machine code (e.g. MediaNotFound)."
                     },
                     "message": {
-                        "description": "Human-readable message for display.",
-                        "type": "string"
+                        "type": "string",
+                        "description": "Human-readable message for display."
                     }
-                },
-                "type": "object"
+                }
             },
             "LoginResponse": {
+                "type": "object",
                 "description": "Issued admin bearer token.",
                 "properties": {
                     "token": {
-                        "description": "Bearer token, valid for 24 hours.",
-                        "type": "string"
+                        "type": "string",
+                        "description": "Bearer token, valid for 24 hours."
                     }
-                },
-                "type": "object"
+                }
             },
             "MediaPage": {
+                "type": "object",
                 "description": "A paginated page of media items.",
                 "properties": {
                     "items": {
@@ -2256,27 +2258,27 @@
                     "current_page": {
                         "type": "integer"
                     }
-                },
-                "type": "object"
+                }
             },
             "MigrateResult": {
+                "type": "object",
                 "description": "Outcome of a tag migration.",
                 "properties": {
                     "migrated": {
                         "type": "boolean"
                     },
                     "source_tag_id": {
-                        "description": "The source tag (now deleted).",
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "The source tag (now deleted)."
                     },
                     "target_tag_id": {
-                        "description": "The target tag that received the media.",
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "The target tag that received the media."
                     }
-                },
-                "type": "object"
+                }
             },
             "ScanResult": {
+                "type": "object",
                 "description": "Duplicate-scan summary statistics.",
                 "properties": {
                     "success": {
@@ -2295,14 +2297,14 @@
                         "type": "integer"
                     },
                     "execution_time": {
-                        "description": "Execution time in seconds.",
                         "type": "number",
-                        "format": "float"
+                        "format": "float",
+                        "description": "Execution time in seconds."
                     }
-                },
-                "type": "object"
+                }
             },
             "TagImplication": {
+                "type": "object",
                 "description": "A tag implication (tag -> implied tag).",
                 "properties": {
                     "tag_id": {
@@ -2317,10 +2319,10 @@
                     "implied_tag_name": {
                         "type": "string"
                     }
-                },
-                "type": "object"
+                }
             },
             "TagListItem": {
+                "type": "object",
                 "description": "A tag with category name and usage counts.",
                 "properties": {
                     "tag_id": {
@@ -2339,17 +2341,17 @@
                         ]
                     },
                     "media_count": {
-                        "description": "Number of media items with this tag.",
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "Number of media items with this tag."
                     },
                     "implication_count": {
-                        "description": "Number of implications originating from this tag.",
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "Number of implications originating from this tag."
                     }
-                },
-                "type": "object"
+                }
             },
             "TagMapping": {
+                "type": "object",
                 "description": "A Danbooru-to-gallery tag name mapping.",
                 "properties": {
                     "id": {
@@ -2361,10 +2363,10 @@
                     "gallery_tag": {
                         "type": "string"
                     }
-                },
-                "type": "object"
+                }
             },
             "UploadResult": {
+                "type": "object",
                 "description": "Per-file upload outcome.",
                 "properties": {
                     "file_name": {
@@ -2379,37 +2381,37 @@
                         ]
                     },
                     "id": {
-                        "description": "New media ID (on success).",
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "New media ID (on success)."
                     },
                     "existing_id": {
-                        "description": "Existing media ID (on duplicate).",
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "Existing media ID (on duplicate)."
                     },
                     "hash": {
-                        "description": "MD5 hash of the file.",
-                        "type": "string"
+                        "type": "string",
+                        "description": "MD5 hash of the file."
                     },
                     "message": {
-                        "description": "Failure reason (on error).",
-                        "type": "string"
+                        "type": "string",
+                        "description": "Failure reason (on error)."
                     },
                     "tags_found": {
-                        "description": "Whether Danbooru tags were found.",
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "Whether Danbooru tags were found."
                     },
                     "tags_applied": {
-                        "description": "Number of tags applied from Danbooru.",
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "Number of tags applied from Danbooru."
                     },
                     "tags_method": {
-                        "description": "Danbooru lookup method used (md5/iqdb).",
-                        "type": "string"
+                        "type": "string",
+                        "description": "Danbooru lookup method used (md5/iqdb)."
                     }
-                },
-                "type": "object"
+                }
             },
             "UploadSummary": {
+                "type": "object",
                 "description": "Aggregate upload result.",
                 "properties": {
                     "results": {
@@ -2428,27 +2430,27 @@
                         "type": "integer"
                     },
                     "total_tags_applied": {
-                        "description": "Total Danbooru tags applied (only when fetch_tags was set).",
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "Total Danbooru tags applied (only when fetch_tags was set)."
                     }
-                },
-                "type": "object"
+                }
             },
             "VersionResponse": {
+                "type": "object",
                 "description": "Application and API version.",
                 "properties": {
                     "version": {
-                        "description": "Application version (SemVer).",
-                        "type": "string"
+                        "type": "string",
+                        "description": "Application version (SemVer)."
                     },
                     "api_version": {
-                        "description": "HTTP API contract version (SemVer).",
-                        "type": "string"
+                        "type": "string",
+                        "description": "HTTP API contract version (SemVer)."
                     }
-                },
-                "type": "object"
+                }
             },
             "Media": {
+                "type": "object",
                 "description": "A media item (image or video).",
                 "properties": {
                     "media_id": {
@@ -2465,16 +2467,16 @@
                         "type": "string"
                     },
                     "file_time": {
-                        "description": "Unix timestamp the file was ingested.",
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "Unix timestamp the file was ingested."
                     },
                     "hash": {
-                        "description": "MD5 hash of the file contents.",
-                        "type": "string"
+                        "type": "string",
+                        "description": "MD5 hash of the file contents."
                     },
                     "bits_fingerprint": {
-                        "description": "Perceptual fingerprint (images only).",
-                        "type": "string"
+                        "type": "string",
+                        "description": "Perceptual fingerprint (images only)."
                     },
                     "width": {
                         "type": "integer"
@@ -2483,18 +2485,18 @@
                         "type": "integer"
                     },
                     "duration": {
-                        "description": "Duration in seconds; 0 for still images.",
                         "type": "number",
-                        "format": "float"
+                        "format": "float",
+                        "description": "Duration in seconds; 0 for still images."
                     },
                     "file_size": {
-                        "description": "File size in bytes.",
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "File size in bytes."
                     }
-                },
-                "type": "object"
+                }
             },
             "Tag": {
+                "type": "object",
                 "description": "A tag.",
                 "properties": {
                     "tag_id": {
@@ -2506,10 +2508,10 @@
                     "tag_name": {
                         "type": "string"
                     }
-                },
-                "type": "object"
+                }
             },
             "TagCategory": {
+                "type": "object",
                 "description": "A tag category (color, shortcode, sort order).",
                 "properties": {
                     "category_id": {
@@ -2519,8 +2521,8 @@
                         "type": "string"
                     },
                     "color": {
-                        "description": "Tag palette hue. Display only — never a semantic state name.",
-                        "type": "string"
+                        "type": "string",
+                        "description": "Tag palette hue. Display only — never a semantic state name."
                     },
                     "description": {
                         "type": "string"
@@ -2528,8 +2530,7 @@
                     "sort_order": {
                         "type": "integer"
                     }
-                },
-                "type": "object"
+                }
             }
         },
         "securitySchemes": {

@@ -7,7 +7,6 @@ namespace Gallery\Tests\Unit\Repository;
 use Gallery\Repository\TagCategoryRepository;
 use Gallery\Structure\TagCategory;
 use Gallery\Tests\Support\DatabaseTestCase;
-use PDO;
 use PHPUnit\Framework\Attributes\CoversClass;
 
 #[CoversClass(TagCategoryRepository::class)]
@@ -16,7 +15,7 @@ final class TagCategoryRepositoryTest extends DatabaseTestCase
 {
     private function newCategory(string $name, int $sort = 0, string $color = 'neutral'): TagCategory
     {
-        return (new TagCategory())
+        return new TagCategory()
             ->setCategoryName($name)
             ->setColor($color)
             ->setSortOrder($sort);

@@ -1,0 +1,20 @@
+# Editor defaults for the whole repo. Line endings are also enforced by
+# .gitattributes; Prettier reads this file for anything the shared
+# prettier.config.js leaves unset, so the frontend sizes match what it writes.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# Frontend sources, npm's JSON, CI workflows and Markdown: 2 spaces (Prettier's width).
+[*.{ts,mts,cts,js,mjs,cjs,vue,css,html,json,yml,yaml,md}]
+indent_size = 2
+
+# composer.json and the generated openapi.json are 4-space JSON.
+[backend/**.json]
+indent_size = 4

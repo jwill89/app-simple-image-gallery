@@ -18,6 +18,30 @@ class Configuration
 
     public const int DEFAULT_PER_PAGE = 40;
 
+    /**
+     * Duplicate-scan Hamming cutoff (bits out of 64) when DUPLICATE_MAX_DISTANCE
+     * is unset. Re-saved and resized copies of gallery images landed 0-5 bits
+     * from their originals (2026-11 calibration); the region check, not this,
+     * is what keeps variants out.
+     */
+    public const int DEFAULT_DUPLICATE_MAX_DISTANCE = 6;
+
+    /**
+     * Duplicate-scan region-difference ceiling (0-255 levels, see
+     * RegionDifference) when DUPLICATE_MAX_REGION_DIFF is unset. On the
+     * 2026-11 calibration, re-saved copies of gallery images scored at most
+     * 32.7 and the 26 variants dismissed in the UI at least 40.9; this sits
+     * between.
+     */
+    public const float DEFAULT_DUPLICATE_MAX_REGION_DIFF = 36.0;
+
+    /**
+     * Highest DUPLICATE_MAX_DISTANCE accepted: a quarter of the 64-bit hash. Past
+     * that the LSH bands the scanner needs to keep its no-missed-pairs guarantee
+     * shrink to 3 bits or fewer, and nearly every bucket overflows.
+     */
+    public const int MAX_DUPLICATE_MAX_DISTANCE = 16;
+
     private static bool $envLoaded = false;
 
     /**
@@ -152,7 +176,7 @@ class Configuration
 
         // Check $_SERVER with possible REDIRECT_ prefixes from mod_rewrite
         foreach ($_SERVER as $key => $value) {
-            if (preg_match('/^(?:REDIRECT_)*' . preg_quote($name, '/') . '$/', $key)) {
+            if (preg_match('/^(?:REDIRECT_)*' . preg_quote($name, '/') . '$/', $key) === 1) {
                 if ($value !== '') {
                     return $value;
                 }
@@ -197,6 +221,68 @@ class Configuration
     }
 
     /**
+     * Largest Hamming distance at which the duplicate scan still reports a pair
+     * (DUPLICATE_MAX_DISTANCE). An unset or invalid value falls back to the default.
+     */
+    public static function getDuplicateMaxDistance(): int
+    {
+        return self::parseDuplicateMaxDistance(self::getEnvVar('DUPLICATE_MAX_DISTANCE') ?? '')
+            ?? self::DEFAULT_DUPLICATE_MAX_DISTANCE;
+    }
+
+    /**
+     * A duplicate-scan max distance from text: a whole number from 0 to
+     * MAX_DUPLICATE_MAX_DISTANCE, or null if it isn't one. Shared by the env
+     * setting and scripts/dupes.php's --max-distance.
+     */
+    public static function parseDuplicateMaxDistance(string $value): ?int
+    {
+        $value = trim($value);
+
+        if (preg_match('/^\d{1,2}$/', $value) !== 1) {
+            return null;
+        }
+
+        $distance = (int) $value;
+
+        return $distance <= self::MAX_DUPLICATE_MAX_DISTANCE ? $distance : null;
+    }
+
+    /**
+     * Largest region difference (0-255 levels, see RegionDifference) at which
+     * the duplicate scan still reports a pair (DUPLICATE_MAX_REGION_DIFF).
+     * "off" turns the check off (null); unset or invalid falls back to the default.
+     */
+    public static function getDuplicateMaxRegionDiff(): ?float
+    {
+        $value = self::getEnvVar('DUPLICATE_MAX_REGION_DIFF') ?? '';
+
+        if (strtolower(trim($value)) === 'off') {
+            return null;
+        }
+
+        return self::parseDuplicateMaxRegionDiff($value) ?? self::DEFAULT_DUPLICATE_MAX_REGION_DIFF;
+    }
+
+    /**
+     * A duplicate-scan region-difference ceiling from text: a number from 0 to
+     * 255, or null if it isn't one. Shared by the env setting and
+     * scripts/dupes.php's --max-region-diff.
+     */
+    public static function parseDuplicateMaxRegionDiff(string $value): ?float
+    {
+        $value = trim($value);
+
+        if (!is_numeric($value)) {
+            return null;
+        }
+
+        $diff = (float) $value;
+
+        return $diff >= 0.0 && $diff <= 255.0 ? $diff : null;
+    }
+
+    /**
      * Get allowed CORS origins.
      * The env var should be a comma-separated list of origins.
      * Falls back to default localhost origins if not set.
@@ -207,8 +293,8 @@ class Configuration
     {
         $envOrigins = self::getEnvVar('GALLERY_ALLOWED_ORIGINS') ?? '';
 
-        if (!empty($envOrigins)) {
-            return array_map('trim', explode(',', $envOrigins));
+        if ($envOrigins !== '') {
+            return array_map(trim(...), explode(',', $envOrigins));
         }
 
         return self::DEFAULT_ALLOWED_ORIGINS;

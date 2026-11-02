@@ -231,6 +231,7 @@ onMounted(() => {
                     class="input"
                     :class="{ 'is-danger': authError }"
                     type="password"
+                    aria-label="Admin password"
                     placeholder="Password"
                     @keyup.enter="login"
                   />
@@ -241,6 +242,7 @@ onMounted(() => {
                 </p>
               </div>
               <button
+                type="button"
                 class="button is-primary is-fullwidth"
                 :class="{ 'is-loading': authLoading }"
                 :disabled="authLoading || !passwordInput"
@@ -258,6 +260,7 @@ onMounted(() => {
         <PageHeader title="Duplicates" :meta="report ? `${report.duplicates_found} pairs` : ''">
           <template #actions>
             <button
+              type="button"
               class="button"
               :class="{ 'is-loading': scanning }"
               :disabled="scanning"
@@ -268,6 +271,7 @@ onMounted(() => {
             </button>
             <button
               v-if="hasSelection"
+              type="button"
               class="button is-danger"
               :class="{ 'is-loading': deleting }"
               :disabled="deleting"
@@ -287,7 +291,7 @@ onMounted(() => {
           icon="fa-solid fa-triangle-exclamation"
           title="Could not load the duplicates report."
         >
-          <button class="button" @click="loadReport">
+          <button type="button" class="button" @click="loadReport">
             <span class="icon"><i class="fa-solid fa-rotate-right" /></span>
             <span>Retry</span>
           </button>
@@ -313,11 +317,16 @@ onMounted(() => {
 
           <!-- Selection Controls -->
           <div v-if="report.matches.length > 0" class="buttons mb-4">
-            <button class="button is-small is-warning" @click="selectAll">
+            <button type="button" class="button is-small is-warning" @click="selectAll">
               <span class="icon"><i class="fa-solid fa-check-double" /></span>
               <span>Select All Duplicates (Right Column)</span>
             </button>
-            <button v-if="hasSelection" class="button is-small" @click="clearSelection">
+            <button
+              v-if="hasSelection"
+              type="button"
+              class="button is-small"
+              @click="clearSelection"
+            >
               <span class="icon"><i class="fa-solid fa-xmark" /></span>
               <span>Clear Selection</span>
             </button>
@@ -343,7 +352,11 @@ onMounted(() => {
                   <div
                     class="card-content has-text-centered has-background-grey-darker dupe-image-container"
                   >
-                    <a :href="fullUrl(match.media_1.file_name)" target="_blank">
+                    <a
+                      :href="fullUrl(match.media_1.file_name)"
+                      target="_blank"
+                      :aria-label="`Open media #${match.media_1.media_id} full size`"
+                    >
                       <img
                         :src="fullUrl(match.media_1.file_name)"
                         alt=""
@@ -370,6 +383,7 @@ onMounted(() => {
                       class="card-footer-item"
                       :href="fullUrl(match.media_1.file_name)"
                       target="_blank"
+                      :aria-label="`Open media #${match.media_1.media_id} full size`"
                     >
                       <span class="icon has-text-info-dark"
                         ><i class="fa-solid fa-up-right-from-square"
@@ -388,7 +402,11 @@ onMounted(() => {
                   <div
                     class="card-content has-text-centered has-background-grey-darker dupe-image-container"
                   >
-                    <a :href="fullUrl(match.media_2.file_name)" target="_blank">
+                    <a
+                      :href="fullUrl(match.media_2.file_name)"
+                      target="_blank"
+                      :aria-label="`Open media #${match.media_2.media_id} full size`"
+                    >
                       <img
                         :src="fullUrl(match.media_2.file_name)"
                         alt=""
@@ -415,6 +433,7 @@ onMounted(() => {
                       class="card-footer-item"
                       :href="fullUrl(match.media_2.file_name)"
                       target="_blank"
+                      :aria-label="`Open media #${match.media_2.media_id} full size`"
                     >
                       <span class="icon has-text-info-dark"
                         ><i class="fa-solid fa-up-right-from-square"
@@ -443,6 +462,7 @@ onMounted(() => {
               <div class="level-right">
                 <div class="level-item">
                   <button
+                    type="button"
                     class="button is-warning is-outlined"
                     :class="{
                       'is-loading':
@@ -482,6 +502,7 @@ onMounted(() => {
 
         <template #footer>
           <button
+            type="button"
             class="button is-danger"
             :class="{ 'is-loading': deleting }"
             :disabled="deleting"
@@ -490,7 +511,12 @@ onMounted(() => {
             <span class="icon"><i class="fa-solid fa-trash" /></span>
             <span>Delete {{ selectionCount }}</span>
           </button>
-          <button class="button is-ghost" :disabled="deleting" @click="showDeleteConfirm = false">
+          <button
+            type="button"
+            class="button is-ghost"
+            :disabled="deleting"
+            @click="showDeleteConfirm = false"
+          >
             Cancel
           </button>
         </template>

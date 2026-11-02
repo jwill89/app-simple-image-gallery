@@ -38,13 +38,12 @@ const props = withDefaults(
   { width: '30rem', destructive: false },
 )
 
+const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 const Root = computed(() => (props.destructive ? AlertDialogRoot : DialogRoot))
 const Portal = computed(() => (props.destructive ? AlertDialogPortal : DialogPortal))
 const Overlay = computed(() => (props.destructive ? AlertDialogOverlay : DialogOverlay))
 const Content = computed(() => (props.destructive ? AlertDialogContent : DialogContent))
 const Title = computed(() => (props.destructive ? AlertDialogTitle : DialogTitle))
-
-const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 </script>
 
 <template>
@@ -81,7 +80,7 @@ const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 .dlg-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgb(0 0 0 / 60%);
   z-index: 60;
 }
 

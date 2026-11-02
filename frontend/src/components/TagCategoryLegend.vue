@@ -114,7 +114,7 @@ const store = useGalleryStore()
   color: var(--text-2);
 }
 
-@media screen and (max-width: 480px) {
+@media screen and (width <= 480px) {
   .legend-row {
     grid-template-columns: 1fr;
     gap: 2px;

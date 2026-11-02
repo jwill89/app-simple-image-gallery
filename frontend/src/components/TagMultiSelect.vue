@@ -139,12 +139,15 @@ function onBackspace() {
         <ComboboxRoot
           v-model:open="open"
           :model-value="null"
-          :ignore-filter="true"
+          ignore-filter
           :reset-search-term-on-blur="false"
           open-on-focus
           open-on-click
         >
           <ComboboxAnchor class="tag-input-wrapper">
+            <!-- Right-click is a shortcut: typing a leading `-` in the input
+                 excludes a tag from the keyboard. -->
+            <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions -->
             <span
               v-for="tag in selectedTagObjects"
               :key="tag.tag_id"
@@ -244,6 +247,7 @@ function onBackspace() {
   min-width: 7rem;
   border: none;
   outline: none;
+
   /* Inherit the app's family. This used to re-declare the old Bulma stack, so
      text typed here rendered in a different typeface from every other input. */
   font-family: inherit;

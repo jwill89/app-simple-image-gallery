@@ -21,15 +21,13 @@ class ResponseCache
     /** Medium TTL for aggregate data like tag lists, totals, implications (seconds). */
     public const int TTL_MEDIUM = 60;
 
-    private string $cacheDir;
+    private readonly string $cacheDir;
     private bool $enabled;
     private static ?self $instance = null;
 
     public static function getInstance(): self
     {
-        if (self::$instance === null) {
-            self::$instance = new self();
-        }
+        self::$instance ??= new self();
         return self::$instance;
     }
 
@@ -40,7 +38,7 @@ class ResponseCache
         $this->enabled = true;
 
         if (!is_dir($this->cacheDir)) {
-            $this->enabled = @mkdir($this->cacheDir, 0755, true);
+            $this->enabled = @mkdir($this->cacheDir, 0o755, true);
         }
     }
 
@@ -72,7 +70,7 @@ class ResponseCache
             return null;
         }
 
-        $expiresAt = (int)substr($raw, 0, $nl);
+        $expiresAt = (int) substr($raw, 0, $nl);
 
         if ($expiresAt < time()) {
             @unlink($path);
@@ -113,7 +111,7 @@ class ResponseCache
     private function gc(): void
     {
         $files = @glob($this->cacheDir . '*.cache');
-        if (!$files) {
+        if ($files === false || $files === []) {
             return;
         }
 
@@ -126,7 +124,7 @@ class ResponseCache
             $firstLine = fgets($handle);
             fclose($handle);
 
-            if ($firstLine !== false && (int)$firstLine < $now) {
+            if ($firstLine !== false && (int) $firstLine < $now) {
                 @unlink($f);
             }
         }
@@ -145,7 +143,7 @@ class ResponseCache
 
         foreach ($groups as $group) {
             $files = @glob($this->cacheDir . $group . '_*.cache');
-            if ($files) {
+            if ($files !== false) {
                 foreach ($files as $f) {
                     @unlink($f);
                 }
@@ -163,7 +161,7 @@ class ResponseCache
         }
 
         $files = @glob($this->cacheDir . '*.cache');
-        if ($files) {
+        if ($files !== false) {
             foreach ($files as $f) {
                 @unlink($f);
             }

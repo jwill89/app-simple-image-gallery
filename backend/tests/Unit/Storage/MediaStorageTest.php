@@ -20,7 +20,7 @@ final class MediaStorageTest extends DatabaseTestCase
         string $type = 'image',
         int $time = 1000
     ): Media {
-        $media = (new Media())
+        $media = new Media()
             ->setMediaType($type)
             ->setFileName($name)
             ->setHash($hash)
@@ -50,7 +50,7 @@ final class MediaStorageTest extends DatabaseTestCase
 
     public function testRetrieveUnknownIdReturnsNull(): void
     {
-        $this->assertNull((new MediaStorage(self::makeDb()))->retrieve(404));
+        $this->assertNull(new MediaStorage(self::makeDb())->retrieve(404));
     }
 
     public function testRetrieveAllOrdersByFileTimeDescending(): void

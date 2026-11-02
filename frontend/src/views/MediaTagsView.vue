@@ -409,11 +409,11 @@ function onTouchEnd(e: TouchEvent) {
         icon="fa-solid fa-circle-exclamation"
         title="Could not load media details."
       >
-        <button class="button" @click="load">
+        <button type="button" class="button" @click="load">
           <span class="icon"><i class="fa-solid fa-rotate-right" /></span>
           <span>Retry</span>
         </button>
-        <button class="button is-ghost" @click="backToGallery">
+        <button type="button" class="button is-ghost" @click="backToGallery">
           <span class="icon"><i class="fa-solid fa-backward" /></span>
           <span>Back to Gallery</span>
         </button>
@@ -422,7 +422,6 @@ function onTouchEnd(e: TouchEvent) {
         <div class="columns">
           <div class="column is-three-fifths">
             <figure
-              ref="mediaContainer"
               class="image tags-page-img"
               @touchstart.passive="onTouchStart"
               @touchend.passive="onTouchEnd"
@@ -432,6 +431,8 @@ function onTouchEnd(e: TouchEvent) {
                   <i class="fa-solid fa-spinner fa-spin fa-2x" />
                 </span>
               </div>
+              <!-- Uploaded videos come without caption files, so there is no track to offer. -->
+              <!-- eslint-disable-next-line vuejs-accessibility/media-has-caption -->
               <video
                 v-if="mediaUrl && isVideo(mediaUrl)"
                 controls
@@ -469,11 +470,11 @@ function onTouchEnd(e: TouchEvent) {
             <!-- Toolbar: navigation on the left, actions on the right -->
             <div class="media-toolbar">
               <div class="toolbar-nav">
-                <button v-if="isRandomView" class="button" @click="newRandom">
+                <button v-if="isRandomView" type="button" class="button" @click="newRandom">
                   <span class="icon"><i class="fa-solid fa-shuffle" /></span>
                   <span>New Random Media</span>
                 </button>
-                <button v-else class="button" @click="backToGallery">
+                <button v-else type="button" class="button" @click="backToGallery">
                   <span class="icon"><i class="fa-solid fa-backward" /></span>
                   <span>Back</span>
                 </button>
@@ -481,6 +482,7 @@ function onTouchEnd(e: TouchEvent) {
                   <div class="control">
                     <AppTooltip label="Previous (← or swipe right)">
                       <button
+                        type="button"
                         class="button"
                         :disabled="prevId == null"
                         aria-label="Previous media"
@@ -493,6 +495,7 @@ function onTouchEnd(e: TouchEvent) {
                   <div class="control">
                     <AppTooltip label="Next (→ or swipe left)">
                       <button
+                        type="button"
                         class="button"
                         :disabled="nextId == null"
                         aria-label="Next media"
@@ -506,6 +509,7 @@ function onTouchEnd(e: TouchEvent) {
               </div>
               <div class="toolbar-actions">
                 <button
+                  type="button"
                   class="button"
                   :class="{ 'is-fav': favorites.isFavorite(mediaId) }"
                   :aria-pressed="favorites.isFavorite(mediaId)"
@@ -563,6 +567,7 @@ function onTouchEnd(e: TouchEvent) {
                   <code>{{ mediaItem?.hash }}</code>
                   <AppTooltip label="Copy MD5 hash">
                     <button
+                      type="button"
                       class="button is-ghost is-small hash-copy"
                       aria-label="Copy MD5 hash"
                       @click="copyHash"
@@ -596,6 +601,7 @@ function onTouchEnd(e: TouchEvent) {
               <template #actions>
                 <div class="control">
                   <button
+                    type="button"
                     class="button is-primary"
                     :disabled="selectedTagIds.length === 0"
                     @click="onAddTags"
@@ -607,7 +613,12 @@ function onTouchEnd(e: TouchEvent) {
             </TagMultiSelect>
             <p class="help">
               Add tags. Multiple tags are allowed.
-              <a style="cursor: pointer" @click.prevent="showHelpModal = !showHelpModal">
+              <a
+                href="#"
+                role="button"
+                :aria-expanded="showHelpModal"
+                @click.prevent="showHelpModal = !showHelpModal"
+              >
                 {{ showHelpModal ? 'Hide tag help' : 'Show tag help' }}
               </a>
               to read more about tag categories, differentiated by colors.
@@ -662,6 +673,7 @@ function onTouchEnd(e: TouchEvent) {
 
         <template #footer>
           <button
+            type="button"
             class="button is-danger"
             :class="{ 'is-loading': deleting }"
             :disabled="deleting"
@@ -670,7 +682,12 @@ function onTouchEnd(e: TouchEvent) {
             <span class="icon"><i class="fa-solid fa-trash" /></span>
             <span>Delete</span>
           </button>
-          <button class="button is-ghost" :disabled="deleting" @click="showDeleteModal = false">
+          <button
+            type="button"
+            class="button is-ghost"
+            :disabled="deleting"
+            @click="showDeleteModal = false"
+          >
             Cancel
           </button>
         </template>
@@ -682,8 +699,8 @@ function onTouchEnd(e: TouchEvent) {
         @update:open="showDanbooruModal = $event"
       >
         <div class="field">
-          <label class="label">Lookup Method</label>
-          <div class="control">
+          <p id="danbooru-mode-label" class="label">Lookup Method</p>
+          <div class="control" role="radiogroup" aria-labelledby="danbooru-mode-label">
             <label class="radio mr-4">
               <input
                 v-model="danbooruMode"
@@ -706,9 +723,10 @@ function onTouchEnd(e: TouchEvent) {
         </div>
 
         <div v-if="danbooruMode === 'post_id'" class="field">
-          <label class="label">Post ID</label>
+          <label class="label" for="danbooru-post-id">Post ID</label>
           <div class="control">
             <input
+              id="danbooru-post-id"
               v-model="danbooruPostId"
               class="input"
               type="text"
@@ -738,6 +756,7 @@ function onTouchEnd(e: TouchEvent) {
 
         <template #footer>
           <button
+            type="button"
             class="button is-primary"
             :class="{ 'is-loading': danbooruFetching }"
             :disabled="danbooruFetching"
@@ -747,6 +766,7 @@ function onTouchEnd(e: TouchEvent) {
             <span>Fetch Tags</span>
           </button>
           <button
+            type="button"
             class="button is-ghost"
             :disabled="danbooruFetching"
             @click="showDanbooruModal = false"
@@ -765,7 +785,7 @@ function onTouchEnd(e: TouchEvent) {
   align-items: center;
   justify-content: center;
   min-height: 300px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgb(255 255 255 / 3%);
   border-radius: 6px;
 }
 
@@ -889,7 +909,7 @@ function onTouchEnd(e: TouchEvent) {
 }
 
 /* On narrow screens, let the toolbar stack but keep groups intact */
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .media-toolbar {
     justify-content: center;
   }

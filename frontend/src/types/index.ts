@@ -38,16 +38,8 @@ export interface MediaPage {
 }
 
 export type Count = Required<Schemas['Count']>
-export type VersionResponse = Required<Schemas['VersionResponse']>
 export type LoginResponse = Required<Schemas['LoginResponse']>
-export type MigrateResult = Required<Schemas['MigrateResult']>
-export type DismissResult = Required<Schemas['DismissResult']>
 export type BulkDeleteResult = Required<Schemas['BulkDeleteResult']>
-export type ScanResult = Required<Schemas['ScanResult']>
-
-/** The per-file / aggregate result of an upload — fields are genuinely conditional. */
-export type UploadResult = Schemas['UploadResult']
-export type UploadSummary = Schemas['UploadSummary']
 
 /** Result of importing Danbooru tags for a media item. */
 export interface DanbooruFetchResult {
@@ -58,7 +50,7 @@ export interface DanbooruFetchResult {
   tags_created: number
 }
 
-export interface DuplicateMatchMedia {
+interface DuplicateMatchMedia {
   media_id: number
   file_name: string
   hash: string
@@ -76,6 +68,3 @@ export interface DuplicateReport {
   duplicates_found: number
   matches: DuplicateMatch[]
 }
-
-/** The standard error envelope: `{ error, message }`. */
-export type ErrorResponse = Required<Schemas['ErrorResponse']>

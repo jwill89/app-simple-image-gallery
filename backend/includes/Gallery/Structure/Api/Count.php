@@ -2,14 +2,14 @@
 
 namespace Gallery\Structure\Api;
 
-use OpenApi\Attributes as OA;
+use OpenApi\Spec as OAS;
 
 /**
  * A simple `{ count }` wrapper (e.g. GET /media/count). Doc-only schema.
  */
-#[OA\Schema(schema: 'Count', description: 'A count wrapper.')]
+#[OAS\Schema(schema: 'Count', description: 'A count wrapper.')]
 class Count
 {
-    #[OA\Property(type: 'integer')]
+    #[OAS\Property(schema: new OAS\Schema(type: 'integer'))]
     public int $count = 0;
 }

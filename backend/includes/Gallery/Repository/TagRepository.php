@@ -4,7 +4,6 @@ namespace Gallery\Repository;
 
 use PDO;
 use Gallery\Structure\Tag;
-use Gallery\Structure\TagCategory;
 use Gallery\Structure\Media;
 
 /**
@@ -24,11 +23,8 @@ class TagRepository
 
     private const string OBJ_CLASS = Tag::class;
 
-    private PDO $db;
-
-    public function __construct(PDO $db)
+    public function __construct(private readonly PDO $db)
     {
-        $this->db = $db;
     }
 
     /**
@@ -84,8 +80,8 @@ class TagRepository
      */
     public function getIdsByNames(array $tag_names): array
     {
-        $names = array_values(array_filter(array_map('trim', $tag_names), fn($n) => $n !== ''));
-        if (empty($names)) {
+        $names = array_values(array_filter(array_map(trim(...), $tag_names), fn($n) => $n !== ''));
+        if ($names === []) {
             return [];
         }
 
@@ -94,7 +90,7 @@ class TagRepository
         $stmt = $this->db->prepare($sql);
         $stmt->execute($names);
 
-        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+        return array_map(intval(...), $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
     /**
@@ -106,8 +102,8 @@ class TagRepository
      */
     public function getExistingIds(array $tag_ids): array
     {
-        $ids = array_values(array_unique(array_filter(array_map('intval', $tag_ids), fn($id) => $id > 0)));
-        if (empty($ids)) {
+        $ids = array_values(array_unique(array_filter(array_map(intval(...), $tag_ids), fn($id) => $id > 0)));
+        if ($ids === []) {
             return [];
         }
 
@@ -116,7 +112,7 @@ class TagRepository
         $stmt = $this->db->prepare($sql);
         $stmt->execute($ids);
 
-        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+        return array_map(intval(...), $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
     /**
@@ -173,7 +169,7 @@ class TagRepository
         $stmt = $this->db->prepare($sql);
         $stmt->execute();
 
-        return (int)$stmt->fetchColumn();
+        return (int) $stmt->fetchColumn();
     }
 
     /**
@@ -186,7 +182,7 @@ class TagRepository
         $stmt->bindValue(':tag_name', $tag_name, PDO::PARAM_STR);
         $stmt->execute();
 
-        return (int)$stmt->fetchColumn() === 1;
+        return (int) $stmt->fetchColumn() === 1;
     }
 
     /**
@@ -198,7 +194,7 @@ class TagRepository
     {
         $all_tag_ids = $this->resolveImpliedTagIds($tag_ids);
 
-        if (empty($all_tag_ids)) {
+        if ($all_tag_ids === []) {
             return true;
         }
 
@@ -215,7 +211,7 @@ class TagRepository
             }
             $this->db->commit();
             return true;
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             $this->db->rollBack();
             return false;
         }
@@ -240,7 +236,9 @@ class TagRepository
      */
     public function save(Tag $tag): int
     {
-        if (empty($tag->tag_id)) {
+        $isNew = $tag->tag_id === 0;
+
+        if ($isNew) {
             $sql = "INSERT INTO " . self::MAIN_TABLE . " (category_id, tag_name) VALUES (:category_id, :tag_name)";
         } else {
             $sql = "UPDATE " . self::MAIN_TABLE . " SET category_id = :category_id, tag_name = :tag_name WHERE tag_id = :tag_id";
@@ -250,12 +248,12 @@ class TagRepository
         $stmt->bindValue(':category_id', $tag->category_id, PDO::PARAM_INT);
         $stmt->bindValue(':tag_name', $tag->tag_name, PDO::PARAM_STR);
 
-        if (!empty($tag->tag_id)) {
+        if (!$isNew) {
             $stmt->bindValue(':tag_id', $tag->tag_id, PDO::PARAM_INT);
         }
 
-        if ($stmt->execute() && empty($tag->tag_id)) {
-            $tag->setTagId((int)$this->db->lastInsertId());
+        if ($stmt->execute() && $isNew) {
+            $tag->setTagId((int) $this->db->lastInsertId());
         }
 
         return $tag->tag_id;
@@ -333,8 +331,8 @@ class TagRepository
      */
     public function resolveImpliedTagIds(array $tag_ids): array
     {
-        $seeds = array_values(array_unique(array_map('intval', $tag_ids)));
-        if (empty($seeds)) {
+        $seeds = array_values(array_unique(array_map(intval(...), $tag_ids)));
+        if ($seeds === []) {
             return [];
         }
 
@@ -354,7 +352,7 @@ class TagRepository
         $stmt = $this->db->prepare($sql);
         $stmt->execute($seeds);
 
-        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+        return array_map(intval(...), $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
     /**
@@ -385,7 +383,7 @@ class TagRepository
 
             $this->db->commit();
             return true;
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             $this->db->rollBack();
             return false;
         }

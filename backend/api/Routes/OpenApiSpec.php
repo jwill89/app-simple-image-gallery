@@ -3,7 +3,7 @@
 namespace Routes;
 
 use Gallery\Core\Configuration;
-use OpenApi\Attributes as OA;
+use OpenApi\Spec as OAS;
 
 /**
  * Global OpenAPI document metadata.
@@ -14,7 +14,7 @@ use OpenApi\Attributes as OA;
  * operations live on the controllers; per-model schemas live on the
  * structure classes under `includes/Gallery/Structure/`.
  */
-#[OA\Info(
+#[OAS\Info(
     version: Configuration::API_VERSION,
     title: 'Gallery API',
     description: <<<'MD'
@@ -38,21 +38,21 @@ use OpenApi\Attributes as OA;
         and the batched `POST /media/by-ids` read).
         MD,
 )]
-#[OA\Server(url: '/api', description: 'Same-origin API base path')]
-#[OA\SecurityScheme(
+#[OAS\Server(url: '/api', description: 'Same-origin API base path')]
+#[OAS\Security\Scheme(
     securityScheme: 'bearerAuth',
     type: 'http',
     scheme: 'bearer',
     description: 'Admin bearer token issued by POST /auth/login (valid 24 hours).'
 )]
-#[OA\Tag(name: 'System', description: 'Version and API documentation endpoints.')]
-#[OA\Tag(name: 'Auth', description: 'Admin authentication.')]
-#[OA\Tag(name: 'Media', description: 'Media items (images + videos), listing, upload, and tagging.')]
-#[OA\Tag(name: 'Tags', description: 'Tags CRUD and migration.')]
-#[OA\Tag(name: 'Tag Categories', description: 'Tag category CRUD.')]
-#[OA\Tag(name: 'Tag Implications', description: 'Tag implication relationships.')]
-#[OA\Tag(name: 'Danbooru', description: 'Danbooru import rule mappings.')]
-#[OA\Tag(name: 'Duplicates', description: 'Perceptual-hash duplicate detection.')]
+#[OAS\Tag(name: 'System', description: 'Version and API documentation endpoints.')]
+#[OAS\Tag(name: 'Auth', description: 'Admin authentication.')]
+#[OAS\Tag(name: 'Media', description: 'Media items (images + videos), listing, upload, and tagging.')]
+#[OAS\Tag(name: 'Tags', description: 'Tags CRUD and migration.')]
+#[OAS\Tag(name: 'Tag Categories', description: 'Tag category CRUD.')]
+#[OAS\Tag(name: 'Tag Implications', description: 'Tag implication relationships.')]
+#[OAS\Tag(name: 'Danbooru', description: 'Danbooru import rule mappings.')]
+#[OAS\Tag(name: 'Duplicates', description: 'Perceptual-hash duplicate detection.')]
 final class OpenApiSpec
 {
 }

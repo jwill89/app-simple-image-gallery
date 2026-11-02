@@ -91,6 +91,7 @@ function onCardKey(e: KeyboardEvent) {
   position: relative;
   border-radius: 6px;
   cursor: pointer;
+
   /* Skip rendering/layout for off-screen cards. Keeps paint & layout cost
      roughly constant as the infinite-scroll list grows. The intrinsic size
      hint matches the 200px card height so the scrollbar stays stable. */
@@ -153,8 +154,8 @@ function onCardKey(e: KeyboardEvent) {
   position: absolute;
   top: 4px;
   left: 4px;
-  background: rgba(0, 0, 0, 0.7);
-  color: rgba(255, 255, 255, 0.92);
+  background: rgb(0 0 0 / 70%);
+  color: rgb(255 255 255 / 92%);
   font-size: 0.7rem;
   padding: 3px 6px;
   border-radius: 3px;
@@ -167,9 +168,9 @@ function onCardKey(e: KeyboardEvent) {
   position: absolute;
   top: 4px;
   right: 4px;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgb(0 0 0 / 60%);
   border: none;
-  color: rgba(255, 255, 255, 0.85); /* ≥4.5:1 on the dark chip */
+  color: rgb(255 255 255 / 85%); /* ≥4.5:1 on the dark chip */
   font-size: 0.85rem;
   padding: 4px 6px;
   border-radius: 4px;

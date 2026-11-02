@@ -23,7 +23,7 @@ set_time_limit(0);
 
 $start_time = microtime(true);
 
-$container = (new \DI\ContainerBuilder())->addDefinitions(__DIR__ . '/../api/dependencies.php')->build();
+$container = new \DI\ContainerBuilder()->addDefinitions(__DIR__ . '/../api/dependencies.php')->build();
 $media_collection = $container->get(MediaCollection::class);
 $full_dir = MediaCollection::MEDIA_DIRECTORY_FULL;
 

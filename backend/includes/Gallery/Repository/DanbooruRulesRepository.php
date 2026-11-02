@@ -16,11 +16,8 @@ class DanbooruRulesRepository
     private const string CATEGORY_MAP_TABLE = 'danbooru_category_map';
     private const string TAG_MAP_TABLE = 'danbooru_tag_map';
 
-    private PDO $db;
-
-    public function __construct(PDO $db)
+    public function __construct(private readonly PDO $db)
     {
-        $this->db = $db;
     }
 
     // ── Category Map ────────────────────────────────────────

@@ -148,7 +148,7 @@ onMounted(loadCategories)
         icon="fa-solid fa-palette"
         title="Could not load categories."
       >
-        <button class="button" @click="loadCategories">
+        <button type="button" class="button" @click="loadCategories">
           <span class="icon"><i class="fa-solid fa-rotate-right" /></span>
           <span>Retry</span>
         </button>
@@ -157,7 +157,7 @@ onMounted(loadCategories)
       <template v-else>
         <PageHeader title="Tag Categories">
           <template v-if="authenticated" #actions>
-            <button class="button is-primary" @click="openNewModal">
+            <button type="button" class="button is-primary" @click="openNewModal">
               <span class="icon"><i class="fa-solid fa-plus" /></span>
               <span>New Category</span>
             </button>
@@ -194,12 +194,18 @@ onMounted(loadCategories)
                 <td v-if="authenticated" class="has-text-right">
                   <div class="buttons are-small is-right">
                     <AppTooltip label="Edit category">
-                      <button class="button" aria-label="Edit category" @click="openEditModal(cat)">
+                      <button
+                        type="button"
+                        class="button"
+                        aria-label="Edit category"
+                        @click="openEditModal(cat)"
+                      >
                         <span class="icon"><i class="fa-solid fa-pen" /></span>
                       </button>
                     </AppTooltip>
                     <AppTooltip label="Delete category">
                       <button
+                        type="button"
                         class="button is-danger"
                         aria-label="Delete category"
                         @click="openDeleteConfirm(cat)"
@@ -226,9 +232,10 @@ onMounted(loadCategories)
         @update:open="!$event && closeModal()"
       >
         <div class="field">
-          <label class="label">Category Name</label>
+          <label class="label" for="category-name">Category Name</label>
           <div class="control">
             <input
+              id="category-name"
               v-model="formName"
               class="input"
               type="text"
@@ -238,8 +245,8 @@ onMounted(loadCategories)
           </div>
         </div>
         <div class="field">
-          <label class="label">Display Color</label>
-          <div class="color-picker">
+          <p id="category-color-label" class="label">Display Color</p>
+          <div class="color-picker" role="group" aria-labelledby="category-color-label">
             <button
               v-for="c in VALID_COLORS"
               :key="c"
@@ -260,9 +267,10 @@ onMounted(loadCategories)
           </p>
         </div>
         <div class="field">
-          <label class="label">Description</label>
+          <label class="label" for="category-description">Description</label>
           <div class="control">
             <textarea
+              id="category-description"
               v-model="formDescription"
               class="textarea"
               rows="2"
@@ -271,9 +279,10 @@ onMounted(loadCategories)
           </div>
         </div>
         <div class="field">
-          <label class="label">Sort Order</label>
+          <label class="label" for="category-sort-order">Sort Order</label>
           <div class="control">
             <input
+              id="category-sort-order"
               v-model.number="formSortOrder"
               class="input"
               type="number"
@@ -291,13 +300,14 @@ onMounted(loadCategories)
 
         <template #footer>
           <button
+            type="button"
             class="button is-primary"
             :class="{ 'is-loading': formLoading }"
             @click="submitForm"
           >
             {{ formMode === 'edit' ? 'Save Changes' : 'Create Category' }}
           </button>
-          <button class="button is-ghost" @click="closeModal">Cancel</button>
+          <button type="button" class="button is-ghost" @click="closeModal">Cancel</button>
         </template>
       </AppDialog>
 
@@ -318,13 +328,16 @@ onMounted(loadCategories)
 
         <template #footer>
           <button
+            type="button"
             class="button is-danger"
             :class="{ 'is-loading': deleteLoading }"
             @click="confirmDelete"
           >
             Delete
           </button>
-          <button class="button is-ghost" @click="showDeleteModal = false">Cancel</button>
+          <button type="button" class="button is-ghost" @click="showDeleteModal = false">
+            Cancel
+          </button>
         </template>
       </AppDialog>
     </div>
@@ -354,7 +367,7 @@ onMounted(loadCategories)
 
 .color-swatch.is-selected-swatch {
   border-color: var(--text-1);
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-1) 50%, transparent);
   transform: scale(1.08);
 }
 </style>

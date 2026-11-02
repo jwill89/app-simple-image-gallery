@@ -8,7 +8,7 @@ use Gallery\Core\CacheGroup;
 use Gallery\Core\ResponseCache;
 use Gallery\Repository\TagRepository;
 use Gallery\Structure\Tag;
-use OpenApi\Attributes as OA;
+use OpenApi\Spec as OAS;
 
 /**
  * TagImplicationController
@@ -17,30 +17,25 @@ use OpenApi\Attributes as OA;
  */
 class TagImplicationController extends AbstractController
 {
-    private TagRepository $tag_repository;
-
-    public function __construct(TagRepository $tag_repository)
+    public function __construct(private readonly TagRepository $tag_repository)
     {
         parent::__construct();
-        $this->tag_repository = $tag_repository;
     }
 
     /**
      * GET /tag-implications — All tag implications. Cached.
      */
-    #[OA\Get(
+    #[OAS\Operation\Get(
         path: '/tag-implications',
         summary: 'List tag implications',
         tags: ['Tag Implications'],
         responses: [
-            new OA\Response(response: 200, description: 'All implications', content: new OA\JsonContent(type: 'array', items: new OA\Items(ref: '#/components/schemas/TagImplication'))),
+            new OAS\Response(response: 200, description: 'All implications', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/TagImplication'))),
         ]
     )]
     public function getImplications(Request $request, Response $response): Response
     {
-        return $this->cachedSuccess($response, CacheGroup::Tags, 'implications', ResponseCache::TTL_MEDIUM, function () {
-            return $this->tag_repository->getAllImplications();
-        });
+        return $this->cachedSuccess($response, CacheGroup::Tags, 'implications', ResponseCache::TTL_MEDIUM, fn() => $this->tag_repository->getAllImplications());
     }
 
     /**
@@ -48,22 +43,22 @@ class TagImplicationController extends AbstractController
      * Body: { tag_id, implied_tag_id }. Rejects cycles and self-implication.
      * Returns the created implication.
      */
-    #[OA\Post(
+    #[OAS\Operation\Post(
         path: '/tag-implications',
         summary: 'Create a tag implication',
         tags: ['Tag Implications'],
-        security: [['bearerAuth' => []]],
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(
             required: ['tag_id', 'implied_tag_id'],
             properties: [
-                new OA\Property(property: 'tag_id', type: 'integer'),
-                new OA\Property(property: 'implied_tag_id', type: 'integer'),
+                new OAS\Property(property: 'tag_id', schema: new OAS\Schema(type: 'integer')),
+                new OAS\Property(property: 'implied_tag_id', schema: new OAS\Schema(type: 'integer')),
             ]
         )),
         responses: [
-            new OA\Response(response: 201, description: 'The created implication', content: new OA\JsonContent(ref: '#/components/schemas/TagImplication')),
-            new OA\Response(response: 400, description: 'CannotImplySelf / CycleDetected', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
-            new OA\Response(response: 404, description: 'TagDoesNotExist', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 201, description: 'The created implication', content: new OAS\MediaType\Json(ref: '#/components/schemas/TagImplication')),
+            new OAS\Response(response: 400, description: 'CannotImplySelf / CycleDetected', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'TagDoesNotExist', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function addImplication(Request $request, Response $response): Response
@@ -106,18 +101,18 @@ class TagImplicationController extends AbstractController
     /**
      * DELETE /tag-implications/{tag_id}/{implied_tag_id} — Remove an implication.
      */
-    #[OA\Delete(
+    #[OAS\Operation\Delete(
         path: '/tag-implications/{tag_id}/{implied_tag_id}',
         summary: 'Remove a tag implication',
         tags: ['Tag Implications'],
-        security: [['bearerAuth' => []]],
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
         parameters: [
-            new OA\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
-            new OA\Parameter(name: 'implied_tag_id', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'implied_tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
         ],
         responses: [
-            new OA\Response(response: 204, description: 'Removed'),
-            new OA\Response(response: 400, description: 'InvalidTagID', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 204, description: 'Removed'),
+            new OAS\Response(response: 400, description: 'InvalidTagID', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function removeImplication(Request $request, Response $response, array $args): Response

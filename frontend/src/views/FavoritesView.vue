@@ -91,7 +91,7 @@ watch(() => favorites.count, loadFavorites)
         icon="fa-solid fa-circle-exclamation"
         title="Could not load favorites."
       >
-        <button class="button" @click="loadFavorites">
+        <button type="button" class="button" @click="loadFavorites">
           <span class="icon"><i class="fa-solid fa-rotate-right" /></span>
           <span>Retry</span>
         </button>

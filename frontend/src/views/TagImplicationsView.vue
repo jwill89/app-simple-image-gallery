@@ -169,7 +169,7 @@ onMounted(loadData)
         icon="fa-solid fa-link"
         :title="loadFailed ? 'Could not load tag data.' : 'Tag not found.'"
       >
-        <button v-if="loadFailed" class="button" @click="loadData">
+        <button v-if="loadFailed" type="button" class="button" @click="loadData">
           <span class="icon"><i class="fa-solid fa-rotate-right" /></span>
           <span>Retry</span>
         </button>
@@ -178,7 +178,7 @@ onMounted(loadData)
       <template v-else>
         <PageHeader :title="tagInfo.tag_name" :meta="tagInfo.category_name ?? ''">
           <template v-if="authenticated" #actions>
-            <button class="button is-primary" @click="openModal">
+            <button type="button" class="button is-primary" @click="openModal">
               <span class="icon"><i class="fa-solid fa-plus" /></span>
               <span>Add Implication</span>
             </button>
@@ -201,7 +201,7 @@ onMounted(loadData)
           <thead>
             <tr>
               <th>Implied Tag</th>
-              <th v-if="authenticated" style="width: 80px">Actions</th>
+              <th v-if="authenticated" class="col-actions">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -216,6 +216,7 @@ onMounted(loadData)
               <td v-if="authenticated">
                 <AppTooltip label="Remove implication">
                   <button
+                    type="button"
                     class="button is-small is-danger is-outlined"
                     aria-label="Remove implication"
                     @click="
@@ -245,7 +246,7 @@ onMounted(loadData)
           <thead>
             <tr>
               <th>Trigger Tag</th>
-              <th v-if="authenticated" style="width: 80px">Actions</th>
+              <th v-if="authenticated" class="col-actions">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -258,6 +259,7 @@ onMounted(loadData)
               <td v-if="authenticated">
                 <AppTooltip label="Remove implication">
                   <button
+                    type="button"
                     class="button is-small is-danger is-outlined"
                     aria-label="Remove implication"
                     @click="askRemoveImplication(impl.tag_id, impl.implied_tag_id, impl.tag_name)"
@@ -282,9 +284,10 @@ onMounted(loadData)
           will be automatically added too.
         </p>
         <div class="field">
-          <label class="label">Implied Tag</label>
+          <label class="label" for="implied-tag-search">Implied Tag</label>
           <div class="control">
             <input
+              id="implied-tag-search"
               v-model="impliedSearch"
               class="input"
               type="text"
@@ -292,18 +295,19 @@ onMounted(loadData)
             />
           </div>
           <div v-if="impliedOptions.length > 0" class="dropdown-list">
-            <a
+            <button
               v-for="t in impliedOptions"
               :key="t.tag_id"
               class="dropdown-item"
               :class="{ 'is-active': impliedTagId === t.tag_id }"
+              type="button"
               @click="selectImplied(t)"
             >
               <span :class="getTextClassByName(t.category_name)">{{ t.tag_name }}</span>
               <span class="tag is-small ml-2" :class="getCategoryClassByName(t.category_name)">
                 {{ t.category_name }}
               </span>
-            </a>
+            </button>
           </div>
         </div>
         <p v-if="implHelp" class="help" :class="implHelpClass">
@@ -312,13 +316,14 @@ onMounted(loadData)
 
         <template #footer>
           <button
+            type="button"
             class="button is-primary"
             :class="{ 'is-loading': implLoading }"
             @click="submitImplication"
           >
             Add Implication
           </button>
-          <button class="button is-ghost" @click="closeModal">Cancel</button>
+          <button type="button" class="button is-ghost" @click="closeModal">Cancel</button>
         </template>
       </AppDialog>
 
@@ -334,8 +339,8 @@ onMounted(loadData)
         </p>
 
         <template #footer>
-          <button class="button is-danger" @click="removeImplication">Remove</button>
-          <button class="button is-ghost" @click="removeTarget = null">Cancel</button>
+          <button type="button" class="button is-danger" @click="removeImplication">Remove</button>
+          <button type="button" class="button is-ghost" @click="removeTarget = null">Cancel</button>
         </template>
       </AppDialog>
     </div>
@@ -353,6 +358,8 @@ onMounted(loadData)
 }
 
 .dropdown-item {
+  border: none;
+  font: inherit;
   display: flex;
   align-items: center;
   padding: var(--sp-2) var(--sp-3);

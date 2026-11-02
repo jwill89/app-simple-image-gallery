@@ -9,7 +9,7 @@ use Gallery\Core\ResponseCache;
 use Gallery\Repository\TagRepository;
 use Gallery\Repository\TagCategoryRepository;
 use Gallery\Structure\Tag;
-use OpenApi\Attributes as OA;
+use OpenApi\Spec as OAS;
 
 /**
  * TagController
@@ -20,64 +20,55 @@ class TagController extends AbstractController
 {
     private const int MAX_TAG_NAME_LENGTH = 100;
 
-    private TagRepository $tag_repository;
-    private TagCategoryRepository $category_repository;
-
-    public function __construct(TagRepository $tag_repository, TagCategoryRepository $category_repository)
+    public function __construct(private readonly TagRepository $tag_repository, private readonly TagCategoryRepository $category_repository)
     {
         parent::__construct();
-        $this->tag_repository = $tag_repository;
-        $this->category_repository = $category_repository;
     }
 
     /**
      * GET /tags — All tags (id, name, category). Cached.
      */
-    #[OA\Get(
+    #[OAS\Operation\Get(
         path: '/tags',
         summary: 'List all tags',
         tags: ['Tags'],
         responses: [
-            new OA\Response(response: 200, description: 'All tags', content: new OA\JsonContent(type: 'array', items: new OA\Items(ref: '#/components/schemas/Tag'))),
+            new OAS\Response(response: 200, description: 'All tags', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/Tag'))),
         ]
     )]
     public function getAllTags(Request $request, Response $response): Response
     {
-        return $this->cachedSuccess($response, CacheGroup::Tags, 'all', ResponseCache::TTL_MEDIUM, function () {
-            return $this->tag_repository->getAll();
-        });
+        return $this->cachedSuccess($response, CacheGroup::Tags, 'all', ResponseCache::TTL_MEDIUM, fn() => $this->tag_repository->getAll());
     }
 
     /**
      * GET /tags/display — All tags with category and usage/implication counts,
      * for the tags-management page. Cached.
      */
-    #[OA\Get(
+    #[OAS\Operation\Get(
         path: '/tags/display',
         summary: 'List tags with category and usage counts',
         tags: ['Tags'],
         responses: [
-            new OA\Response(response: 200, description: 'Tags with counts', content: new OA\JsonContent(type: 'array', items: new OA\Items(ref: '#/components/schemas/TagListItem'))),
+            new OAS\Response(response: 200, description: 'Tags with counts', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/TagListItem'))),
         ]
     )]
     public function getTagListForDisplay(Request $request, Response $response): Response
     {
-        return $this->cachedSuccess($response, CacheGroup::Tags, 'display', ResponseCache::TTL_MEDIUM, function () {
-            return $this->tag_repository->getAllForPage();
-        });
+        return $this->cachedSuccess($response, CacheGroup::Tags, 'display', ResponseCache::TTL_MEDIUM, fn() => $this->tag_repository->getAllForPage());
     }
 
     /**
      * GET /tags/{tag_id} — A single tag by ID.
      */
-    #[OA\Get(
+    #[OAS\Operation\Get(
         path: '/tags/{tag_id}',
         summary: 'A single tag',
         tags: ['Tags'],
-        parameters: [new OA\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        parameters: [new OAS\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
-            new OA\Response(response: 200, description: 'The tag', content: new OA\JsonContent(ref: '#/components/schemas/Tag')),
-            new OA\Response(response: 404, description: 'TagDoesNotExist', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'The tag', content: new OAS\MediaType\Json(ref: '#/components/schemas/Tag')),
+            new OAS\Response(response: 404, description: 'TagDoesNotExist', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function getTag(Request $request, Response $response, array $args): Response
@@ -98,24 +89,24 @@ class TagController extends AbstractController
      * POST /tags — Create a tag. Body: { tag_name, category_id? (default 1) }.
      * Returns the created tag.
      */
-    #[OA\Post(
+    #[OAS\Operation\Post(
         path: '/tags',
         summary: 'Create a tag',
         tags: ['Tags'],
-        security: [['bearerAuth' => []]],
-        requestBody: new OA\RequestBody(
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        requestBody: new OAS\RequestBody(
             required: true,
-            content: new OA\JsonContent(
+            content: new OAS\MediaType\Json(
                 required: ['tag_name'],
                 properties: [
-                    new OA\Property(property: 'tag_name', type: 'string'),
-                    new OA\Property(property: 'category_id', type: 'integer', default: 1),
+                    new OAS\Property(property: 'tag_name', schema: new OAS\Schema(type: 'string')),
+                    new OAS\Property(property: 'category_id', schema: new OAS\Schema(type: 'integer', default: 1)),
                 ]
             )
         ),
         responses: [
-            new OA\Response(response: 201, description: 'The created tag', content: new OA\JsonContent(ref: '#/components/schemas/Tag')),
-            new OA\Response(response: 400, description: 'InvalidTagName / TagAlreadyExists', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 201, description: 'The created tag', content: new OAS\MediaType\Json(ref: '#/components/schemas/Tag')),
+            new OAS\Response(response: 400, description: 'InvalidTagName / TagAlreadyExists', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function addTag(Request $request, Response $response): Response
@@ -124,7 +115,7 @@ class TagController extends AbstractController
         $tag_name = $this->sanitizeTagName($this->stringParam($params, 'tag_name'));
         $tag_category = $this->intParam($params, 'category_id', 1);
 
-        if (empty($tag_name)) {
+        if ($tag_name === '') {
             return $this->error($response, 'InvalidTagName', 400, 'Tag name cannot be empty.');
         }
         if (mb_strlen($tag_name) > self::MAX_TAG_NAME_LENGTH) {
@@ -155,25 +146,25 @@ class TagController extends AbstractController
      * PUT /tags/{tag_id} — Rename and/or recategorize a tag.
      * Body: { tag_name, category_id? (default 1) }. Returns the updated tag.
      */
-    #[OA\Put(
+    #[OAS\Operation\Put(
         path: '/tags/{tag_id}',
         summary: 'Update a tag',
         tags: ['Tags'],
-        security: [['bearerAuth' => []]],
-        parameters: [new OA\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
-        requestBody: new OA\RequestBody(
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        parameters: [new OAS\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        requestBody: new OAS\RequestBody(
             required: true,
-            content: new OA\JsonContent(
+            content: new OAS\MediaType\Json(
                 required: ['tag_name'],
                 properties: [
-                    new OA\Property(property: 'tag_name', type: 'string'),
-                    new OA\Property(property: 'category_id', type: 'integer', default: 1),
+                    new OAS\Property(property: 'tag_name', schema: new OAS\Schema(type: 'string')),
+                    new OAS\Property(property: 'category_id', schema: new OAS\Schema(type: 'integer', default: 1)),
                 ]
             )
         ),
         responses: [
-            new OA\Response(response: 200, description: 'The updated tag', content: new OA\JsonContent(ref: '#/components/schemas/Tag')),
-            new OA\Response(response: 404, description: 'TagDoesNotExist', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'The updated tag', content: new OAS\MediaType\Json(ref: '#/components/schemas/Tag')),
+            new OAS\Response(response: 404, description: 'TagDoesNotExist', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function editTag(Request $request, Response $response, array $args): Response
@@ -186,7 +177,7 @@ class TagController extends AbstractController
         if ($tag_id <= 0) {
             return $this->error($response, 'InvalidTagID', 400, 'The tag ID must be a positive number.');
         }
-        if (empty($tag_name)) {
+        if ($tag_name === '') {
             return $this->error($response, 'InvalidTagName', 400, 'Tag name cannot be empty.');
         }
         if (mb_strlen($tag_name) > self::MAX_TAG_NAME_LENGTH) {
@@ -219,29 +210,29 @@ class TagController extends AbstractController
      * DELETE /tags/{tag_id}/migrate-to/{target_tag_id} — migrate this tag's media
      * to the target first, then delete this tag.
      */
-    #[OA\Delete(
+    #[OAS\Operation\Delete(
         path: '/tags/{tag_id}',
         summary: 'Delete a tag',
         tags: ['Tags'],
-        security: [['bearerAuth' => []]],
-        parameters: [new OA\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        parameters: [new OAS\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
-            new OA\Response(response: 204, description: 'Deleted'),
-            new OA\Response(response: 404, description: 'TagDoesNotExist', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 204, description: 'Deleted'),
+            new OAS\Response(response: 404, description: 'TagDoesNotExist', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
-    #[OA\Delete(
+    #[OAS\Operation\Delete(
         path: '/tags/{tag_id}/migrate-to/{target_tag_id}',
         summary: 'Migrate a tag\'s media to another tag, then delete it',
         tags: ['Tags'],
-        security: [['bearerAuth' => []]],
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
         parameters: [
-            new OA\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
-            new OA\Parameter(name: 'target_tag_id', in: 'path', required: true, description: 'Migrate media to this tag before deleting.', schema: new OA\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'target_tag_id', in: 'path', required: true, description: 'Migrate media to this tag before deleting.', schema: new OAS\Schema(type: 'integer')),
         ],
         responses: [
-            new OA\Response(response: 204, description: 'Migrated and deleted'),
-            new OA\Response(response: 404, description: 'TagDoesNotExist / MigrationTargetDoesNotExist', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 204, description: 'Migrated and deleted'),
+            new OAS\Response(response: 404, description: 'TagDoesNotExist / MigrationTargetDoesNotExist', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function deleteTag(Request $request, Response $response, array $args): Response
@@ -290,22 +281,22 @@ class TagController extends AbstractController
      * POST /tags/{tag_id}/migrate — Move all media from this tag to the target,
      * then delete this tag. Body: { target_tag_id }.
      */
-    #[OA\Post(
+    #[OAS\Operation\Post(
         path: '/tags/{tag_id}/migrate',
         summary: 'Migrate a tag into another',
         tags: ['Tags'],
-        security: [['bearerAuth' => []]],
-        parameters: [new OA\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
-        requestBody: new OA\RequestBody(
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        parameters: [new OAS\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        requestBody: new OAS\RequestBody(
             required: true,
-            content: new OA\JsonContent(
+            content: new OAS\MediaType\Json(
                 required: ['target_tag_id'],
-                properties: [new OA\Property(property: 'target_tag_id', type: 'integer')]
+                properties: [new OAS\Property(property: 'target_tag_id', schema: new OAS\Schema(type: 'integer'))]
             )
         ),
         responses: [
-            new OA\Response(response: 200, description: 'Migration result', content: new OA\JsonContent(ref: '#/components/schemas/MigrateResult')),
-            new OA\Response(response: 404, description: 'TagDoesNotExist', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'Migration result', content: new OAS\MediaType\Json(ref: '#/components/schemas/MigrateResult')),
+            new OAS\Response(response: 404, description: 'TagDoesNotExist', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function migrateTag(Request $request, Response $response, array $args): Response

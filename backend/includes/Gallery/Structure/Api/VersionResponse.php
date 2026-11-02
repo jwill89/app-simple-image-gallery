@@ -2,16 +2,16 @@
 
 namespace Gallery\Structure\Api;
 
-use OpenApi\Attributes as OA;
+use OpenApi\Spec as OAS;
 
 /**
  * Response for GET /version. Doc-only schema.
  */
-#[OA\Schema(schema: 'VersionResponse', description: 'Application and API version.')]
+#[OAS\Schema(schema: 'VersionResponse', description: 'Application and API version.')]
 class VersionResponse
 {
-    #[OA\Property(type: 'string', description: 'Application version (SemVer).')]
+    #[OAS\Property(schema: new OAS\Schema(type: 'string', description: 'Application version (SemVer).'))]
     public string $version = '';
-    #[OA\Property(type: 'string', description: 'HTTP API contract version (SemVer).')]
+    #[OAS\Property(schema: new OAS\Schema(type: 'string', description: 'HTTP API contract version (SemVer).'))]
     public string $api_version = '';
 }

@@ -141,6 +141,9 @@ const router = createRouter({
       component: () => import('../views/NotFoundView.vue'),
     },
   ],
+  // Deprecated in vue-router 5.4 (2026-11), but its replacement, ScrollRestoration,
+  // still lives in `vue-router/experimental`. Move once that's stable.
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
   scrollBehavior(to, _from, savedPosition) {
     // The infinite-scroll gallery manages its own scroll: it syncs the URL to
     // the position while scrolling and restores the position manually on return

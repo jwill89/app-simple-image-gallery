@@ -1,0 +1,25 @@
+{
+  "symbol-whitelist": [
+    "apache_getenv",
+    "OpenApi\\Spec\\Info",
+    "OpenApi\\Spec\\MediaType",
+    "OpenApi\\Spec\\MediaType\\Json",
+    "OpenApi\\Spec\\Operation\\Delete",
+    "OpenApi\\Spec\\Operation\\Get",
+    "OpenApi\\Spec\\Operation\\Patch",
+    "OpenApi\\Spec\\Operation\\Post",
+    "OpenApi\\Spec\\Operation\\Put",
+    "OpenApi\\Spec\\Parameter",
+    "OpenApi\\Spec\\Property",
+    "OpenApi\\Spec\\RequestBody",
+    "OpenApi\\Spec\\Response",
+    "OpenApi\\Spec\\Schema",
+    "OpenApi\\Spec\\Schema\\Items",
+    "OpenApi\\Spec\\Security\\Requirement",
+    "OpenApi\\Spec\\Security\\Scheme",
+    "OpenApi\\Spec\\Server",
+    "OpenApi\\Spec\\Tag"
+  ],
+  "php-core-extensions": ["Core", "date", "json", "hash", "pcre", "Phar", "Reflection", "SPL", "random", "standard"],
+  "scan-files": ["api/*.php", "index.php", "scripts/*.php"]
+}

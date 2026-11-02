@@ -87,8 +87,8 @@ $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 
 function Write-Step($msg) { Write-Host "`n==> $msg" -ForegroundColor Cyan }
-function Write-Ok($msg)   { Write-Host "    $msg" -ForegroundColor Green }
-function Fail($msg)       { Write-Host "`nERROR: $msg" -ForegroundColor Red; exit 1 }
+function Write-Ok($msg) { Write-Host "    $msg" -ForegroundColor Green }
+function Fail($msg) { Write-Host "`nERROR: $msg" -ForegroundColor Red; exit 1 }
 trap { Write-Host "`nERROR: $($_.Exception.Message)" -ForegroundColor Red; exit 1 }
 
 # ── Server settings resolution ────────────────────────────────────────────────
@@ -113,10 +113,10 @@ if ($missing.Count -gt 0) {
 }
 
 # ── Resolve paths & tools ─────────────────────────────────────────────────────
-$RepoRoot    = Split-Path $PSScriptRoot -Parent
-$BackendDir  = Join-Path $RepoRoot "backend"       # PHP payload source
+$RepoRoot = Split-Path $PSScriptRoot -Parent
+$BackendDir = Join-Path $RepoRoot "backend" # PHP payload source
 $FrontendDir = Join-Path $RepoRoot "frontend"
-$DistDir     = Join-Path $FrontendDir "dist"       # vite outDir is frontend/dist
+$DistDir = Join-Path $FrontendDir "dist" # vite outDir is frontend/dist
 
 if (-not (Test-Path $KeyPath)) { Fail "SSH key not found: $KeyPath" }
 
@@ -127,13 +127,13 @@ function Resolve-PuttyTool($name) {
     if (Test-Path $candidate) { return $candidate }
     Fail "$name not found. Install PuTTY (winget install PuTTY.PuTTY) or add it to PATH."
 }
-$pscp  = Resolve-PuttyTool "pscp"
+$pscp = Resolve-PuttyTool "pscp"
 $plink = Resolve-PuttyTool "plink"
 if (-not (Get-Command tar -ErrorAction SilentlyContinue)) {
     Fail "tar not found. Windows 10+ ships tar.exe; ensure C:\Windows\System32 is on PATH."
 }
 
-$remoteTarget  = "$VpsUser@$VpsHost"
+$remoteTarget = "$VpsUser@$VpsHost"
 $remoteTarball = "$WebRoot/deploy.tgz"
 
 # Upload one local file to a remote path, retrying once if it looks rate-limited.
@@ -172,7 +172,7 @@ Write-Step "Packing deploy tarball..."
 $tarball = Join-Path $env:TEMP ("gallery-deploy-{0}.tgz" -f [guid]::NewGuid())
 # Backend payload — code only (never vendor/, .env, cache/, logs/, or the live DB).
 $backendItems = @('index.php', '.htaccess', 'api', 'includes', 'db', 'phinx.php',
-                  'openapi.json', 'composer.json', 'composer.lock', 'scripts')
+    'openapi.json', 'composer.json', 'composer.lock', 'scripts')
 foreach ($p in $backendItems) {
     if (-not (Test-Path (Join-Path $BackendDir $p))) { Fail "Expected path missing: backend/$p" }
 }

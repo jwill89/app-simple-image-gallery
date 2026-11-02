@@ -248,7 +248,7 @@ function onTagNameInput() {
 }
 
 // Debounce timer handle
-let tagNameDebounceTimer: number = 0
+let tagNameDebounceTimer = 0
 
 function openMigrateModal(tag: TagListItem) {
   migrateSourceTag.value = tag
@@ -350,7 +350,7 @@ onMounted(() => {
     <div class="container is-wide">
       <LoadingSpinner v-if="loading" />
       <EmptyState v-else-if="loadFailed" icon="fa-solid fa-tags" title="Could not load tags.">
-        <button class="button" @click="loadTags()">
+        <button type="button" class="button" @click="loadTags()">
           <span class="icon"><i class="fa-solid fa-rotate-right" /></span>
           <span>Retry</span>
         </button>
@@ -358,7 +358,7 @@ onMounted(() => {
       <template v-else>
         <PageHeader title="Tags" :meta="`${filteredTags.length.toLocaleString()} tags`">
           <template v-if="authenticated" #actions>
-            <button class="button is-primary" @click="openNewTagModal">
+            <button type="button" class="button is-primary" @click="openNewTagModal">
               <span class="icon"><i class="fa-solid fa-plus" /></span>
               <span>New Tag</span>
             </button>
@@ -376,11 +376,17 @@ onMounted(() => {
         <!-- Search and page size -->
         <div class="field is-grouped mb-4">
           <div class="control is-expanded">
-            <input v-model="searchQuery" class="input" type="text" placeholder="Search tags..." />
+            <input
+              v-model="searchQuery"
+              class="input"
+              type="text"
+              placeholder="Search tags..."
+              aria-label="Search tags"
+            />
           </div>
           <div class="control">
             <div class="select">
-              <select v-model.number="pageSize">
+              <select v-model.number="pageSize" aria-label="Tags per page">
                 <option :value="10">10</option>
                 <option :value="25">25</option>
                 <option :value="50">50</option>
@@ -396,17 +402,17 @@ onMounted(() => {
             <thead>
               <tr>
                 <th :aria-sort="ariaSort('tag_name')">
-                  <button class="sort-header" @click="toggleSort('tag_name')">
+                  <button type="button" class="sort-header" @click="toggleSort('tag_name')">
                     Tag <i class="fas" :class="sortIcon('tag_name')" />
                   </button>
                 </th>
                 <th :aria-sort="ariaSort('category_name')">
-                  <button class="sort-header" @click="toggleSort('category_name')">
+                  <button type="button" class="sort-header" @click="toggleSort('category_name')">
                     Category <i class="fas" :class="sortIcon('category_name')" />
                   </button>
                 </th>
                 <th :aria-sort="ariaSort('media_count')">
-                  <button class="sort-header" @click="toggleSort('media_count')">
+                  <button type="button" class="sort-header" @click="toggleSort('media_count')">
                     Media <i class="fas" :class="sortIcon('media_count')" />
                   </button>
                 </th>
@@ -532,9 +538,10 @@ onMounted(() => {
         @update:open="!$event && closeModal()"
       >
         <div class="field">
-          <label class="label">Tag Name</label>
+          <label class="label" for="tag-name">Tag Name</label>
           <div class="control has-icons-left">
             <input
+              id="tag-name"
               v-model="formTagName"
               class="input"
               :class="formHelpClass"
@@ -552,10 +559,10 @@ onMounted(() => {
           </p>
         </div>
         <div class="field">
-          <label class="label">Category</label>
+          <label class="label" for="tag-category">Category</label>
           <div class="control">
             <div class="select is-fullwidth">
-              <select v-model="formCategoryId">
+              <select id="tag-category" v-model="formCategoryId">
                 <option value="">Select a Category</option>
                 <option
                   v-for="cat in store.categories"
@@ -570,10 +577,10 @@ onMounted(() => {
         </div>
 
         <template #footer>
-          <button class="button is-primary" @click="submitForm">
+          <button type="button" class="button is-primary" @click="submitForm">
             {{ formMode === 'edit' ? 'Save Changes' : 'Create Tag' }}
           </button>
-          <button class="button is-ghost" @click="closeModal">Cancel</button>
+          <button type="button" class="button is-ghost" @click="closeModal">Cancel</button>
         </template>
       </AppDialog>
 
@@ -589,9 +596,10 @@ onMounted(() => {
           removed.
         </p>
         <div class="field">
-          <label class="label">Target Tag</label>
+          <label class="label" for="migrate-target-search">Target Tag</label>
           <div class="control">
             <input
+              id="migrate-target-search"
               v-model="migrateTargetSearch"
               class="input"
               type="text"
@@ -599,18 +607,19 @@ onMounted(() => {
             />
           </div>
           <div v-if="migrateTargetOptions.length > 0" class="dropdown-list">
-            <a
+            <button
               v-for="t in migrateTargetOptions"
               :key="t.tag_id"
               class="dropdown-item"
               :class="{ 'is-active': migrateTargetId === t.tag_id }"
+              type="button"
               @click="selectMigrateTarget(t)"
             >
               <span :class="getTextClassByName(t.category_name)">{{ t.tag_name }}</span>
               <span class="tag is-small ml-2" :class="getCategoryClassByName(t.category_name)">{{
                 t.category_name
               }}</span>
-            </a>
+            </button>
           </div>
         </div>
         <p v-if="migrateHelp" class="help" :class="migrateHelpClass">
@@ -619,13 +628,14 @@ onMounted(() => {
 
         <template #footer>
           <button
+            type="button"
             class="button is-warning"
             :class="{ 'is-loading': migrateLoading }"
             @click="submitMigrate"
           >
             Migrate
           </button>
-          <button class="button is-ghost" @click="closeMigrateModal">Cancel</button>
+          <button type="button" class="button is-ghost" @click="closeMigrateModal">Cancel</button>
         </template>
       </AppDialog>
 
@@ -647,9 +657,10 @@ onMounted(() => {
           </label>
         </div>
         <div v-if="deleteMigrateFirst" class="field">
-          <label class="label">Migrate To</label>
+          <label class="label" for="delete-migrate-target-search">Migrate To</label>
           <div class="control">
             <input
+              id="delete-migrate-target-search"
               v-model="deleteMigrateTargetSearch"
               class="input"
               type="text"
@@ -657,18 +668,19 @@ onMounted(() => {
             />
           </div>
           <div v-if="deleteMigrateTargetOptions.length > 0" class="dropdown-list">
-            <a
+            <button
               v-for="t in deleteMigrateTargetOptions"
               :key="t.tag_id"
               class="dropdown-item"
               :class="{ 'is-active': deleteMigrateTargetId === t.tag_id }"
+              type="button"
               @click="selectDeleteMigrateTarget(t)"
             >
               <span :class="getTextClassByName(t.category_name)">{{ t.tag_name }}</span>
               <span class="tag is-small ml-2" :class="getCategoryClassByName(t.category_name)">{{
                 t.category_name
               }}</span>
-            </a>
+            </button>
           </div>
         </div>
         <p v-if="deleteHelp" class="help" :class="deleteHelpClass">
@@ -677,13 +689,14 @@ onMounted(() => {
 
         <template #footer>
           <button
+            type="button"
             class="button is-danger"
             :class="{ 'is-loading': deleteLoading }"
             @click="submitDelete"
           >
             Delete
           </button>
-          <button class="button is-ghost" @click="closeDeleteModal">Cancel</button>
+          <button type="button" class="button is-ghost" @click="closeDeleteModal">Cancel</button>
         </template>
       </AppDialog>
     </div>
@@ -704,6 +717,7 @@ onMounted(() => {
   color: inherit;
   cursor: pointer;
 }
+
 .sort-header:hover {
   color: var(--text-1);
 }
@@ -718,6 +732,7 @@ onMounted(() => {
 .row-actions :deep(.menu-trigger) {
   opacity: 0;
 }
+
 tbody tr:hover .row-actions :deep(.menu-trigger),
 .row-actions :deep(.menu-trigger:focus-visible),
 .row-actions :deep(.menu-trigger[data-state='open']) {
@@ -734,6 +749,8 @@ tbody tr:hover .row-actions :deep(.menu-trigger),
 }
 
 .dropdown-item {
+  border: none;
+  font: inherit;
   display: flex;
   align-items: center;
   padding: var(--sp-2) var(--sp-3);
@@ -785,13 +802,15 @@ tbody tr:hover .row-actions :deep(.menu-trigger),
   color: var(--text-3);
 }
 
-@media screen and (max-width: 768px) {
+@media screen and (width <= 768px) {
   .table-container {
     display: none;
   }
+
   .tag-list {
     display: block;
   }
+
   /* No hover on touch, so the trigger is always visible here. */
   .tag-list :deep(.menu-trigger) {
     opacity: 1;

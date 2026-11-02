@@ -27,7 +27,7 @@ class Logger
 
             // Ensure logs directory exists
             $logDir = dirname(self::LOG_PATH);
-            if (!is_dir($logDir) && !mkdir($logDir, 0755, true) && !is_dir($logDir)) {
+            if (!is_dir($logDir) && !mkdir($logDir, 0o755, true) && !is_dir($logDir)) {
                 throw new \RuntimeException(sprintf('Directory "%s" was not created', $logDir));
             }
 

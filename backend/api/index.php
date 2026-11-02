@@ -60,7 +60,7 @@ function verifyAuthToken(string $authHeader): bool
 {
     $token = str_starts_with($authHeader, 'Bearer ') ? substr($authHeader, 7) : '';
 
-    if (empty($token)) {
+    if ($token === '') {
         return false;
     }
 
@@ -153,14 +153,14 @@ $app->add(function (ServerRequestInterface $request, RequestHandlerInterface $ha
         $referer = $request->getHeaderLine('Referer');
         $allowedOrigins = Configuration::getAllowedOrigins();
 
-        if (!empty($origin)) {
+        if ($origin !== '') {
             // Validate the Origin header directly.
             $rejected = !in_array($origin, $allowedOrigins, true);
-        } elseif (!empty($referer)) {
+        } elseif ($referer !== '') {
             // Fall back to deriving the origin from the Referer header.
             $refererOrigin = parse_url($referer, PHP_URL_SCHEME) . '://' . parse_url($referer, PHP_URL_HOST);
             $port = parse_url($referer, PHP_URL_PORT);
-            if ($port) {
+            if (is_int($port) && $port > 0) {
                 $refererOrigin .= ':' . $port;
             }
             $rejected = !in_array($refererOrigin, $allowedOrigins, true);
@@ -174,7 +174,7 @@ $app->add(function (ServerRequestInterface $request, RequestHandlerInterface $ha
         if ($rejected) {
             Logger::getInstance()->warning('CSRF rejected', ['origin' => $origin, 'referer' => $referer]);
             $response = new \Slim\Psr7\Response();
-            $response->getBody()->write((string) json_encode([
+            $response->getBody()->write(json_encode([
                 'error' => 'ForbiddenOrigin',
                 'message' => 'The request origin is not allowed.',
             ], JSON_THROW_ON_ERROR));
@@ -200,7 +200,7 @@ $app->add(function (ServerRequestInterface $request, RequestHandlerInterface $ha
         ->withHeader('X-Frame-Options', 'SAMEORIGIN')
         ->withHeader('X-Content-Type-Options', 'nosniff');
 
-    if (!empty($origin) && in_array($origin, $allowed_origins, true)) {
+    if ($origin !== '' && in_array($origin, $allowed_origins, true)) {
         $response = $response
             ->withHeader('Access-Control-Allow-Credentials', 'true')
             ->withHeader('Access-Control-Allow-Origin', $origin)
@@ -213,9 +213,7 @@ $app->add(function (ServerRequestInterface $request, RequestHandlerInterface $ha
 });
 
 // CORS Preflight OPTIONS Handler
-$app->options('/{routes:.+}', function (ServerRequestInterface $request, ResponseInterface $response) {
-    return $response->withStatus(204);
-});
+$app->options('/{routes:.+}', fn(ServerRequestInterface $request, ResponseInterface $response) => $response->withStatus(204));
 
 // ============================================================
 // System (version + API docs) — all public reads

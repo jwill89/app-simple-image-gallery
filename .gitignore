@@ -22,8 +22,9 @@
 /backend/logs/
 /backend/dupes/
 /backend/media/
-# Test artifacts.
+# Test artifacts and tool caches.
 /backend/.phpunit.cache/
+/backend/.php-cs-fixer.cache
 /backend/coverage/
 
 # ── Frontend (Vite) ───────────────────────────────────────────────────────────

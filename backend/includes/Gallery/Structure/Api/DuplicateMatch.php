@@ -2,37 +2,31 @@
 
 namespace Gallery\Structure\Api;
 
-use OpenApi\Attributes as OA;
+use OpenApi\Spec as OAS;
 
 /**
  * A single duplicate-pair match, with both media items summarized and the
  * distance/SSIM similarity scores. Doc-only schema.
  */
-#[OA\Schema(schema: 'DuplicateMatch', description: 'A duplicate media pair with similarity scores.')]
+#[OAS\Schema(schema: 'DuplicateMatch', description: 'A duplicate media pair with similarity scores.')]
 class DuplicateMatch
 {
     /** @var array<string, mixed> */
-    #[OA\Property(
-        type: 'object',
-        properties: [
-            new OA\Property(property: 'media_id', type: 'integer'),
-            new OA\Property(property: 'file_name', type: 'string'),
-            new OA\Property(property: 'hash', type: 'string'),
-        ]
-    )]
+    #[OAS\Property(schema: new OAS\Schema(type: 'object', properties: [
+        new OAS\Property(property: 'media_id', schema: new OAS\Schema(type: 'integer')),
+        new OAS\Property(property: 'file_name', schema: new OAS\Schema(type: 'string')),
+        new OAS\Property(property: 'hash', schema: new OAS\Schema(type: 'string')),
+    ]))]
     public array $media_1 = [];
     /** @var array<string, mixed> */
-    #[OA\Property(
-        type: 'object',
-        properties: [
-            new OA\Property(property: 'media_id', type: 'integer'),
-            new OA\Property(property: 'file_name', type: 'string'),
-            new OA\Property(property: 'hash', type: 'string'),
-        ]
-    )]
+    #[OAS\Property(schema: new OAS\Schema(type: 'object', properties: [
+        new OAS\Property(property: 'media_id', schema: new OAS\Schema(type: 'integer')),
+        new OAS\Property(property: 'file_name', schema: new OAS\Schema(type: 'string')),
+        new OAS\Property(property: 'hash', schema: new OAS\Schema(type: 'string')),
+    ]))]
     public array $media_2 = [];
-    #[OA\Property(type: 'integer', nullable: true, description: 'Hamming distance between fingerprints.')]
+    #[OAS\Property(schema: new OAS\Schema(type: 'integer', nullable: true, description: 'Hamming distance between fingerprints.'))]
     public ?int $distance = null;
-    #[OA\Property(type: 'number', format: 'float', nullable: true, description: 'Structural similarity (SSIM) score.')]
+    #[OAS\Property(schema: new OAS\Schema(type: 'number', format: 'float', nullable: true, description: 'Structural similarity (SSIM) score.'))]
     public ?float $ssim = null;
 }

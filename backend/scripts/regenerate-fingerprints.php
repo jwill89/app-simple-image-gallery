@@ -3,8 +3,13 @@
 /**
  * Regenerate perceptual hash fingerprints for all image media.
  *
- * Run this after switching hash algorithms (e.g. DifferenceHash -> PerceptualHash)
- * to recalculate and update all stored fingerprints.
+ * Run this after anything changes how fingerprints are computed (the hash
+ * algorithm, the library, the image driver) to recalculate every stored one:
+ * fingerprints are only comparable with others computed the same way.
+ *
+ * An image that can't be hashed (missing file, decode failure) has its
+ * fingerprint cleared rather than left as it was, so the duplicate scan skips
+ * it instead of comparing an old-style fingerprint against new ones.
  *
  * Usage: php scripts/regenerate-fingerprints.php
  */
@@ -32,7 +37,7 @@ set_time_limit(0);
 
 $start_time = microtime(true);
 
-$container = (new \DI\ContainerBuilder())->addDefinitions(__DIR__ . '/../api/dependencies.php')->build();
+$container = new \DI\ContainerBuilder()->addDefinitions(__DIR__ . '/../api/dependencies.php')->build();
 $media_collection = $container->get(MediaCollection::class);
 $db = DatabaseConnection::getInstance();
 
@@ -54,7 +59,8 @@ foreach (array_values($images) as $i => $media) {
     $filePath = MediaCollection::MEDIA_DIRECTORY_FULL . $fileName;
 
     if (!file_exists($filePath)) {
-        echo "  [{$num}/{$total}] SKIP (missing): {$fileName}\n";
+        $updateStmt->execute([':fp' => '', ':id' => $media->media_id]);
+        echo "  [{$num}/{$total}] SKIP (missing, fingerprint cleared): {$fileName}\n";
         $failed++;
         continue;
     }
@@ -70,8 +76,9 @@ foreach (array_values($images) as $i => $media) {
 
         echo "  [{$num}/{$total}] OK: {$fileName}\n";
         $success++;
-    } catch (\Exception $e) {
-        echo "  [{$num}/{$total}] FAIL: {$fileName} - {$e->getMessage()}\n";
+    } catch (\Throwable $e) {
+        $updateStmt->execute([':fp' => '', ':id' => $media->media_id]);
+        echo "  [{$num}/{$total}] FAIL (fingerprint cleared): {$fileName} - {$e->getMessage()}\n";
         $failed++;
     }
 }

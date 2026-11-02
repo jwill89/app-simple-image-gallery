@@ -3,42 +3,72 @@
 namespace Gallery\Core;
 
 use PDO;
-use Jenssegers\ImageHash\Hash;
-use Jenssegers\ImageHash\ImageHash;
-use Jenssegers\ImageHash\Implementations\PerceptualHash;
+use Intervention\ImageHash\Hash;
 use Gallery\Collection\MediaCollection;
 
 /**
  * DuplicateScanner class
  *
  * Scans the media database for duplicate images using perceptual hashing.
- * Uses Locality-Sensitive Hashing (LSH) for efficient candidate finding,
- * then a second-pass SSIM calculation for verification.
+ * Uses Locality-Sensitive Hashing (LSH) for efficient candidate finding, a
+ * Hamming-distance cutoff, then compares each remaining pair's thumbnails: the
+ * region difference (RegionDifference) rejects variants of one artwork that
+ * differ only in a small area. SSIM is still reported alongside it.
  * Only compares image-type media (videos don't have fingerprints).
  */
 class DuplicateScanner
 {
-    private PDO $db;
-    private int $maxDistance;
-    private string $reportDirectory;
+    /** LSH buckets larger than this are skipped rather than paired up O(n^2). */
+    private const int MAX_BUCKET_SIZE = 100;
 
-    /** Number of bits per band for LSH. 8 bits = 8 bands over a 64-bit hash. */
-    private int $bandBits;
+    public function __construct(
+        private readonly PDO $db,
+        /** Largest Hamming distance (bits out of 64) still reported. */
+        private readonly int $maxDistance = Configuration::DEFAULT_DUPLICATE_MAX_DISTANCE,
+        /** Largest region difference (0-255) still reported; null turns the check off. */
+        private readonly ?float $maxRegionDiff = Configuration::DEFAULT_DUPLICATE_MAX_REGION_DIFF,
+        private readonly string $reportDirectory = 'dupes/',
+        /**
+         * A tuning run keeps pairs the user has dismissed (flagged as such, as
+         * known non-duplicates to calibrate against) and writes its report to
+         * tuning-<timestamp>.json, leaving the dupes-*.json the UI reads alone.
+         */
+        private readonly bool $tuning = false,
+        /** Where the @2x thumbnails the second pass compares live. */
+        private readonly string $thumbDirectory = MediaCollection::MEDIA_DIRECTORY_THUMBNAILS
+    ) {
+    }
 
-    public function __construct(PDO $db, int $maxDistance = 2, string $reportDirectory = 'dupes/', int $bandBits = 8)
+    /**
+     * Widest LSH band that still guarantees every pair within $maxDistance
+     * shares at least one: d differing bits can spoil at most d bands, so
+     * $maxDistance + 1 bands always leave one intact. Wider bands mean smaller
+     * buckets, so fewer spurious candidates and fewer oversized buckets skipped.
+     */
+    public static function bandBitsFor(int $hashBits, int $maxDistance): int
     {
-        $this->db = $db;
-        $this->maxDistance = $maxDistance;
-        $this->reportDirectory = $reportDirectory;
-        $this->bandBits = $bandBits;
+        return max(1, intdiv($hashBits, $maxDistance + 1));
     }
 
     /**
      * Run the duplicate scan on image media items.
      *
-     * @return array<string, mixed> Report data (generated_at, images_compared,
-     *                              lsh_candidates, duplicates_found,
-     *                              execution_time_seconds, matches), or [] if skipped.
+     * Each match is [id1, id2, distance, ssim|null, region difference|null],
+     * plus a dismissed flag on a tuning run. The null measures are pairs whose
+     * thumbnails couldn't be read; they're kept, unjudged.
+     *
+     * @return array{
+     *     generated_at: string,
+     *     settings: array{max_distance: int, max_region_diff: ?float, band_bits: int, tuning: bool},
+     *     images_compared: int,
+     *     lsh_candidates: int,
+     *     skipped_buckets: int,
+     *     region_rejected: int,
+     *     duplicates_found: int,
+     *     execution_time_seconds: float,
+     *     matches: list<array{0: int, 1: int, 2: int, 3: ?float, 4: ?float, 5?: bool}>,
+     *     report_file: string,
+     * }
      */
     public function run(): array
     {
@@ -71,7 +101,7 @@ class DuplicateScanner
             $id   = (int) $row['media_id'];
             $bits = $row['bits_fingerprint'];
 
-            if (empty($bits)) {
+            if (!is_string($bits) || $bits === '') {
                 continue;
             }
 
@@ -81,11 +111,13 @@ class DuplicateScanner
         unset($stmt);
 
         $hash_count = count($bitStrings);
+        $sampleBits = reset($bitStrings);
+        $bandBits = self::bandBitsFor($sampleBits === false ? 64 : strlen($sampleBits), $this->maxDistance);
 
         // ──────────────────────────────────────────────
         // Phase 1: LSH — band the fingerprints to find candidate pairs
         // ──────────────────────────────────────────────
-        $candidates = $this->lshCandidates($bitStrings);
+        ['pairs' => $candidates, 'skipped_buckets' => $skippedBuckets] = $this->lshCandidates($bitStrings, $bandBits);
         $lsh_candidate_count = count($candidates);
 
         // ──────────────────────────────────────────────
@@ -103,20 +135,20 @@ class DuplicateScanner
             if (isset($bitStrings[$id])) {
                 try {
                     $hashes[$id] = Hash::fromBits($bitStrings[$id]);
-                } catch (\Exception $e) {
+                } catch (\Exception) {
                     // skip
                 }
             }
         }
         unset($neededIds, $bitStrings); // free the big arrays
 
-        $hasher = new ImageHash(new PerceptualHash());
         $verified = [];
 
         foreach ($candidates as [$id1, $id2]) {
-            // Skip dismissed pairs
-            $pairKey = $this->pairKey($id1, $id2);
-            if (isset($dismissed[$pairKey])) {
+            // Skip dismissed pairs, except on a tuning run, which keeps them as
+            // known non-duplicates
+            $isDismissed = isset($dismissed[$this->pairKey($id1, $id2)]);
+            if ($isDismissed && !$this->tuning) {
                 continue;
             }
 
@@ -124,63 +156,66 @@ class DuplicateScanner
                 continue;
             }
 
-            $distance = $hasher->distance($hashes[$id1], $hashes[$id2]);
+            $distance = $hashes[$id1]->distance($hashes[$id2]);
 
             if ($distance <= $this->maxDistance) {
-                $verified[] = [$id1, $id2, $distance];
+                $verified[] = [$id1, $id2, $distance, $isDismissed];
             }
         }
-        unset($candidates, $hashes, $dismissed); // free before SSIM phase
+        unset($candidates, $hashes, $dismissed); // free before the thumbnail phase
 
         // ──────────────────────────────────────────────
-        // Phase 3: SSIM second pass on verified candidates
+        // Phase 3: compare the thumbnails of each pair left
         // Use @2x thumbnails (already small WebP files) instead of
         // full-size originals to avoid GD memory spikes.
         // ──────────────────────────────────────────────
         $matches = [];
-        $thumbDir = MediaCollection::getThumbDirectory();
+        $regionRejected = 0;
 
-        foreach ($verified as [$id1, $id2, $distance]) {
-            $fn1 = $fileNames[$id1] ?? null;
-            $fn2 = $fileNames[$id2] ?? null;
+        foreach ($verified as [$id1, $id2, $distance, $isDismissed]) {
+            ['ssim' => $ssim, 'region_diff' => $regionDiff] = $this->compareThumbnails(
+                $fileNames[$id1] ?? null,
+                $fileNames[$id2] ?? null
+            );
 
-            $ssim = null;
-            if ($fn1 && $fn2) {
-                $base1 = pathinfo($fn1, PATHINFO_FILENAME);
-                $base2 = pathinfo($fn2, PATHINFO_FILENAME);
-                $thumb1 = $thumbDir . $base1 . '@2x.webp';
-                $thumb2 = $thumbDir . $base2 . '@2x.webp';
-                $ssim = $this->calculateSSIM($thumb1, $thumb2);
+            // A pair whose thumbnails couldn't be read is kept: the check rejects
+            // what it has evidence against, not what it can't see.
+            if ($this->maxRegionDiff !== null && $regionDiff !== null && $regionDiff > $this->maxRegionDiff) {
+                $regionRejected++;
+                continue;
             }
 
-            $matches[] = [$id1, $id2, $distance, $ssim];
+            $matches[] = $this->tuning
+                ? [$id1, $id2, $distance, $ssim, $regionDiff, $isDismissed]
+                : [$id1, $id2, $distance, $ssim, $regionDiff];
         }
         unset($verified, $fileNames);
 
-        // Sort by SSIM descending (most similar first), then by distance ascending
-        usort($matches, function ($a, $b) {
-            if ($a[3] !== null && $b[3] !== null) {
-                $ssimCmp = $b[3] <=> $a[3];
-                if ($ssimCmp !== 0) {
-                    return $ssimCmp;
-                }
-            }
-            return $a[2] <=> $b[2];
-        });
+        // Most alike first: smallest region difference, then smallest distance.
+        // Pairs that couldn't be compared go last.
+        usort($matches, static fn(array $a, array $b): int => [$a[4] === null, $a[4], $a[2]] <=> [$b[4] === null, $b[4], $b[2]]);
 
         $end_time = microtime(true);
         $execution_time = round($end_time - $start_time, 2);
 
         $result = [
             'generated_at' => date('Y-m-d H:i:s'),
+            'settings' => [
+                'max_distance' => $this->maxDistance,
+                'max_region_diff' => $this->maxRegionDiff,
+                'band_bits' => $bandBits,
+                'tuning' => $this->tuning,
+            ],
             'images_compared' => $hash_count,
             'lsh_candidates' => $lsh_candidate_count,
+            'skipped_buckets' => $skippedBuckets,
+            'region_rejected' => $regionRejected,
             'duplicates_found' => count($matches),
             'execution_time_seconds' => $execution_time,
             'matches' => $matches,
         ];
 
-        $this->saveReport($result);
+        $result['report_file'] = $this->saveReport($result);
 
         // Restore original limits
         ini_set('memory_limit', $previousMemoryLimit);
@@ -193,42 +228,50 @@ class DuplicateScanner
      * LSH banding: split each fingerprint into bands of $bandBits bits,
      * and hash each band. Pairs that share at least one band bucket are candidates.
      *
-     * For a 64-bit hash with bandBits=4, we get 16 bands.
-     * This reduces comparison from O(n^2) to roughly O(n * bucket_size).
+     * For a 64-bit hash at the default max distance of 2, bandBitsFor() gives
+     * 21-bit bands, 3 of them. This reduces comparison from O(n^2) to roughly
+     * O(n * bucket_size).
      *
      * @param array<int, string> $bitStrings media_id => bit string
-     * @return array<array{int, int}> Unique candidate pairs [id1, id2] where id1 < id2
+     * @return array{pairs: list<array{int, int}>, skipped_buckets: int} Unique
+     *         candidate pairs [id1, id2] where id1 < id2, and how many oversized
+     *         buckets were skipped (each one can hide pairs within the distance)
      */
-    private function lshCandidates(array $bitStrings): array
+    private function lshCandidates(array $bitStrings, int $bandBits): array
     {
         // Determine band count from the first fingerprint length
         $sampleBits = reset($bitStrings);
         if ($sampleBits === false) {
-            return [];
+            return ['pairs' => [], 'skipped_buckets' => 0];
         }
         $totalBits = strlen($sampleBits);
-        $numBands = intdiv($totalBits, $this->bandBits);
+        $numBands = intdiv($totalBits, $bandBits);
+        $skippedBuckets = 0;
 
         // Collect candidate pairs directly — process one band at a time
         // to avoid keeping the full bucket structure in memory
         $seen = [];
 
         for ($band = 0; $band < $numBands; $band++) {
-            $offset = $band * $this->bandBits;
+            $offset = $band * $bandBits;
 
             // Build buckets for this single band
             $buckets = [];
             foreach ($bitStrings as $mediaId => $bits) {
-                $segment = substr($bits, $offset, $this->bandBits);
+                $segment = substr($bits, $offset, $bandBits);
                 $buckets[$segment][] = $mediaId;
             }
 
             // Extract pairs from this band's buckets
-            // Skip oversized buckets (>100 items) — they indicate a common
-            // hash segment and would generate O(n^2) spurious candidates
+            // Skip oversized buckets — they indicate a common hash segment and
+            // would generate O(n^2) spurious candidates
             foreach ($buckets as $ids) {
                 $count = count($ids);
-                if ($count < 2 || $count > 100) {
+                if ($count > self::MAX_BUCKET_SIZE) {
+                    $skippedBuckets++;
+                    continue;
+                }
+                if ($count < 2) {
                     continue;
                 }
 
@@ -251,55 +294,59 @@ class DuplicateScanner
         }
         unset($seen);
 
-        return $candidates;
+        return ['pairs' => $candidates, 'skipped_buckets' => $skippedBuckets];
     }
 
     /**
-     * Calculate SSIM between two images.
-     * Uses GD library to compare luminance channels at a reduced resolution
-     * for performance. Returns a value between 0.0 (totally different) and
-     * 1.0 (identical).
+     * SSIM and region difference of two media items' @2x thumbnails, both null
+     * when either thumbnail is missing or can't be decoded.
+     *
+     * @return array{ssim: ?float, region_diff: ?float}
      */
-    private function calculateSSIM(string $path1, string $path2): ?float
+    private function compareThumbnails(?string $fileName1, ?string $fileName2): array
     {
-        if (!file_exists($path1) || !file_exists($path2)) {
-            return null;
+        $unjudged = ['ssim' => null, 'region_diff' => null];
+        if ($fileName1 === null || $fileName2 === null) {
+            return $unjudged;
         }
 
         try {
-            $img1 = $this->loadImage($path1);
-            if ($img1 === null) {
-                return null;
+            $img1 = $this->loadImage($this->thumbnailPath($fileName1));
+            $img2 = $this->loadImage($this->thumbnailPath($fileName2));
+            if ($img1 === null || $img2 === null) {
+                return $unjudged;
             }
 
-            $img2 = $this->loadImage($path2);
-            if ($img2 === null) {
-                imagedestroy($img1);
-                return null;
-            }
-
-            // Resize both to a common small size for fast SSIM comparison
-            $size = 64;
-            $r1 = imagecreatetruecolor($size, $size);
-            $r2 = imagecreatetruecolor($size, $size);
-
-            imagecopyresampled($r1, $img1, 0, 0, 0, 0, $size, $size, imagesx($img1), imagesy($img1));
-            imagedestroy($img1); // free immediately
-
-            imagecopyresampled($r2, $img2, 0, 0, 0, 0, $size, $size, imagesx($img2), imagesy($img2));
-            imagedestroy($img2); // free immediately
-
-            // Extract luminance arrays
-            $lum1 = $this->extractLuminance($r1, $size);
-            imagedestroy($r1);
-
-            $lum2 = $this->extractLuminance($r2, $size);
-            imagedestroy($r2);
-
-            return $this->ssimFromLuminance($lum1, $lum2);
-        } catch (\Throwable $e) {
-            return null;
+            return [
+                'ssim' => $this->ssimBetween($img1, $img2),
+                'region_diff' => RegionDifference::between($img1, $img2),
+            ];
+        } catch (\Throwable) {
+            return $unjudged;
         }
+    }
+
+    private function thumbnailPath(string $fileName): string
+    {
+        return $this->thumbDirectory . pathinfo($fileName, PATHINFO_FILENAME) . '@2x.webp';
+    }
+
+    /**
+     * SSIM between two images: the luminance channels compared at a reduced
+     * resolution for performance. Between 0.0 (totally different) and 1.0
+     * (identical).
+     */
+    private function ssimBetween(\GdImage $img1, \GdImage $img2): float
+    {
+        // Resize both to a common small size for fast SSIM comparison
+        $size = 64;
+        $r1 = imagecreatetruecolor($size, $size);
+        $r2 = imagecreatetruecolor($size, $size);
+
+        imagecopyresampled($r1, $img1, 0, 0, 0, 0, $size, $size, imagesx($img1), imagesy($img1));
+        imagecopyresampled($r2, $img2, 0, 0, 0, 0, $size, $size, imagesx($img2), imagesy($img2));
+
+        return $this->ssimFromLuminance($this->extractLuminance($r1, $size), $this->extractLuminance($r2, $size));
     }
 
     /**
@@ -317,7 +364,7 @@ class DuplicateScanner
         // AVIF support: constant exists in PHP 8.1+ but GD may lack the function
         if (defined('IMAGETYPE_AVIF') && $type === IMAGETYPE_AVIF) {
             $avif = function_exists('imagecreatefromavif') ? @imagecreatefromavif($path) : null;
-            return $avif ?: null;
+            return $avif instanceof \GdImage ? $avif : null;
         }
 
         // The imagecreatefrom* functions return GdImage|false; normalize false to null.
@@ -330,7 +377,7 @@ class DuplicateScanner
             default        => null,
         };
 
-        return $img ?: null;
+        return $img instanceof \GdImage ? $img : null;
     }
 
     /**
@@ -431,10 +478,10 @@ class DuplicateScanner
             $stmt = $db->query('SELECT media_id_1, media_id_2 FROM dismissed_duplicates');
 
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $key = $this->pairKey((int)$row['media_id_1'], (int)$row['media_id_2']);
+                $key = $this->pairKey((int) $row['media_id_1'], (int) $row['media_id_2']);
                 $dismissed[$key] = true;
             }
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             // Table may not exist yet — treat as no dismissed pairs
         }
 
@@ -451,19 +498,24 @@ class DuplicateScanner
 
     /**
      * @param array<string, mixed> $result
+     * @return string The path the report was written to.
      * @throws \RuntimeException If the report directory cannot be created.
      */
-    private function saveReport(array $result): void
+    private function saveReport(array $result): string
     {
         if (!is_dir($this->reportDirectory)) {
-            if (!mkdir($this->reportDirectory, 0755, true) && !is_dir($this->reportDirectory)) {
+            if (!mkdir($this->reportDirectory, 0o755, true) && !is_dir($this->reportDirectory)) {
                 throw new \RuntimeException(sprintf('Directory "%s" was not created', $this->reportDirectory));
             }
         }
 
-        file_put_contents(
-            $this->reportDirectory . 'dupes-' . date('Y-m-d') . '.json',
-            json_encode($result, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT)
-        );
+        // The UI serves the newest dupes-*.json, so a tuning run must not match it.
+        $path = $this->reportDirectory . ($this->tuning
+            ? 'tuning-' . date('Y-m-d-His') . '.json'
+            : 'dupes-' . date('Y-m-d') . '.json');
+
+        file_put_contents($path, json_encode($result, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+
+        return $path;
     }
 }

@@ -18,9 +18,11 @@
    rather than a rewrite.
    ═══════════════════════════════════════════════════════════ */
 
+/* The palette itself: the one place a colour is written as a literal. */
+/* stylelint-disable color-no-hex, declaration-property-value-disallowed-list */
 :root {
   /* ── Chrome: surfaces ─────────────────────────────────── */
-  --surface-0: #ffffff; /* page ground */
+  --surface-0: #fff; /* page ground */
   --surface-1: #f6f7f8; /* navbar, footer, raised panels */
   --surface-2: #edeef0; /* hover, table stripe, inputs */
   --surface-3: #e0e2e5; /* pressed / selected */
@@ -31,25 +33,25 @@
   --text-1: #16181c;
   --text-2: #53575e;
   --text-3: #7d828a;
-  --text-inverse: #ffffff;
+  --text-inverse: #fff;
 
   /* ── Focus: functional, not a brand accent ────────────── */
   --focus: #2f6f86;
-  --focus-ring: 0 0 0 2px rgba(47, 111, 134, 0.32);
+  --focus-ring: 0 0 0 2px rgb(47 111 134 / 32%);
 
   /* ── Semantic: state only ─────────────────────────────── */
   --danger: #b8392a;
-  --danger-fg: #ffffff;
-  --danger-soft: rgba(184, 57, 42, 0.1);
+  --danger-fg: #fff;
+  --danger-soft: rgb(184 57 42 / 10%);
   --success: #1c7047;
-  --success-fg: #ffffff;
-  --success-soft: rgba(28, 112, 71, 0.1);
+  --success-fg: #fff;
+  --success-soft: rgb(28 112 71 / 10%);
   --warning: #8a5a08;
-  --warning-fg: #ffffff;
-  --warning-soft: rgba(138, 90, 8, 0.1);
+  --warning-fg: #fff;
+  --warning-soft: rgb(138 90 8 / 10%);
   --info: #2a6079;
-  --info-fg: #ffffff;
-  --info-soft: rgba(42, 96, 121, 0.1);
+  --info-fg: #fff;
+  --info-soft: rgb(42 96 121 / 10%);
 
   /* ── Favourite: neither state nor tag; its own thing ──── */
   --fav: #d8365c;
@@ -67,11 +69,13 @@
   --tag-teal: #45c8b8;
   --tag-orange: #f0955a;
   --tag-lime: #b6d95e;
+
   /* `neutral` is the outline chip — General holds the overwhelming
      majority of tags, so filling it drowns out the categorised ones. */
 
   /* ── Type scale ───────────────────────────────────────── */
   --t-xs: 0.6875rem; /* 11px   — micro labels, uppercase eyebrows */
+  /* stylelint-disable-next-line number-max-precision -- exactly 12.5px */
   --t-sm: 0.78125rem; /* 12.5px — metadata, chips, table numerics */
   --t-md: 0.875rem; /* 14px   — dense UI: tables, buttons, nav */
   --t-base: 0.9375rem; /* 15px   — body copy */
@@ -95,9 +99,9 @@
   --r-lg: 8px;
 
   /* ── Elevation ────────────────────────────────────────── */
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.08);
-  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.12);
-  --shadow-3: 0 8px 28px rgba(0, 0, 0, 0.18);
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 8%);
+  --shadow-2: 0 4px 12px rgb(0 0 0 / 12%);
+  --shadow-3: 0 8px 28px rgb(0 0 0 / 18%);
 
   /* ── Type families ────────────────────────────────────── */
   --font-sans:
@@ -125,28 +129,29 @@
     --text-inverse: #16181c;
 
     --focus: #7fb3c8;
-    --focus-ring: 0 0 0 2px rgba(127, 179, 200, 0.3);
+    --focus-ring: 0 0 0 2px rgb(127 179 200 / 30%);
 
     --danger: #e0614c;
     --danger-fg: #1a0f0c;
-    --danger-soft: rgba(224, 97, 76, 0.14);
+    --danger-soft: rgb(224 97 76 / 14%);
     --success: #4fc98a;
     --success-fg: #0b1a12;
-    --success-soft: rgba(79, 201, 138, 0.14);
+    --success-soft: rgb(79 201 138 / 14%);
     --warning: #e0a83c;
     --warning-fg: #1a1305;
-    --warning-soft: rgba(224, 168, 60, 0.14);
+    --warning-soft: rgb(224 168 60 / 14%);
     --info: #5bc0de;
     --info-fg: #08161b;
-    --info-soft: rgba(91, 192, 222, 0.14);
+    --info-soft: rgb(91 192 222 / 14%);
 
     --fav: #f0567a;
 
-    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.45);
-    --shadow-3: 0 8px 28px rgba(0, 0, 0, 0.55);
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-2: 0 4px 12px rgb(0 0 0 / 45%);
+    --shadow-3: 0 8px 28px rgb(0 0 0 / 55%);
   }
 }
+/* stylelint-enable color-no-hex, declaration-property-value-disallowed-list */
 
 /* ═══════════════════════════════════════════════════════════
    Base
@@ -204,7 +209,7 @@ hr {
   padding: var(--sp-3) var(--sp-4);
 }
 
-@media screen and (min-width: 769px) {
+@media screen and (width >= 769px) {
   .section {
     padding: var(--sp-4) var(--sp-5);
   }
@@ -245,24 +250,30 @@ hr {
   letter-spacing: -0.01em;
 }
 
-.title:not(.is-1):not(.is-2):not(.is-3):not(.is-4):not(.is-5):not(.is-6) {
+.title:not(.is-1, .is-2, .is-3, .is-4, .is-5, .is-6) {
   font-size: var(--t-xl);
 }
+
 .title.is-1 {
   font-size: 2rem;
 }
+
 .title.is-2 {
   font-size: 1.75rem;
 }
+
 .title.is-3 {
   font-size: var(--t-xl);
 }
+
 .title.is-4 {
   font-size: 1.375rem;
 }
+
 .title.is-5 {
   font-size: var(--t-lg);
 }
+
 .title.is-6 {
   font-size: var(--t-base);
 }
@@ -283,12 +294,15 @@ hr {
   font-size: var(--t-sm);
   color: var(--text-3);
 }
+
 .help.is-danger {
   color: var(--danger);
 }
+
 .help.is-success {
   color: var(--success);
 }
+
 .help.is-warning {
   color: var(--warning);
 }
@@ -430,6 +444,7 @@ a.navbar-item.is-selected {
   border-color: var(--danger);
   color: var(--danger-fg);
 }
+
 .button.is-danger:hover:not([disabled]) {
   background-color: color-mix(in srgb, var(--danger) 85%, black);
   border-color: color-mix(in srgb, var(--danger) 85%, black);
@@ -441,6 +456,7 @@ a.navbar-item.is-selected {
   border-color: var(--warning);
   color: var(--warning-fg);
 }
+
 .button.is-warning:hover:not([disabled]) {
   background-color: color-mix(in srgb, var(--warning) 85%, black);
   border-color: color-mix(in srgb, var(--warning) 85%, black);
@@ -458,6 +474,7 @@ a.navbar-item.is-selected {
   border-color: var(--danger);
   color: var(--danger);
 }
+
 .button.is-danger.is-outlined:hover:not([disabled]) {
   background-color: var(--danger-soft);
   color: var(--danger);
@@ -468,6 +485,7 @@ a.navbar-item.is-selected {
   border-color: var(--warning);
   color: var(--warning);
 }
+
 .button.is-warning.is-outlined:hover:not([disabled]) {
   background-color: var(--warning-soft);
   color: var(--warning);
@@ -479,6 +497,7 @@ a.navbar-item.is-selected {
   border-color: color-mix(in srgb, var(--fav) 45%, transparent);
   color: var(--fav);
 }
+
 .button.is-fav:hover:not([disabled]) {
   background-color: color-mix(in srgb, var(--fav) 12%, transparent);
   color: var(--fav);
@@ -580,6 +599,15 @@ a.navbar-item.is-selected {
 
 .table.is-hoverable tbody tr:hover {
   background-color: var(--surface-1);
+}
+
+/* An actions column held to the width of its buttons. */
+.table th.col-actions {
+  width: 80px;
+}
+
+.table th.col-actions.is-wide {
+  width: 120px;
 }
 
 .table .is-numeric {
@@ -725,30 +753,37 @@ a.navbar-item.is-selected {
   background-color: var(--tag-rose);
   color: var(--tag-ink);
 }
+
 .tag--amber:not(body) {
   background-color: var(--tag-amber);
   color: var(--tag-ink);
 }
+
 .tag--emerald:not(body) {
   background-color: var(--tag-emerald);
   color: var(--tag-ink);
 }
+
 .tag--sky:not(body) {
   background-color: var(--tag-sky);
   color: var(--tag-ink);
 }
+
 .tag--violet:not(body) {
   background-color: var(--tag-violet);
   color: var(--tag-ink);
 }
+
 .tag--teal:not(body) {
   background-color: var(--tag-teal);
   color: var(--tag-ink);
 }
+
 .tag--orange:not(body) {
   background-color: var(--tag-orange);
   color: var(--tag-ink);
 }
+
 .tag--lime:not(body) {
   background-color: var(--tag-lime);
   color: var(--tag-ink);
@@ -787,27 +822,35 @@ a.navbar-item.is-selected {
 .tag-text--rose {
   color: var(--tag-rose);
 }
+
 .tag-text--amber {
   color: var(--tag-amber);
 }
+
 .tag-text--emerald {
   color: var(--tag-emerald);
 }
+
 .tag-text--sky {
   color: var(--tag-sky);
 }
+
 .tag-text--violet {
   color: var(--tag-violet);
 }
+
 .tag-text--teal {
   color: var(--tag-teal);
 }
+
 .tag-text--orange {
   color: var(--tag-orange);
 }
+
 .tag-text--lime {
   color: var(--tag-lime);
 }
+
 .tag-text--neutral {
   color: var(--text-2);
 }
@@ -815,7 +858,7 @@ a.navbar-item.is-selected {
 /* ═══════════════════════════════════════════════════════════
    Portalled overlay surfaces
 
-   These MUST live here rather than in a component's `<style scoped>`.
+   These MUST live here rather than in a component's `\3c style scoped>`.
    Reka renders the combobox dropdown and the dropdown menu through a Teleport,
    and Vue has no root element on this side of that boundary to stamp the
    `data-v-*` scope id onto — so scoped rules silently never match and the
@@ -828,6 +871,7 @@ a.navbar-item.is-selected {
 
 .tag-dropdown {
   z-index: 62;
+
   /* Match the field it belongs to, so it reads as one control. Reka publishes
      the anchor's width on the content element when `position="popper"`. */
   width: var(--reka-combobox-trigger-width);
@@ -862,7 +906,7 @@ a.navbar-item.is-selected {
 .lb-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.9);
+  background: rgb(0 0 0 / 90%);
   z-index: 70;
 }
 
@@ -910,7 +954,7 @@ a.navbar-item.is-selected {
   gap: var(--sp-4);
   padding: var(--sp-3) var(--sp-4);
   font-size: var(--t-sm);
-  color: rgba(255, 255, 255, 0.7);
+  color: rgb(255 255 255 / 70%);
 }
 
 .lb-caption {
@@ -919,7 +963,7 @@ a.navbar-item.is-selected {
 }
 
 .lb-link {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgb(255 255 255 / 90%);
 }
 
 .lb-close {
@@ -929,16 +973,16 @@ a.navbar-item.is-selected {
   gap: var(--sp-2);
   padding: var(--sp-1) var(--sp-3);
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgb(255 255 255 / 30%);
   border-radius: var(--r-md);
-  color: rgba(255, 255, 255, 0.9);
+  color: rgb(255 255 255 / 90%);
   font: inherit;
   font-size: var(--t-sm);
   cursor: pointer;
 }
 
 .lb-close:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgb(255 255 255 / 12%);
 }
 
 /* ── Tooltip (AppTooltip) ───────────────────────────────── */
@@ -971,6 +1015,7 @@ a.navbar-item.is-selected {
   padding: var(--sp-4);
   list-style: none;
   outline: none;
+
   /* The viewport is a large fixed rectangle that is mostly empty, so it must
      never intercept clicks meant for the page beneath it. */
   pointer-events: none;
@@ -978,6 +1023,7 @@ a.navbar-item.is-selected {
 
 .toast {
   display: grid;
+
   /* ...but the toasts themselves stay clickable. Reka's modal Dialog sets
      `pointer-events: none` on <body> while it is open, which the viewport and
      toasts inherit — that left Dismiss and Undo dead on any toast raised from
@@ -986,12 +1032,12 @@ a.navbar-item.is-selected {
   pointer-events: auto;
   grid-template-columns: auto 1fr auto;
   grid-template-areas: 'icon title close' 'icon body close' 'icon action close';
-  column-gap: var(--sp-3);
-  row-gap: 2px;
+  gap: 2px var(--sp-3);
   align-items: start;
   padding: var(--sp-3);
   background: var(--surface-1);
   border: 1px solid var(--border);
+
   /* The severity reads as a stripe, so colour carries meaning without tinting
      the whole surface — which is what made the old toasts a second palette. */
   border-left: 3px solid var(--text-3);
@@ -1004,12 +1050,15 @@ a.navbar-item.is-selected {
 .toast[data-severity='success'] {
   border-left-color: var(--success);
 }
+
 .toast[data-severity='error'] {
   border-left-color: var(--danger);
 }
+
 .toast[data-severity='warning'] {
   border-left-color: var(--warning);
 }
+
 .toast[data-severity='info'] {
   border-left-color: var(--info);
 }
@@ -1019,15 +1068,19 @@ a.navbar-item.is-selected {
   font-size: var(--t-base);
   line-height: 1.5;
 }
+
 .toast[data-severity='success'] .toast-icon {
   color: var(--success);
 }
+
 .toast[data-severity='error'] .toast-icon {
   color: var(--danger);
 }
+
 .toast[data-severity='warning'] .toast-icon {
   color: var(--warning);
 }
+
 .toast[data-severity='info'] .toast-icon {
   color: var(--info);
 }
@@ -1145,7 +1198,7 @@ a.navbar-item.is-selected {
    plain `width: 100%`, so `.is-wide` has to be explicit at every breakpoint or
    detail pages get stranded at 928px on a 1440px display. */
 .container.is-wide,
-.container.is-wide:not(.is-max-tablet):not(.is-max-desktop) {
+.container.is-wide:not(.is-max-tablet, .is-max-desktop) {
   width: 100%;
   max-width: 1500px;
   margin-inline: auto;
@@ -1162,7 +1215,7 @@ a.navbar-item.is-selected {
   gap: var(--sp-2);
 }
 
-@media screen and (min-width: 769px) {
+@media screen and (width >= 769px) {
   .media-grid {
     grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
     gap: var(--sp-3);
@@ -1177,7 +1230,7 @@ a.navbar-item.is-selected {
 
 .tags-page-img {
   max-width: fit-content;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 4px 12px rgb(0 0 0 / 45%));
 }
 
 .thumb-blur {
@@ -1198,6 +1251,7 @@ a.navbar-item.is-selected {
   80% {
     opacity: 0;
   }
+
   100% {
     opacity: 1;
   }
@@ -1208,6 +1262,7 @@ a.navbar-item.is-selected {
 .page-fade-leave-active {
   transition: opacity 0.25s ease;
 }
+
 .page-fade-enter-from,
 .page-fade-leave-to {
   opacity: 0;

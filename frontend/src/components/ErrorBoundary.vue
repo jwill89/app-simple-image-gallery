@@ -38,7 +38,7 @@ function retry() {
         <p class="is-size-5 has-text-grey mt-4">
           {{ fallbackMessage }}
         </p>
-        <button class="button mt-4" @click="retry">
+        <button type="button" class="button mt-4" @click="retry">
           <span class="icon"><i class="fa-solid fa-rotate-right" /></span>
           <span>Try Again</span>
         </button>

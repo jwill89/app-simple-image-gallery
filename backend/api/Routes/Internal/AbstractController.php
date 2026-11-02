@@ -57,8 +57,6 @@ abstract class AbstractController
      * @param Response $response The response object.
      * @param mixed $data The data to return.
      * @param int $status HTTP status code.
-     *
-     * @return Response
      */
     protected function success(Response $response, mixed $data, int $status = 200): Response
     {
@@ -94,15 +92,11 @@ abstract class AbstractController
      * @param string $error The machine-readable error code (e.g. 'MediaNotFound').
      * @param int $status HTTP status code.
      * @param string|null $message Optional human-readable message. If omitted, auto-generated from $error.
-     *
-     * @return Response
      */
     protected function error(Response $response, string $error, int $status, ?string $message = null): Response
     {
-        if ($message === null) {
-            // Convert PascalCase error code to a readable sentence
-            $message = trim((string) preg_replace('/(?<!^)([A-Z])/', ' $1', $error));
-        }
+        // Convert PascalCase error code to a readable sentence
+        $message ??= trim((string) preg_replace('/(?<!^)([A-Z])/', ' $1', $error));
 
         return $response->withJson([
             'error' => $error,
@@ -189,7 +183,6 @@ abstract class AbstractController
      * @param int        $ttl       Time-to-live in seconds.
      * @param callable   $generator Callable that returns the response data.
      *
-     * @return Response
      * @throws \JsonException If the generated data cannot be encoded to JSON.
      */
     protected function cachedSuccess(Response $response, CacheGroup $group, string $key, int $ttl, callable $generator): Response

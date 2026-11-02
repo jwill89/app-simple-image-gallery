@@ -19,10 +19,11 @@ use Gallery\Core\DatabaseConnection;
 
 // ─── Resolve request path ───────────────────────────────────────────
 $requestUri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
-$requestUri = '/' . ltrim($requestUri, '/');
+$requestUri = '/' . ltrim(is_string($requestUri) ? $requestUri : '', '/');
 
 // ─── Build absolute base URL ────────────────────────────────────────
-$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$https  = $_SERVER['HTTPS'] ?? '';
+$scheme = ($https !== '' && $https !== 'off') ? 'https' : 'http';
 $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
 $baseUrl = $scheme . '://' . $host;
 
@@ -38,7 +39,7 @@ $twitterCard   = 'summary';
 
 try {
     // Media detail page: /media/:id/tags
-    if (preg_match('#^/media/(\d+)/tags$#', $requestUri, $m)) {
+    if (preg_match('#^/media/(\d+)/tags$#', $requestUri, $m) === 1) {
         $mediaId = (int) $m[1];
         $db = DatabaseConnection::getInstance();
 
@@ -46,7 +47,7 @@ try {
         $stmt->execute([':id' => $mediaId]);
         $media = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($media) {
+        if ($media !== false) {
             $baseName = pathinfo($media['file_name'], PATHINFO_FILENAME);
 
             $ogTitle     = ucfirst($media['media_type']) . ' #' . $mediaId;
@@ -65,7 +66,7 @@ try {
             $tagStmt->execute([':id' => $mediaId]);
             $tags = $tagStmt->fetchAll(PDO::FETCH_COLUMN);
 
-            if (!empty($tags)) {
+            if ($tags !== []) {
                 $ogDescription = implode(', ', $tags);
             } else {
                 $ogDescription = ucfirst($media['media_type']) . ' in the gallery.';
@@ -73,9 +74,9 @@ try {
         }
 
     // Gallery with tag filter: /media/:page/:perPage/with-tags/:tags
-    } elseif (preg_match('#^/media/\d+/\d+/with-tags/(.+)$#', $requestUri, $m)) {
+    } elseif (preg_match('#^/media/\d+/\d+/with-tags/(.+)$#', $requestUri, $m) === 1) {
         $tagString = urldecode($m[1]);
-        $tagNames  = array_map('trim', explode(',', $tagString));
+        $tagNames  = array_map(trim(...), explode(',', $tagString));
 
         // Separate include (+/default) and exclude (-) tags for display
         $includes = [];
@@ -89,18 +90,18 @@ try {
         }
 
         $parts = [];
-        if (!empty($includes)) {
+        if ($includes !== []) {
             $parts[] = implode(', ', $includes);
         }
-        if (!empty($excludes)) {
+        if ($excludes !== []) {
             $parts[] = 'excluding ' . implode(', ', $excludes);
         }
 
         $ogTitle       = 'Gallery — Tag Search';
-        $ogDescription = !empty($parts) ? implode(' — ', $parts) : 'Browsing by tags.';
+        $ogDescription = $parts !== [] ? implode(' — ', $parts) : 'Browsing by tags.';
 
     // Gallery list: /media or /media/:page/:perPage
-    } elseif (preg_match('#^/media(?:/\d+(?:/\d+)?)?$#', $requestUri)) {
+    } elseif (preg_match('#^/media(?:/\d+(?:/\d+)?)?$#', $requestUri) === 1) {
         $ogTitle       = 'Gallery';
         $ogDescription = 'Browse the media gallery.';
 
@@ -115,7 +116,7 @@ try {
         $ogDescription = 'Your favorited media items.';
 
     // Tag implications page: /tags/:id
-    } elseif (preg_match('#^/tags/(\d+)$#', $requestUri, $m)) {
+    } elseif (preg_match('#^/tags/(\d+)$#', $requestUri, $m) === 1) {
         $tagId = (int) $m[1];
         $db = DatabaseConnection::getInstance();
 
@@ -123,7 +124,7 @@ try {
         $stmt->execute([':id' => $tagId]);
         $tagName = $stmt->fetchColumn();
 
-        if ($tagName) {
+        if (is_string($tagName) && $tagName !== '') {
             $ogTitle       = 'Tag: ' . $tagName;
             $ogDescription = 'Implications for the "' . $tagName . '" tag.';
         } else {
@@ -131,7 +132,7 @@ try {
             $ogDescription = 'Tag details and implications.';
         }
     }
-} catch (\Throwable $e) {
+} catch (\Throwable) {
     // Silently fall through to defaults — OG tags are best-effort
 }
 
@@ -163,19 +164,26 @@ if (!file_exists($htmlPath)) {
 
 $html = file_get_contents($htmlPath);
 
+if ($html === false) {
+    http_response_code(500);
+    echo 'index.html could not be read.';
+    exit(1);
+}
+
 // Inject OG meta tags before </head>
 $html = str_replace('</head>', "    {$ogMeta}\n  </head>", $html);
 
-// Update the <title> tag to match
-$html = preg_replace('#<title>[^<]*</title>#', '<title>' . $e($ogTitle) . '</title>', $html);
+// Update the <title> tag to match (preg_replace returns null only on a regex
+// engine failure; keep the page as it was rather than serve nothing)
+$html = preg_replace('#<title>[^<]*</title>#', '<title>' . $e($ogTitle) . '</title>', $html) ?? $html;
 
 // Inject FontAwesome kit script from .env (replaces hardcoded kit in HTML)
 $faKitId = Configuration::getFontAwesomeKitId();
 if ($faKitId !== '') {
     $faScript = '<script src="https://kit.fontawesome.com/' . $e($faKitId) . '.js" crossorigin="anonymous"></script>';
     // Replace any existing kit script, or inject before </head> if not present
-    if (preg_match('#<script[^>]*kit\.fontawesome\.com[^>]*></script>#', $html)) {
-        $html = preg_replace('#<script[^>]*kit\.fontawesome\.com[^>]*></script>#', $faScript, $html);
+    if (preg_match('#<script[^>]*kit\.fontawesome\.com[^>]*></script>#', $html) === 1) {
+        $html = preg_replace('#<script[^>]*kit\.fontawesome\.com[^>]*></script>#', $faScript, $html) ?? $html;
     } else {
         $html = str_replace('</head>', "    {$faScript}\n  </head>", $html);
     }

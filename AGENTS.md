@@ -19,7 +19,7 @@ SaaS. Key features:
 - **Danbooru API integration**: auto-import tags by MD5 hash, with IQDB visual-similarity
   fallback. Import rules (category + tag-name mappings) are DB-driven and editable in the UI.
 - **Duplicate detection** via perceptual hashing (LSH candidate generation → Hamming
-  distance → SSIM verification).
+  distance → a worst-region comparison of the thumbnails that tells re-saves from variants).
 - **Favorites** (client-side, `localStorage`).
 - Admin-gated **uploads** and **deletes** via a single shared password → bearer token.
 - A PWA-ish **service worker** for thumbnail/API caching and adjacent-page prefetch.
@@ -28,13 +28,13 @@ SaaS. Key features:
 
 | Layer | Tech |
 |------|------|
-| Backend | PHP **8.5** (typed constants, `match`, enums-style consts), [Slim 4](https://www.slimframework.com/) + PHP-DI bridge |
+| Backend | PHP **8.5** (typed constants, `match`, enums-style consts), [Slim 4](https://www.slimframework.com/) + PHP-DI |
 | Database | **SQLite** (single file at `db/gallery.db`), WAL mode |
 | Migrations | [Phinx](https://phinx.org/) (`db/migrations/`) — the single source of truth for the schema |
-| Image/video tooling | `ffmpeg` (shelled out via `exec`), PHP GD, `jenssegers/imagehash` |
+| Image/video tooling | `ffmpeg` (shelled out via `exec`), PHP GD, `intervention/imagehash` (perceptual hash, always on GD) |
 | Logging | Monolog (rotating file, 14 days) |
 | Frontend | **Vue 3** (`<script setup>` + Composition API), TypeScript, [Pinia](https://pinia.vuejs.org/), Vue Router |
-| Build | **Vite** (outputs to `frontend/dist`) |
+| Build | **Vite** on Node **26+** (outputs to `frontend/dist`) |
 | Styling | **Bulma 1.x** + custom `style.css` (extended color palette), FontAwesome (kit script) |
 | Tests | **PHPUnit 13** (`backend/tests/`, in-memory SQLite) + **Vitest** (`frontend/src/__tests__/`, happy-dom) |
 
@@ -56,16 +56,20 @@ via `__DIR__`/`chdir(__DIR__ . '/..')`, so `backend/` *is* the app root in both 
 │   ├── composer.json          # PSR-4: Gallery\ → includes/Gallery, Routes\ → api/Routes
 │   ├── phinx.php              # Phinx config (sqlite, db/gallery.db)
 │   ├── phpunit.xml            # PHPUnit 13 config (tests/Unit; coverage source)
-│   ├── phpcs.xml.dist         # PSR-12 ruleset for phpcs / phpcbf
+│   ├── .php-cs-fixer.dist.php # coding standard: PER-CS 3.0 (PSR-12's successor) via PHP CS Fixer
+│   ├── phpstan.neon           # PHPStan level 8 + strict/deprecation/PHPUnit rules
+│   ├── rector.php             # PHP 8.5 idioms + dead-code removal (`composer rector:check` in CI)
+│   ├── composer-unused.php · composer-require-checker.json  # `composer deps:check` config
 │   ├── openapi.json           # generated (committed) — via `composer docs`; served at /api/openapi.json
+│   ├── bin/openapi.php        # `composer docs`: builds openapi.json (builder shared with OpenApiSpecTest)
 │   │
 │   ├── api/
 │   │   ├── .htaccess          # Routes everything to api/index.php
 │   │   ├── index.php          # Slim bootstrap: middleware stack + ALL route definitions
 │   │   ├── dependencies.php   # PHP-DI definitions: provides PDO, autowires Repository/Collection→Controller
 │   │   └── Routes/
-│   │       ├── OpenApiSpec.php          # global #[OA\Info/Server/SecurityScheme/Tag] metadata
-│   │       └── Internal/                # Controllers (namespace Routes\Internal), all #[OA\*]-annotated
+│   │       ├── OpenApiSpec.php          # global #[OAS\Info/Server/Security\Scheme/Tag] metadata
+│   │       └── Internal/                # Controllers (namespace Routes\Internal), all #[OAS\*]-annotated
 │   │           ├── AbstractController.php     # success()/created()/noContent()/error()/cachedSuccess()
 │   │           ├── SystemController.php       # /version, /openapi.json, /docs (Scalar)
 │   │           ├── AuthController.php         # /auth/login
@@ -83,8 +87,8 @@ via `__DIR__`/`chdir(__DIR__ . '/..')`, so `backend/` *is* the app root in both 
 │   │   ├── Collection/        # "Service"/use-case layer (MediaCollection, …)
 │   │   ├── Repository/        # Data-access (TagRepository, TagCategoryRepository, DanbooruRulesRepository)
 │   │   ├── Storage/           # SQL data-access layer (MediaStorage)
-│   │   └── Structure/         # Plain data objects (Media, Tag, TagCategory) — JsonSerializable, #[OA\Schema]
-│   │       └── Api/           # Doc-only #[OA\Schema] classes for composite responses (MediaPage, …)
+│   │   └── Structure/         # Plain data objects (Media, Tag, TagCategory) — JsonSerializable, #[OAS\Schema]
+│   │       └── Api/           # Doc-only #[OAS\Schema] classes for composite responses (MediaPage, …)
 │   │
 │   ├── db/
 │   │   ├── setup.php          # CLI bootstrap: ensures db/gallery.db exists, then runs Phinx migrations
@@ -111,6 +115,9 @@ via `__DIR__`/`chdir(__DIR__ . '/..')`, so `backend/` *is* the app root in both 
 ├── frontend/                  # Vue 3 + Vite source
 │   ├── vite.config.ts         # Vite + Vitest config (build outDir, dev proxy, test block)
 │   ├── vitest.setup.ts        # Vitest setup (pins TZ=UTC)
+│   ├── eslint.config.ts       # shared config (eslint-config submodule) + this project's rules
+│   ├── stylelint.config.js    # standard CSS rules + the palette rule
+│   ├── knip.ts                # unused files / exports / dependencies
 │   ├── src/
 │   │   ├── main.ts            # App bootstrap, global error handler, SW registration
 │   │   ├── router/index.ts    # Routes (lazy-loaded views)
@@ -124,9 +131,11 @@ via `__DIR__`/`chdir(__DIR__ . '/..')`, so `backend/` *is* the app root in both 
 │   ├── public/sw.js           # Service worker (caching + prefetch)
 │   └── dist/                  # Vite build output (gitignored) — index.php serves dist/index.html
 │
-├── .github/workflows/ci.yml   # CI: PHP lint + PHPUnit, frontend build + Vitest (coverage reported)
+├── .github/workflows/ci.yml   # CI: lint, static analysis, tests + build per side; PSScriptAnalyzer on scripts/
+├── .editorconfig              # LF, UTF-8, 4 spaces (2 for frontend files, YAML, Markdown)
+├── PSScriptAnalyzerSettings.psd1  # PowerShell lint settings for scripts/
 ├── README.md · CONTRIBUTING.md · CHANGELOG.md · LICENSE
-└── scripts/                   # Dev-only: deploy.ps1 (PuTTY pscp/plink → droplet), gitignored
+└── scripts/                   # Dev-only: deploy.ps1 (PuTTY pscp/plink → droplet) + config template
 ```
 
 ### Layering convention (backend)
@@ -158,7 +167,10 @@ falls everything else back to `index.php` (which injects OG tags and serves the 
 ```bash
 cd backend
 composer install              # install PHP deps into backend/vendor/
-composer lint                 # check PSR-12 (phpcs); `composer lint:fix` auto-fixes most issues
+composer lint                 # PER-CS 3.0 (PHP CS Fixer); `composer lint:fix` applies the fixes
+composer analyse              # PHPStan level 8 + strict and deprecation rules
+composer rector:check         # current PHP idioms, no dead code; `composer rector` applies
+composer deps:check           # every package used is declared, every one declared is used
 ```
 
 ### Database
@@ -185,8 +197,9 @@ The production app is **the built `dist/`** served via `index.php`; there is no 
 ```bash
 php backend/scripts/cron.php          # ingest new files from media/ → media/full/, build thumbs+fingerprints, prune orphans
 php backend/scripts/dupes.php         # run the duplicate scanner → writes dupes/dupes-YYYY-MM-DD.json
+php backend/scripts/dupes.php --tune --max-distance=8 --max-region-diff=off  # calibrate (see §9)
 php backend/scripts/regenerate-thumbnails.php
-php backend/scripts/regenerate-fingerprints.php
+php backend/scripts/regenerate-fingerprints.php   # after any change to how fingerprints are computed (see §10)
 php backend/scripts/regenerate-metadata.php   # backfill width/height/duration/file_size on existing rows
 php backend/scripts/tag_imports.php   # bulk Danbooru tag import
 ```
@@ -214,6 +227,8 @@ GALLERY_ALLOWED_ORIGINS    # comma-separated CORS allowlist
 DANBOORU_LOGIN             # Danbooru API username
 DANBOORU_API_KEY           # Danbooru API key
 FONTAWESOME_KIT_ID         # FA kit id (injected into <head> by index.php)
+DUPLICATE_MAX_DISTANCE     # duplicate scan: largest Hamming distance reported, 0-16 (default 6)
+DUPLICATE_MAX_REGION_DIFF  # duplicate scan: largest worst-region difference, 0-255 or off (default 36)
 ```
 Explicit OS/Docker env vars take precedence over `.env`. `Configuration` also understands Apache
 `REDIRECT_`-prefixed vars from mod_rewrite.
@@ -293,7 +308,7 @@ REST-RPC conventions: reads → `200`, create → `201` (created resource), upda
 - Error: `{ "error": "PascalCaseCode", "message": "human readable" }` + status, via
   `$this->error($response, 'CodeName', 4xx, 'message')`.
 - Cached GETs add `X-Cache: HIT|MISS`. Rate-limit info in `X-RateLimit-Remaining` / `Retry-After`.
-- Every action/schema is annotated with `#[OA\*]`; **regenerate `openapi.json` (`composer docs`) and
+- Every action/schema is annotated with `#[OAS\*]` (swagger-php spec attributes, `use OpenApi\Spec as OAS`); **regenerate `openapi.json` (`composer docs`) and
   the frontend types (`npm run gen:types`) after any contract change** — CI fails if they drift.
 
 ---
@@ -375,10 +390,22 @@ which is fine given the token's entropy.
 - **Types are generated** from the OpenAPI spec into `types/api.generated.ts` (`npm run gen:types`);
   import domain types from `types/index.ts` (friendly `Required<>` aliases), never the generated file.
 - **Lint + format are shared** via the `@jwill89/eslint-config` git submodule at `frontend/eslint-config`
-  (Vue + TS **strictTypeChecked** + Prettier); `eslint.config.ts` / `prettier.config.js` re-export it.
-  Run `git submodule update --init` after cloning. Change rules in the submodule, not here. Idioms:
-  `void` fire-and-forget promises (`void router.push(...)`); `catch (e)` + the `getError*` helpers in
-  `useApi.ts`; `_`-prefix unused vars.
+  (Vue + TS **strictTypeChecked** + Prettier); `prettier.config.js` re-exports it and
+  `eslint.config.ts` spreads it. Run `git submodule update --init` after cloning. Rules every project
+  should get change in the submodule; this project's own sit after the spread in `eslint.config.ts`:
+  template accessibility (`eslint-plugin-vuejs-accessibility`), the Vue style-guide rules that hold
+  the conventions here (`<script setup lang="ts">` only, no inline `style`, explicit button `type`,
+  `useTemplateRef`), typescript-eslint's stylistic set, and a ban on calling `fetch` outside
+  `useApi.ts`. A rule that doesn't fit one line is turned off at that line with the reason beside it.
+  The stylistic rules are listed by name rather than spread from `typescript-eslint`: the shared
+  config registers that plugin from the submodule's own `node_modules`, and ESLint refuses a second
+  copy under the same name. Idioms: `void` fire-and-forget promises (`void router.push(...)`);
+  `catch (e)` + the `getError*` helpers in `useApi.ts`; `_`-prefix unused vars.
+- **Stylelint** (`stylelint.config.js`, `npm run lint:css`) runs `stylelint-config-standard` over
+  `style.css` and the SFC style blocks, and holds the palette rule: no hex, and no `rgb()`/`hsl()`
+  other than neutral white/black, outside the `:root` token blocks in `style.css` (fenced by
+  `stylelint-disable`/`enable` comments). **Knip** (`knip.ts`, `npm run knip`) fails on unused
+  files, exports and dependencies; `@vue/test-utils` is kept deliberately for component specs.
 - **Data-fetching composables**: `useGalleryData` (paginated lists), `useMediaTags` (detail + tag
   add/remove). Reuse them rather than re-implementing fetch logic.
 - **Routing**: lazy-loaded views in `router/index.ts`; page title from `meta.title`.
@@ -454,8 +481,26 @@ which is fine given the token's entropy.
   invalidates the right group**, or you'll serve stale data for up to the TTL.
 - SQLite connection sets WAL, `foreign_keys=ON`, `synchronous=NORMAL`, 20 MB cache, mmap, 5 s busy
   timeout (`DatabaseConnection`).
-- Duplicate scan is the heaviest operation: LSH banding → Hamming filter → SSIM on `@2x` thumbnails
-  (not originals) to bound memory; it temporarily raises `memory_limit`/`max_execution_time`.
+- Duplicate scan is the heaviest operation: LSH banding → Hamming filter → a comparison of each
+  remaining pair's `@2x` thumbnails (not originals, to bound memory); it temporarily raises
+  `memory_limit`/`max_execution_time`. **Variants are the hard part.** This gallery holds many
+  versions of one artwork that differ only in a small area (an expression, a detail), and those hash
+  as close as distance 0 and score whole-image SSIM up to 0.97 — so neither a tighter cutoff nor an
+  SSIM floor can tell them from a re-saved copy (an SSIM floor was tried and dropped, 2026-11).
+  `Core/RegionDifference` can: both thumbnails are resampled to 256², blurred to wash out compression
+  noise, the overall colour offset removed, and the result is the mean difference of the *worst*
+  8×8 region on any channel. Calibrated on the droplet against the 26 pairs dismissed in the UI and
+  synthetic re-saves: re-saves scored ≤ 32.7, variants ≥ 40.9; coarser regions overlapped, so keep
+  them fine. **Tuning:** `DUPLICATE_MAX_DISTANCE` (default 6; re-saves landed 0–5 bits apart) is the
+  Hamming cutoff and `DUPLICATE_MAX_REGION_DIFF` (default 36, `off` to disable) the region ceiling;
+  a pair whose thumbnails can't be read is kept. The LSH band width is derived from the cutoff
+  (`bandBitsFor()`: cutoff + 1 bands, so no pair within it can miss them all). Buckets of over 100
+  images are still skipped and counted as `skipped_buckets`; each can hide pairs, which is what caps
+  the cutoff at 16. `dupes.php --tune` is the calibration run: it keeps dismissed pairs (flagged),
+  prints a distance × region-difference table, and writes `dupes/tuning-<timestamp>.json` so the
+  report the Duplicates page reads (`dupes-*.json`) is untouched. Report matches are
+  `[id1, id2, distance, ssim, region_diff]` (+ `dismissed` on a tuning run); the controller reads
+  the first four, so older reports still load.
 
 ---
 
@@ -468,13 +513,17 @@ which is fine given the token's entropy.
   but `UploadController::MAX_FILE_SIZE` is **500 MB** and the UI advertises 500 MB. Files >100 MB are
   rejected by PHP before reaching the controller. Reconcile if you touch uploads. *(Still open.)*
 - **`ffmpeg` must be on PATH** for thumbnail generation; **GD** (with WebP, ideally AVIF) is required
-  for SSIM. On hosts where `exec()` is disabled, thumbnails silently won't generate. (Note:
+  for the duplicate scan's thumbnail comparison. On hosts where `exec()` is disabled, thumbnails silently won't generate. (Note:
   `php-ffmpeg/php-ffmpeg` was removed from `composer.json` — thumbnails shell out to `ffmpeg` directly.)
 - **CI runs lint, static analysis, tests, and build.** GitHub Actions (`.github/workflows/ci.yml`)
-  runs `composer lint` (phpcs / PSR-12) + `composer analyse` (PHPStan level 8) + `composer test`
-  (PHPUnit 13) on the backend, and `npm run lint` (ESLint, type-checked) + `npm run format:check`
-  (Prettier) + `npm run build` (vue-tsc + Vite) + `npm run test` (Vitest) on the frontend, with
-  coverage reported (no hard gate). The frontend CI job checks out submodules (see below). It also
+  runs, on the backend, `composer audit` + `composer normalize --dry-run` + `composer deps:check`
+  (composer-unused, composer-require-checker) + `composer lint` (PHP CS Fixer / PER-CS 3.0) +
+  `composer rector:check` + `composer analyse` (PHPStan level 8 + strict-rules) + `composer test`
+  (PHPUnit 13). On the frontend: `npm audit --omit=dev` + `npm run lint` (ESLint, type-checked,
+  incl. accessibility) + `npm run lint:css` (Stylelint) + `npm run knip` + `npm run format:check`
+  (Prettier) + `npm run build` (vue-tsc + Vite) + `npm run test` (Vitest), with coverage reported
+  (no hard gate). A third job runs PSScriptAnalyzer over `scripts/*.ps1` with
+  `PSScriptAnalyzerSettings.psd1`. The frontend CI job checks out submodules (see below). It also
   **fails if the committed contract is stale**:
   `composer docs` + `git diff --exit-code openapi.json` (backend) and `npm run gen:types` +
   `git diff --exit-code src/types/api.generated.ts` (frontend). Backend tests build a fresh in-memory SQLite DB from
@@ -490,18 +539,43 @@ which is fine given the token's entropy.
   **not** auto-restored by the failure trap — that trap fires on any non-zero exit, including
   after a migration has already succeeded, and reverting data could discard media uploaded during
   the deploy window; a failed migration prints the path and the restore command instead.
-- **Line endings are LF, enforced by `.gitattributes` (`* text=auto eol=lf`).** phpcs fails a file
-  outright on CRLF and Prettier rewrites it, so a Windows checkout without this produced 34 lint
+- **OpenAPI is swagger-php 7's spec attributes** (`use OpenApi\Spec as OAS;`), migrated from the
+  classic `OpenApi\Attributes` with the package's own Rector set
+  (`vendor/zircote/swagger-php/rector/set/classic-to-spec.php`). The document is built by
+  `tests/Support/OpenApiDocument::builder()`, which both `composer docs` (`bin/openapi.php`) and
+  `OpenApiSpecTest` use, so the two can't disagree about how it's built. That builder drops v7's
+  `Properties` augmenter, which would publish every PHP property initialiser on a doc-only response
+  class as a schema `default` (81 of them, e.g. `success: true` on `ScanResult`); put a real default
+  on the attribute instead. swagger-php 8 moves the spec classes from `OpenApi\Spec` to
+  `OpenApi\Attributes`: one `use` line per file, and the same Rector set handles it.
+- **Fingerprints are only comparable with ones computed the same way.** Anything that changes how
+  `MediaCollection::createFingerprint()` hashes (algorithm, library, image driver) needs
+  `php backend/scripts/regenerate-fingerprints.php` on the droplet right after the deploy, before
+  the next scan or ingest: until it finishes, old and new fingerprints sit side by side and their
+  distances mean nothing. The 2026-11 move from `jenssegers/imagehash` to `intervention/imagehash`
+  was one: same pHash, but the 8×8 block is read transposed, so every bit moved. Hashing is pinned
+  to GD for the same reason — the old library used Imagick when it was loaded, so the hash depended
+  on the machine. The script clears (rather than keeps) a fingerprint it can't recompute, so a
+  failure drops that image from the scan instead of leaving a stale-format hash in it.
+- **`config.platform.php` in `backend/composer.json` mirrors the droplet's PHP** (8.5.12 as of
+  2026-11), so Composer resolves for what production runs, not your machine. Raise it only after
+  upgrading the droplet. `roave/security-advisories` conflicts with PHP releases that have known
+  advisories, so when the pin falls behind, `composer update` refuses to resolve anything; that
+  happened at 8.5.6 and is the signal to upgrade PHP on the droplet, not to raise the pin alone.
+- **Line endings are LF, enforced by `.gitattributes` (`* text=auto eol=lf`).** The PHP coding
+  standard fails a file on CRLF (phpcs did, and PHP CS Fixer does) and Prettier rewrites it, so a Windows checkout without this produced 34 lint
   errors in files nobody had touched. `eol=lf` overrides `core.autocrlf`, so no per-developer git
   config is required — do not "fix" a CRLF complaint by changing your local `core.autocrlf`. Note
   that converting a file's line endings does *not* fix line endings already escaped inside a
   generated artifact: `openapi.json` carried `\r\n` inside description strings taken from PHP
   docblocks, and needed `composer docs` to clear (the `OpenApiSpecTest` catches this).
 - **Do not upgrade to TypeScript 7 yet.** TS 7 is the native port and removed the `./lib/tsc`
-  subpath from its package `exports`. `vue-tsc` (3.3.10, current) resolves that path directly and
-  exits with `ERR_PACKAGE_PATH_NOT_EXPORTED`, so `npm run typecheck` cannot run at all — and
+  subpath from its package `exports`. `vue-tsc` resolves that path directly and exits with
+  `ERR_PACKAGE_PATH_NOT_EXPORTED`, so the type-check (`npm run build`) cannot run at all — and
   `vue-tsc`'s `typescript: ">=5.0.0"` peer range does not express the incompatibility, so npm will
-  install the combination without complaint. Stay on `~6.0.3` until vue-tsc ships TS 7 support.
+  install the combination without complaint. Still true of 3.3.14 (2026-11): its only addition is
+  following `typescript` when it is aliased to `@typescript/typescript6`. Stay on `~6.0.3` until
+  vue-tsc ships TS 7 support.
 
 - **Version bumps are the release trigger.** CI tags and publishes `v<version>` from
   `frontend/package.json` using the matching `## [<version>]` section of `CHANGELOG.md` as the
@@ -520,7 +594,7 @@ which is fine given the token's entropy.
 1. Add SQL to the relevant `*Repository`/`*Storage` class (prepared statements only).
 2. Expose it via the matching repository/collection method.
 3. Add a controller action; validate input, return via `success()`/`created()`/`noContent()`/`error()`
-   with the right status code, and **annotate it with `#[OA\Get/Post/…]`** (+ any new response schema
+   with the right status code, and **annotate it with `#[OAS\Operation\Get/Post/…]`** (+ any new response schema
    under `Structure/Api/`).
 4. Register the route in `api/index.php` in the correct group (mind auth + caching); public writes
    go on the `(method, path)` allowlist in `$authMiddleware`.
@@ -528,7 +602,7 @@ which is fine given the token's entropy.
 6. Run `composer docs` (backend) and `npm run gen:types` (frontend); commit both regenerated files.
 
 **A new media field**
-Update: a **migration**, the `Media` structure (+setter + `#[OA\Property]`),
+Update: a **migration**, the `Media` structure (+setter + `#[OAS\Property]`),
 `MediaStorage` (`store`/`retrieve*` column lists), then regenerate the spec + types
 (`composer docs`, `npm run gen:types`) so the frontend `Media` type picks it up.
 
@@ -547,7 +621,7 @@ Create a view in `views/`, add a lazy route with `meta.title` in `router/index.t
 - [ ] SQL only in `Repository`/`Storage`; bound parameters always.
 - [ ] Controllers return the right status code (`200`/`201`/`204`) via `success()`/`created()`/
       `noContent()`, or `error()` with a PascalCase code + human message.
-- [ ] Endpoints/schemas are `#[OA\*]`-annotated; `composer docs` + `npm run gen:types` re-run and
+- [ ] Endpoints/schemas are `#[OAS\*]`-annotated; `composer docs` + `npm run gen:types` re-run and
       the regenerated `openapi.json` / `api.generated.ts` committed (CI enforces).
 - [ ] Mutations invalidate the right cache group(s).
 - [ ] New state-changing routes are in an auth-protected group (or added to the public allowlist consciously).

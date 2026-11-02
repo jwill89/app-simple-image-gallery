@@ -30,6 +30,7 @@ const filterRoute = computed<RouteLocationRaw>(() => ({
     </RouterLink>
     <button
       v-if="removable"
+      type="button"
       class="delete tag-badge-delete"
       aria-label="delete"
       @click.stop.prevent="emit('remove', tagId)"

@@ -59,7 +59,7 @@ final class StructureTest extends TestCase
 
     public function testMediaFluentSetters(): void
     {
-        $media = (new Media())
+        $media = new Media()
             ->setMediaType('image')
             ->setFileName('pic.png')
             ->setHash('deadbeef')
@@ -86,7 +86,7 @@ final class StructureTest extends TestCase
 
     public function testTagAccessors(): void
     {
-        $tag = (new Tag())->setTagId(3)->setCategoryId(2)->setTagName('forest');
+        $tag = new Tag()->setTagId(3)->setCategoryId(2)->setTagName('forest');
 
         $this->assertSame(3, $tag->tag_id);
         $this->assertSame(2, $tag->category_id);

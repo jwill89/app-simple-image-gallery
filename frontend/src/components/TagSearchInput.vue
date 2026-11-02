@@ -3,8 +3,6 @@ import { computed } from 'vue'
 import { useGalleryStore } from '../stores/gallery'
 import TagMultiSelect from './TagMultiSelect.vue'
 
-const store = useGalleryStore()
-
 const props = defineProps<{
   modelValue: string[]
 }>()
@@ -14,6 +12,8 @@ const emit = defineEmits<{
   search: []
   reset: []
 }>()
+
+const store = useGalleryStore()
 
 const selectedIds = computed({
   get: () => {
@@ -48,19 +48,19 @@ const hasSelectedTags = computed(() => props.modelValue.length > 0)
     <TagMultiSelect v-model="selectedIds" placeholder="Search tags..." @submit="emit('search')">
       <template #actions>
         <div v-if="!hasSelectedTags" class="control">
-          <button class="button" disabled>
+          <button type="button" class="button" disabled>
             <span class="icon"><i class="fa-solid fa-magnifying-glass" /></span>
           </button>
         </div>
         <template v-else>
           <div class="control">
-            <button class="button is-primary" @click="emit('search')">
+            <button type="button" class="button is-primary" @click="emit('search')">
               <span class="icon"><i class="fa-solid fa-magnifying-glass" /></span>
               <span>Search</span>
             </button>
           </div>
           <div class="control">
-            <button class="button is-light" @click="emit('reset')">
+            <button type="button" class="button is-light" @click="emit('reset')">
               <span class="icon"><i class="fa-solid fa-xmark" /></span>
             </button>
           </div>

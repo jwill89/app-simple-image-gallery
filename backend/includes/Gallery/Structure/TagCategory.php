@@ -2,7 +2,7 @@
 
 namespace Gallery\Structure;
 
-use OpenApi\Attributes as OA;
+use OpenApi\Spec as OAS;
 
 /**
  * TagCategory class
@@ -13,18 +13,18 @@ use OpenApi\Attributes as OA;
  * private(set) lets PDO's FETCH_CLASS hydrate rows while blocking external
  * mutation.
  */
-#[OA\Schema(schema: 'TagCategory', description: 'A tag category (color, shortcode, sort order).')]
+#[OAS\Schema(schema: 'TagCategory', description: 'A tag category (color, shortcode, sort order).')]
 class TagCategory extends AbstractStructure
 {
-    #[OA\Property(type: 'integer')]
+    #[OAS\Property(schema: new OAS\Schema(type: 'integer'))]
     public private(set) int $category_id = 0;
-    #[OA\Property(type: 'string')]
+    #[OAS\Property(schema: new OAS\Schema(type: 'string'))]
     public private(set) string $category_name = '';
-    #[OA\Property(type: 'string', description: 'Tag palette hue. Display only — never a semantic state name.')]
+    #[OAS\Property(schema: new OAS\Schema(type: 'string', description: 'Tag palette hue. Display only — never a semantic state name.'))]
     public private(set) string $color = 'neutral';
-    #[OA\Property(type: 'string')]
+    #[OAS\Property(schema: new OAS\Schema(type: 'string'))]
     public private(set) string $description = '';
-    #[OA\Property(type: 'integer')]
+    #[OAS\Property(schema: new OAS\Schema(type: 'integer'))]
     public private(set) int $sort_order = 0;
 
     public function setCategoryId(int $category_id): self

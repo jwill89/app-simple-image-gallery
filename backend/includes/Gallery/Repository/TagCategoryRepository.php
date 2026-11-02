@@ -21,11 +21,8 @@ class TagCategoryRepository
 
     private const string OBJ_CLASS = TagCategory::class;
 
-    private PDO $db;
-
-    public function __construct(PDO $db)
+    public function __construct(private readonly PDO $db)
     {
-        $this->db = $db;
     }
 
     /**
@@ -81,7 +78,7 @@ class TagCategoryRepository
      */
     public function save(TagCategory $category): int
     {
-        if (empty($category->category_id)) {
+        if ($category->category_id === 0) {
             $sql = "INSERT INTO " . self::MAIN_TABLE
                  . " (category_name, color, description, sort_order)"
                  . " VALUES (:category_name, :color, :description, :sort_order)";
@@ -92,7 +89,7 @@ class TagCategoryRepository
             $stmt->bindValue(':sort_order', $category->sort_order, PDO::PARAM_INT);
 
             $stmt->execute();
-            $category->setCategoryId((int)$this->db->lastInsertId());
+            $category->setCategoryId((int) $this->db->lastInsertId());
         } else {
             $sql = "UPDATE " . self::MAIN_TABLE
                  . " SET category_name = :category_name,"
@@ -142,7 +139,7 @@ class TagCategoryRepository
     public function getAllIds(): array
     {
         $stmt = $this->db->query("SELECT category_id FROM " . self::MAIN_TABLE . " ORDER BY category_id");
-        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+        return array_map(intval(...), $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
     /**
@@ -157,7 +154,7 @@ class TagCategoryRepository
             "SELECT category_id FROM " . self::MAIN_TABLE . " WHERE category_name = :n COLLATE NOCASE AND category_id != :eid"
         );
         $stmt->execute([':n' => $name, ':eid' => $excludeId]);
-        if ($stmt->fetchColumn()) {
+        if ($stmt->fetchColumn() !== false) {
             $conflicts[] = 'name';
         }
 

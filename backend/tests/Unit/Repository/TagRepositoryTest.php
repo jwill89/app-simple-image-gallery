@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Gallery\Tests\Unit\Repository;
 
-use Gallery\Repository\TagCategoryRepository;
 use Gallery\Repository\TagRepository;
 use Gallery\Structure\Media;
 use Gallery\Structure\Tag;
@@ -31,7 +30,7 @@ final class TagRepositoryTest extends DatabaseTestCase
     {
         $db->prepare("INSERT INTO media (media_type, file_name, file_time, hash) VALUES ('image', :n, 1, :h)")
             ->execute([':n' => $name, ':h' => $hash]);
-        return (new Media())->setMediaId((int) $db->lastInsertId());
+        return new Media()->setMediaId((int) $db->lastInsertId());
     }
 
     public function testSaveInsertsAndAssignsId(): void
@@ -40,7 +39,7 @@ final class TagRepositoryTest extends DatabaseTestCase
         $repo = $this->makeRepository($db);
         $catId = $this->makeCategory($db);
 
-        $tag = (new Tag())->setCategoryId($catId)->setTagName('forest');
+        $tag = new Tag()->setCategoryId($catId)->setTagName('forest');
         $id = $repo->save($tag);
 
         $this->assertGreaterThan(0, $id);
@@ -52,7 +51,7 @@ final class TagRepositoryTest extends DatabaseTestCase
         $db = self::makeDb();
         $repo = $this->makeRepository($db);
         $catId = $this->makeCategory($db);
-        $tag = (new Tag())->setCategoryId($catId)->setTagName('ocean');
+        $tag = new Tag()->setCategoryId($catId)->setTagName('ocean');
         $repo->save($tag);
 
         $fetched = $repo->get($tag->tag_id);
@@ -70,9 +69,9 @@ final class TagRepositoryTest extends DatabaseTestCase
         $db = self::makeDb();
         $repo = $this->makeRepository($db);
         $catId = $this->makeCategory($db);
-        $a = (new Tag())->setCategoryId($catId)->setTagName('forest');
+        $a = new Tag()->setCategoryId($catId)->setTagName('forest');
         $repo->save($a);
-        $b = (new Tag())->setCategoryId($catId)->setTagName('river');
+        $b = new Tag()->setCategoryId($catId)->setTagName('river');
         $repo->save($b);
 
         $ids = $repo->getIdsByNames([' FOREST ', 'River', 'unknown', '']);
@@ -89,7 +88,7 @@ final class TagRepositoryTest extends DatabaseTestCase
         $db = self::makeDb();
         $repo = $this->makeRepository($db);
         $catId = $this->makeCategory($db);
-        $repo->save((new Tag())->setCategoryId($catId)->setTagName('sky'));
+        $repo->save(new Tag()->setCategoryId($catId)->setTagName('sky'));
 
         $this->assertTrue($repo->tagExists('sky'));
         $this->assertTrue($repo->tagExists('SKY'));
@@ -101,7 +100,7 @@ final class TagRepositoryTest extends DatabaseTestCase
         $db = self::makeDb();
         $repo = $this->makeRepository($db);
         $catId = $this->makeCategory($db);
-        $tag = (new Tag())->setCategoryId($catId)->setTagName('old');
+        $tag = new Tag()->setCategoryId($catId)->setTagName('old');
         $repo->save($tag);
 
         $tag->setTagName('renamed');
@@ -118,9 +117,9 @@ final class TagRepositoryTest extends DatabaseTestCase
         $db = self::makeDb();
         $repo = $this->makeRepository($db);
         $catId = $this->makeCategory($db);
-        $tagA = (new Tag())->setCategoryId($catId)->setTagName('alpha');
+        $tagA = new Tag()->setCategoryId($catId)->setTagName('alpha');
         $repo->save($tagA);
-        $tagB = (new Tag())->setCategoryId($catId)->setTagName('beta');
+        $tagB = new Tag()->setCategoryId($catId)->setTagName('beta');
         $repo->save($tagB);
         $media = $this->makeMedia($db);
 
@@ -146,9 +145,9 @@ final class TagRepositoryTest extends DatabaseTestCase
         $db = self::makeDb();
         $repo = $this->makeRepository($db);
         $catId = $this->makeCategory($db);
-        $cat = (new Tag())->setCategoryId($catId)->setTagName('cat');
+        $cat = new Tag()->setCategoryId($catId)->setTagName('cat');
         $repo->save($cat);
-        $animal = (new Tag())->setCategoryId($catId)->setTagName('animal');
+        $animal = new Tag()->setCategoryId($catId)->setTagName('animal');
         $repo->save($animal);
 
         // Applying "cat" should also apply the implied "animal".
@@ -166,7 +165,7 @@ final class TagRepositoryTest extends DatabaseTestCase
         $db = self::makeDb();
         $repo = $this->makeRepository($db);
         $catId = $this->makeCategory($db);
-        $tag = (new Tag())->setCategoryId($catId)->setTagName('temp');
+        $tag = new Tag()->setCategoryId($catId)->setTagName('temp');
         $repo->save($tag);
 
         $this->assertTrue($repo->delete($tag));

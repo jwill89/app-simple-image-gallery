@@ -8,6 +8,7 @@ import {
   onActivated,
   onDeactivated,
   nextTick,
+  useTemplateRef,
 } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGalleryData } from '../composables/useGalleryData'
@@ -22,6 +23,12 @@ import PageHeader from '../components/PageHeader.vue'
 import EmptyState from '../components/EmptyState.vue'
 import { prefetchThumbnails } from '../composables/usePrefetch'
 
+const props = defineProps<{
+  page: number
+  perPage: number
+  tags?: string
+}>()
+
 // Named so App.vue can keep this view alive (preserving accumulated items and
 // scroll position when returning from a media detail page).
 defineOptions({ name: 'GalleryView' })
@@ -32,12 +39,6 @@ function listUrl(page: number, perPage: number, tags?: string): string {
   if (tags) return endpoints.media.withTags(tags, page, perPage)
   return endpoints.media.page(page, perPage)
 }
-
-const props = defineProps<{
-  page: number
-  perPage: number
-  tags?: string
-}>()
 
 const router = useRouter()
 const store = useGalleryStore()
@@ -58,9 +59,9 @@ const accumulatedItems = ref<MediaItem[]>([])
 const currentBatchPage = ref(1)
 const loadingMore = ref(false)
 const allLoaded = ref(false)
-const scrollSentinel = ref<HTMLElement | null>(null)
-const topSentinel = ref<HTMLElement | null>(null)
-const gridEl = ref<HTMLElement | null>(null)
+const scrollSentinel = useTemplateRef<HTMLElement>('scrollSentinel')
+const topSentinel = useTemplateRef<HTMLElement>('topSentinel')
+const gridEl = useTemplateRef<HTMLElement>('gridEl')
 let observer: IntersectionObserver | null = null
 let topObserver: IntersectionObserver | null = null
 const topLoading = ref(false)
@@ -501,7 +502,7 @@ function onCardClick(id: number) {
         :title="loadFailed ? 'Could not load the gallery.' : 'No items found.'"
         :hint="tags && !loadFailed ? 'Try removing a tag from the search.' : ''"
       >
-        <button v-if="loadFailed" class="button" @click="loadPage">
+        <button v-if="loadFailed" type="button" class="button" @click="loadPage">
           <span class="icon"><i class="fa-solid fa-rotate-right" /></span>
           <span>Retry</span>
         </button>
@@ -511,7 +512,7 @@ function onCardClick(id: number) {
         <!-- One pagination bar, at the bottom. The top copy plus its two rules
              cost ~170px and pushed the thumbnails below the fold — nobody
              paginates before they've looked at the page. -->
-        <div style="min-height: 75vh">
+        <div class="gallery-body">
           <div
             v-if="isInfiniteScroll && batchStartPage > 1"
             ref="topSentinel"
@@ -558,7 +559,7 @@ function onCardClick(id: number) {
           <span class="scroll-status-loaded"
             >{{ displayItems.length.toLocaleString() }} loaded</span
           >
-          <button class="scroll-status-top" title="Back to top" @click="scrollToTop">
+          <button type="button" class="scroll-status-top" title="Back to top" @click="scrollToTop">
             <i class="fa-solid fa-arrow-up" aria-hidden="true" />
             <span>Top</span>
           </button>
@@ -579,6 +580,10 @@ function onCardClick(id: number) {
 <!-- The grid itself lives in style.css as `.media-grid`, shared with Favorites. -->
 
 <style scoped>
+.gallery-body {
+  min-height: 75vh;
+}
+
 .scroll-status {
   position: fixed;
   left: 50%;
@@ -592,6 +597,7 @@ function onCardClick(id: number) {
   padding: var(--sp-2) var(--sp-3);
   background: var(--surface-1);
   border: 1px solid var(--border-strong);
+
   /* Deliberate: a floating status pill over the media wall, the only
      fully-rounded shape in the app. Everything else uses the --r-* scale. */
   border-radius: 999px; /* unslop-ignore */
@@ -644,10 +650,11 @@ function onCardClick(id: number) {
 
 /* On a phone the bar would eat the grid, so it keeps only what you can't get
    anywhere else: position and a way back. */
-@media screen and (max-width: 640px) {
+@media screen and (width <= 640px) {
   .scroll-status {
     gap: var(--sp-2);
   }
+
   .scroll-status-trail,
   .scroll-status-loaded {
     display: none;

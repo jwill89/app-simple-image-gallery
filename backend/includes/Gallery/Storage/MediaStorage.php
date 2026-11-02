@@ -15,11 +15,8 @@ class MediaStorage
     private const string TAGS_TABLE = 'media_tags';
     private const string OBJ_CLASS = Media::class;
 
-    private PDO $db;
-
-    public function __construct(PDO $db)
+    public function __construct(private readonly PDO $db)
     {
-        $this->db = $db;
     }
 
     /**
@@ -87,7 +84,7 @@ class MediaStorage
 
         $bind_index = 1;
         foreach ($tag_ids as $tid) {
-            $stmt->bindValue($bind_index++, (int)$tid, PDO::PARAM_INT);
+            $stmt->bindValue($bind_index++, (int) $tid, PDO::PARAM_INT);
         }
         $stmt->bindValue($bind_index++, $tag_count, PDO::PARAM_INT);
         $stmt->bindValue($bind_index++, $items_per_page, PDO::PARAM_INT);
@@ -110,17 +107,17 @@ class MediaStorage
         $bind = [];
 
         $excludeClause = '';
-        if (!empty($exclude_tag_ids)) {
+        if ($exclude_tag_ids !== []) {
             $exPlaceholders = implode(',', array_fill(0, count($exclude_tag_ids), '?'));
             $excludeClause = "AND m.media_id NOT IN (
                 SELECT media_id FROM " . self::TAGS_TABLE . " WHERE tag_id IN ($exPlaceholders)
             )";
             foreach ($exclude_tag_ids as $tid) {
-                $bind[] = (int)$tid;
+                $bind[] = (int) $tid;
             }
         }
 
-        if (!empty($include_tag_ids)) {
+        if ($include_tag_ids !== []) {
             $incPlaceholders = implode(',', array_fill(0, count($include_tag_ids), '?'));
             $sql = "SELECT m.* FROM " . self::MAIN_TABLE . " m
                     LEFT JOIN " . self::TAGS_TABLE . " mt USING (media_id)
@@ -130,7 +127,7 @@ class MediaStorage
                     ORDER BY m.file_time DESC, m.media_id DESC
                     LIMIT ? OFFSET ?";
 
-            $incBind = array_map('intval', $include_tag_ids);
+            $incBind = array_map(intval(...), $include_tag_ids);
             $allBind = array_merge($incBind, $bind, [count($include_tag_ids), $items_per_page, $offset]);
         } else {
             $sql = "SELECT m.* FROM " . self::MAIN_TABLE . " m
@@ -161,17 +158,17 @@ class MediaStorage
         $bind = [];
 
         $excludeClause = '';
-        if (!empty($exclude_tag_ids)) {
+        if ($exclude_tag_ids !== []) {
             $exPlaceholders = implode(',', array_fill(0, count($exclude_tag_ids), '?'));
             $excludeClause = "AND m.media_id NOT IN (
                 SELECT media_id FROM " . self::TAGS_TABLE . " WHERE tag_id IN ($exPlaceholders)
             )";
             foreach ($exclude_tag_ids as $tid) {
-                $bind[] = (int)$tid;
+                $bind[] = (int) $tid;
             }
         }
 
-        if (!empty($include_tag_ids)) {
+        if ($include_tag_ids !== []) {
             $incPlaceholders = implode(',', array_fill(0, count($include_tag_ids), '?'));
             $sql = "SELECT COUNT(*) FROM (
                 SELECT m.media_id FROM " . self::MAIN_TABLE . " m
@@ -181,7 +178,7 @@ class MediaStorage
                 HAVING COUNT(DISTINCT mt.tag_id) = ?
             )";
 
-            $incBind = array_map('intval', $include_tag_ids);
+            $incBind = array_map(intval(...), $include_tag_ids);
             $allBind = array_merge($incBind, $bind, [count($include_tag_ids)]);
         } else {
             $sql = "SELECT COUNT(*) FROM " . self::MAIN_TABLE . " m
@@ -196,7 +193,7 @@ class MediaStorage
         }
         $stmt->execute();
 
-        return (int)$stmt->fetchColumn();
+        return (int) $stmt->fetchColumn();
     }
 
     /**
@@ -225,7 +222,7 @@ class MediaStorage
         $sql = "SELECT COUNT(*) FROM " . self::MAIN_TABLE;
         $stmt = $this->db->query($sql);
 
-        return (int)$stmt->fetchColumn();
+        return (int) $stmt->fetchColumn();
     }
 
     /**
@@ -260,7 +257,7 @@ class MediaStorage
                 WHERE mt.media_id IS NULL";
 
         $stmt = $this->db->query($sql);
-        return (int)$stmt->fetchColumn();
+        return (int) $stmt->fetchColumn();
     }
 
     /**
@@ -282,12 +279,12 @@ class MediaStorage
 
         $bind_index = 1;
         foreach ($tag_ids as $tid) {
-            $stmt->bindValue($bind_index++, (int)$tid, PDO::PARAM_INT);
+            $stmt->bindValue($bind_index++, (int) $tid, PDO::PARAM_INT);
         }
         $stmt->bindValue($bind_index, $tag_count, PDO::PARAM_INT);
 
         $stmt->execute();
-        return (int)$stmt->fetchColumn();
+        return (int) $stmt->fetchColumn();
     }
 
     /**
@@ -325,7 +322,7 @@ class MediaStorage
         $stmt->bindParam(':hash', $hash, PDO::PARAM_STR);
         $stmt->execute();
 
-        return (int)$stmt->fetchColumn() === 1;
+        return (int) $stmt->fetchColumn() === 1;
     }
 
     /**
@@ -339,7 +336,7 @@ class MediaStorage
         $stmt->execute();
 
         $id = $stmt->fetchColumn();
-        return $id !== false ? (int)$id : null;
+        return $id !== false ? (int) $id : null;
     }
 
     /**
@@ -374,13 +371,13 @@ class MediaStorage
      */
     public function retrieveByIds(array $mediaIds): array
     {
-        if (empty($mediaIds)) {
+        if ($mediaIds === []) {
             return [];
         }
 
         // Build safe integer placeholders
-        $ids = array_filter(array_map('intval', $mediaIds), fn($id) => $id > 0);
-        if (empty($ids)) {
+        $ids = array_filter(array_map(intval(...), $mediaIds), fn($id) => $id > 0);
+        if ($ids === []) {
             return [];
         }
 
@@ -398,7 +395,7 @@ class MediaStorage
      */
     public function store(Media $media): int
     {
-        if (empty($media->media_id)) {
+        if ($media->media_id === 0) {
             $sql = "INSERT INTO " . self::MAIN_TABLE . " (media_type, file_name, file_time, hash, bits_fingerprint, width, height, duration, file_size)
                     VALUES (:media_type, :file_name, :file_time, :hash, :bits_fingerprint, :width, :height, :duration, :file_size)";
             $stmt = $this->db->prepare($sql);
@@ -413,7 +410,7 @@ class MediaStorage
             $stmt->bindValue(':file_size', $media->file_size, PDO::PARAM_INT);
 
             $stmt->execute();
-            $media->setMediaId((int)$this->db->lastInsertId());
+            $media->setMediaId((int) $this->db->lastInsertId());
         }
 
         return $media->media_id;

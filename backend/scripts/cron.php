@@ -30,7 +30,7 @@ set_time_limit(600);
 $start_time = microtime(true);
 
 // Setup Collection (built from the shared DI container)
-$container = (new \DI\ContainerBuilder())->addDefinitions(__DIR__ . '/../api/dependencies.php')->build();
+$container = new \DI\ContainerBuilder()->addDefinitions(__DIR__ . '/../api/dependencies.php')->build();
 $media_collection = $container->get(MediaCollection::class);
 
 // Directory Constants
@@ -64,8 +64,10 @@ foreach ($all_summaries as $item) {
 }
 
 // Supported file extensions
-$supported_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif', 'avif',
-                         'mp4', 'webm', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'm4v'];
+$supported_extensions = [
+    'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif', 'avif',
+    'mp4', 'webm', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'm4v',
+];
 
 // ============================================================
 // Initialize Counters

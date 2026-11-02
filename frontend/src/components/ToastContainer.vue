@@ -52,11 +52,21 @@ function runAction(id: number, action: ToastAction) {
       <ToastTitle v-if="toast.title" class="toast-title">{{ toast.title }}</ToastTitle>
       <ToastDescription class="toast-body">{{ toast.message }}</ToastDescription>
 
-      <button v-if="toast.action" class="toast-action" @click="runAction(toast.id, toast.action)">
+      <button
+        v-if="toast.action"
+        type="button"
+        class="toast-action"
+        @click="runAction(toast.id, toast.action)"
+      >
         {{ toast.action.label }}
       </button>
 
-      <button class="toast-close" aria-label="Dismiss" @click="toastStore.remove(toast.id)">
+      <button
+        type="button"
+        class="toast-close"
+        aria-label="Dismiss"
+        @click="toastStore.remove(toast.id)"
+      >
         <i class="fa-solid fa-xmark" />
       </button>
     </ToastRoot>

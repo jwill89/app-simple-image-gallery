@@ -32,11 +32,8 @@ class DanbooruTagger
     public const string FAILURE_RATE_LIMIT = 'rate_limit';
     public const string FAILURE_NETWORK = 'network';
     public const string FAILURE_UPSTREAM = 'upstream';
-
-    private PDO $db;
-    private DanbooruRulesRepository $rulesRepository;
-    private string $login;
-    private string $apiKey;
+    private readonly string $login;
+    private readonly string $apiKey;
 
     /** One of the FAILURE_* constants, or null when the last call was fine. */
     private ?string $lastFailure = null;
@@ -57,7 +54,7 @@ class DanbooruTagger
     private array $tagCache = [];
 
     /** @var (callable(string): void)|null Optional callback for debug/diagnostic output. */
-    private $debugCallback = null;
+    private $debugCallback;
 
     /**
      * Set a callback for debug output (e.g. for CLI verbose mode).
@@ -75,10 +72,8 @@ class DanbooruTagger
         }
     }
 
-    public function __construct(PDO $db, DanbooruRulesRepository $rulesRepository)
+    public function __construct(private readonly PDO $db, private readonly DanbooruRulesRepository $rulesRepository)
     {
-        $this->db = $db;
-        $this->rulesRepository = $rulesRepository;
         $this->login = Configuration::getDanbooruLogin();
         $this->apiKey = Configuration::getDanbooruApiKey();
     }
@@ -102,12 +97,12 @@ class DanbooruTagger
 
         $stmt = $this->db->query('SELECT category_id, category_name FROM tag_categories');
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $this->categoryCache[$row['category_name']] = (int)$row['category_id'];
+            $this->categoryCache[$row['category_name']] = (int) $row['category_id'];
         }
 
         $stmt = $this->db->query('SELECT tag_id, tag_name FROM tags');
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $this->tagCache[strtolower($row['tag_name'])] = (int)$row['tag_id'];
+            $this->tagCache[strtolower($row['tag_name'])] = (int) $row['tag_id'];
         }
     }
 
@@ -134,7 +129,7 @@ class DanbooruTagger
         $posts = $this->apiGet('/posts.json?tags=md5:' . urlencode($md5));
         $post = null;
 
-        if (!empty($posts)) {
+        if ($posts !== null && $posts !== []) {
             $post = $posts[0];
             $stats['method'] = 'md5';
             $this->debug("  MD5 match: post #{$post['id']}");
@@ -179,7 +174,7 @@ class DanbooruTagger
 
         $post = $this->apiGet('/posts/' . $danbooruPostId . '.json');
 
-        if (!is_array($post) || empty($post['id'])) {
+        if (!is_array($post) || !is_int($post['id'] ?? null)) {
             $this->debug("  Post #{$danbooruPostId} not found");
             $stats['failure'] = $this->lastFailure;
             return $stats;
@@ -208,7 +203,7 @@ class DanbooruTagger
         $categorizedTags = [];
         foreach ($this->categoryMap as $danbooruCatId => $mapping) {
             $field = $mapping['field'];
-            if (empty($post[$field])) {
+            if (!is_string($post[$field] ?? null) || $post[$field] === '') {
                 continue;
             }
             foreach (explode(' ', $post[$field]) as $t) {
@@ -248,7 +243,7 @@ class DanbooruTagger
                     // lastInsertId() returns a stale value from a prior insert,
                     // which would link the wrong tag and inflate tags_created.
                     if ($insertStmt->rowCount() === 1) {
-                        $tagId = (int)$this->db->lastInsertId();
+                        $tagId = (int) $this->db->lastInsertId();
                         $stats['tags_created']++;
                     } else {
                         // Tag already exists — look up its id (case-insensitive).
@@ -256,11 +251,11 @@ class DanbooruTagger
                         $lookup->execute([':name' => $galleryTagName]);
                         $row = $lookup->fetch(PDO::FETCH_ASSOC);
 
-                        if (!$row) {
+                        if ($row === false) {
                             continue;
                         }
 
-                        $tagId = (int)$row['tag_id'];
+                        $tagId = (int) $row['tag_id'];
                     }
 
                     $this->tagCache[$key] = $tagId;
@@ -306,7 +301,7 @@ class DanbooruTagger
         }
 
         $galleryUrl = Configuration::getGalleryUrl();
-        if (empty($galleryUrl)) {
+        if ($galleryUrl === '') {
             $this->debug("  IQDB skip: GALLERY_URL is not configured in .env");
             return null;
         }
@@ -331,9 +326,8 @@ class DanbooruTagger
         $response = curl_exec($ch);
         $curlError = curl_error($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
-        if ($curlError) {
+        if ($curlError !== '') {
             $this->debug("  IQDB curl error: {$curlError}");
             return null;
         }
@@ -349,18 +343,18 @@ class DanbooruTagger
             return null;
         }
 
-        if (empty($results) || !is_array($results)) {
+        if (!is_array($results) || $results === []) {
             $this->debug("  IQDB returned empty results");
             return null;
         }
 
         // Results are sorted by score descending; take the best match
         $best = $results[0];
-        $score = (float)($best['score'] ?? 0);
-        $postId = (int)($best['post']['id'] ?? 0);
+        $score = (float) ($best['score'] ?? 0);
+        $postId = (int) ($best['post']['id'] ?? 0);
 
-        $this->debug("  IQDB best match: post #{$postId}, score {$score}" .
-            (isset($best['post']['md5']) ? ", md5 {$best['post']['md5']}" : ''));
+        $this->debug("  IQDB best match: post #{$postId}, score {$score}"
+            . (isset($best['post']['md5']) ? ", md5 {$best['post']['md5']}" : ''));
 
         if ($score < self::IQDB_SCORE_THRESHOLD) {
             $this->debug("  IQDB score {$score} below threshold " . self::IQDB_SCORE_THRESHOLD);

@@ -5,7 +5,7 @@ namespace Routes\Internal;
 use Slim\Http\ServerRequest as Request;
 use Slim\Http\Response;
 use Gallery\Core\Configuration;
-use OpenApi\Attributes as OA;
+use OpenApi\Spec as OAS;
 
 /**
  * SystemController
@@ -18,15 +18,15 @@ class SystemController extends AbstractController
     /**
      * GET /version — The running application and API contract versions.
      */
-    #[OA\Get(
+    #[OAS\Operation\Get(
         path: '/version',
         summary: 'Application and API version',
         tags: ['System'],
         responses: [
-            new OA\Response(
+            new OAS\Response(
                 response: 200,
                 description: 'Version info',
-                content: new OA\JsonContent(ref: '#/components/schemas/VersionResponse')
+                content: new OAS\MediaType\Json(ref: '#/components/schemas/VersionResponse')
             ),
         ]
     )]
@@ -44,13 +44,13 @@ class SystemController extends AbstractController
      * Serves the spec committed to the repo (regenerated with `composer docs`),
      * so production does not depend on swagger-php being installed.
      */
-    #[OA\Get(
+    #[OAS\Operation\Get(
         path: '/openapi.json',
         summary: 'The OpenAPI 3.1 specification',
         tags: ['System'],
         responses: [
-            new OA\Response(response: 200, description: 'The OpenAPI document (JSON)'),
-            new OA\Response(response: 404, description: 'Spec not generated'),
+            new OAS\Response(response: 200, description: 'The OpenAPI document (JSON)'),
+            new OAS\Response(response: 404, description: 'Spec not generated'),
         ]
     )]
     public function getOpenApiSpec(Request $request, Response $response): Response
@@ -70,12 +70,12 @@ class SystemController extends AbstractController
     /**
      * GET /docs — The interactive API reference (Scalar), pointed at the spec.
      */
-    #[OA\Get(
+    #[OAS\Operation\Get(
         path: '/docs',
         summary: 'Interactive API reference (Scalar)',
         tags: ['System'],
         responses: [
-            new OA\Response(response: 200, description: 'HTML documentation page'),
+            new OAS\Response(response: 200, description: 'HTML documentation page'),
         ]
     )]
     public function getDocs(Request $request, Response $response): Response

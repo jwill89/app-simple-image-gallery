@@ -230,7 +230,7 @@ onMounted(loadRules)
         icon="fa-solid fa-file-import"
         title="Could not load Danbooru import rules."
       >
-        <button class="button" @click="loadRules">
+        <button type="button" class="button" @click="loadRules">
           <span class="icon"><i class="fa-solid fa-rotate-right" /></span>
           <span>Retry</span>
         </button>
@@ -255,7 +255,7 @@ onMounted(loadRules)
             </h2>
           </div>
           <div v-if="authenticated" class="level-right">
-            <button class="button is-primary is-small" @click="openCatModal">
+            <button type="button" class="button is-primary is-small" @click="openCatModal">
               <span class="icon"><i class="fa-solid fa-plus" /></span>
               <span>Add Mapping</span>
             </button>
@@ -270,7 +270,7 @@ onMounted(loadRules)
                 <th>Danbooru Category</th>
                 <th />
                 <th>Gallery Category</th>
-                <th v-if="authenticated" class="has-text-right" style="width: 80px">Actions</th>
+                <th v-if="authenticated" class="col-actions has-text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -302,6 +302,7 @@ onMounted(loadRules)
                 <td v-if="authenticated" class="has-text-right">
                   <AppTooltip label="Remove mapping">
                     <button
+                      type="button"
                       class="button is-small is-danger"
                       aria-label="Remove category mapping"
                       @click="openDeleteCatModal(m)"
@@ -331,7 +332,7 @@ onMounted(loadRules)
             </h2>
           </div>
           <div v-if="authenticated" class="level-right">
-            <button class="button is-primary is-small" @click="openNewTagMapping">
+            <button type="button" class="button is-primary is-small" @click="openNewTagMapping">
               <span class="icon"><i class="fa-solid fa-plus" /></span>
               <span>Add Mapping</span>
             </button>
@@ -345,7 +346,7 @@ onMounted(loadRules)
                 <th>Danbooru Tag</th>
                 <th />
                 <th>Gallery Tag</th>
-                <th v-if="authenticated" class="has-text-right" style="width: 120px">Actions</th>
+                <th v-if="authenticated" class="col-actions is-wide has-text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -361,6 +362,7 @@ onMounted(loadRules)
                   <div class="buttons are-small is-right">
                     <AppTooltip label="Edit mapping">
                       <button
+                        type="button"
                         class="button"
                         aria-label="Edit tag mapping"
                         @click="openEditTagMapping(m)"
@@ -370,6 +372,7 @@ onMounted(loadRules)
                     </AppTooltip>
                     <AppTooltip label="Remove mapping">
                       <button
+                        type="button"
                         class="button is-danger"
                         aria-label="Remove tag mapping"
                         @click="openDeleteTagModal(m)"
@@ -397,9 +400,10 @@ onMounted(loadRules)
         @update:open="showCatModal = $event"
       >
         <div class="field">
-          <label class="label">Danbooru Category ID</label>
+          <label class="label" for="cat-danbooru-id">Danbooru Category ID</label>
           <div class="control">
             <input
+              id="cat-danbooru-id"
               v-model="catDanbooruId"
               class="input"
               type="number"
@@ -413,17 +417,23 @@ onMounted(loadRules)
           </p>
         </div>
         <div class="field">
-          <label class="label">Danbooru Category Name</label>
+          <label class="label" for="cat-danbooru-name">Danbooru Category Name</label>
           <div class="control">
-            <input v-model="catDanbooruName" class="input" type="text" placeholder="e.g. General" />
+            <input
+              id="cat-danbooru-name"
+              v-model="catDanbooruName"
+              class="input"
+              type="text"
+              placeholder="e.g. General"
+            />
           </div>
           <p class="help">A label for this mapping (for your reference only).</p>
         </div>
         <div class="field">
-          <label class="label">Gallery Category</label>
+          <label class="label" for="cat-gallery-category">Gallery Category</label>
           <div class="control">
             <div class="select is-fullwidth">
-              <select v-model="catGalleryCategoryId">
+              <select id="cat-gallery-category" v-model="catGalleryCategoryId">
                 <option value="">Select a category</option>
                 <option
                   v-for="cat in store.categories"
@@ -442,13 +452,16 @@ onMounted(loadRules)
 
         <template #footer>
           <button
+            type="button"
             class="button is-primary"
             :class="{ 'is-loading': catLoading }"
             @click="submitCatMapping"
           >
             Save Mapping
           </button>
-          <button class="button is-ghost" @click="showCatModal = false">Cancel</button>
+          <button type="button" class="button is-ghost" @click="showCatModal = false">
+            Cancel
+          </button>
         </template>
       </AppDialog>
 
@@ -458,9 +471,10 @@ onMounted(loadRules)
         @update:open="showTagModal = $event"
       >
         <div class="field">
-          <label class="label">Danbooru Tag</label>
+          <label class="label" for="tag-danbooru">Danbooru Tag</label>
           <div class="control">
             <input
+              id="tag-danbooru"
               v-model="tagDanbooru"
               class="input"
               type="text"
@@ -471,9 +485,10 @@ onMounted(loadRules)
           <p class="help">The exact tag name as it appears on Danbooru.</p>
         </div>
         <div class="field">
-          <label class="label">Gallery Tag</label>
+          <label class="label" for="tag-gallery">Gallery Tag</label>
           <div class="control">
             <input
+              id="tag-gallery"
               v-model="tagGallery"
               class="input"
               type="text"
@@ -489,13 +504,16 @@ onMounted(loadRules)
 
         <template #footer>
           <button
+            type="button"
             class="button is-primary"
             :class="{ 'is-loading': tagLoading }"
             @click="submitTagMapping"
           >
             {{ tagFormMode === 'edit' ? 'Save Changes' : 'Add Mapping' }}
           </button>
-          <button class="button is-ghost" @click="showTagModal = false">Cancel</button>
+          <button type="button" class="button is-ghost" @click="showTagModal = false">
+            Cancel
+          </button>
         </template>
       </AppDialog>
 
@@ -514,13 +532,16 @@ onMounted(loadRules)
 
         <template #footer>
           <button
+            type="button"
             class="button is-danger"
             :class="{ 'is-loading': deleteCatLoading }"
             @click="confirmDeleteCat"
           >
             Remove
           </button>
-          <button class="button is-ghost" @click="showDeleteCatModal = false">Cancel</button>
+          <button type="button" class="button is-ghost" @click="showDeleteCatModal = false">
+            Cancel
+          </button>
         </template>
       </AppDialog>
 
@@ -539,13 +560,16 @@ onMounted(loadRules)
 
         <template #footer>
           <button
+            type="button"
             class="button is-danger"
             :class="{ 'is-loading': deleteTagLoading }"
             @click="confirmDeleteTag"
           >
             Remove
           </button>
-          <button class="button is-ghost" @click="showDeleteTagModal = false">Cancel</button>
+          <button type="button" class="button is-ghost" @click="showDeleteTagModal = false">
+            Cancel
+          </button>
         </template>
       </AppDialog>
     </div>

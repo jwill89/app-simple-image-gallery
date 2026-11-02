@@ -3,8 +3,9 @@
 namespace Gallery\Collection;
 
 use OutOfBoundsException;
-use Jenssegers\ImageHash\ImageHash;
-use Jenssegers\ImageHash\Implementations\PerceptualHash;
+use Intervention\Image\Drivers\Gd\Driver as GdDriver;
+use Intervention\ImageHash\ImageHasher;
+use Intervention\ImageHash\Strategies\PerceptualStrategy;
 use Gallery\Core\Configuration;
 use Gallery\Core\MediaThumbnail;
 use Gallery\Core\MediaMetadata;
@@ -30,11 +31,8 @@ class MediaCollection
      */
     private const array IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif', 'avif'];
 
-    private MediaStorage $storage;
-
-    public function __construct(MediaStorage $storage)
+    public function __construct(private readonly MediaStorage $storage)
     {
-        $this->storage = $storage;
     }
 
     /**
@@ -80,7 +78,7 @@ class MediaCollection
      */
     public function getForPage(int $page_number, ?int $items_per_page = null): array
     {
-        $items_per_page = $items_per_page ?? Configuration::DEFAULT_PER_PAGE;
+        $items_per_page ??= Configuration::DEFAULT_PER_PAGE;
         return $this->storage->retrieveForPage($page_number, $items_per_page);
     }
 
@@ -92,7 +90,7 @@ class MediaCollection
      */
     public function getWithTags(array $tag_ids, int $page_number, ?int $items_per_page = null): array
     {
-        $items_per_page = $items_per_page ?? Configuration::DEFAULT_PER_PAGE;
+        $items_per_page ??= Configuration::DEFAULT_PER_PAGE;
         return $this->storage->retrieveWithTags($tag_ids, $page_number, $items_per_page);
     }
 
@@ -105,7 +103,7 @@ class MediaCollection
      */
     public function getWithTagFilter(array $include_tag_ids, array $exclude_tag_ids, int $page_number, ?int $items_per_page = null): array
     {
-        $items_per_page = $items_per_page ?? Configuration::DEFAULT_PER_PAGE;
+        $items_per_page ??= Configuration::DEFAULT_PER_PAGE;
         return $this->storage->retrieveWithTagFilter($include_tag_ids, $exclude_tag_ids, $page_number, $items_per_page);
     }
 
@@ -135,7 +133,7 @@ class MediaCollection
      */
     public function getUntagged(int $page_number, ?int $items_per_page = null): array
     {
-        $items_per_page = $items_per_page ?? Configuration::DEFAULT_PER_PAGE;
+        $items_per_page ??= Configuration::DEFAULT_PER_PAGE;
         return $this->storage->retrieveUntaggedForPage($page_number, $items_per_page);
     }
 
@@ -198,7 +196,7 @@ class MediaCollection
      */
     public function createThumbnail(Media $media, ?string $source_dir = null): void
     {
-        $source_dir = $source_dir ?? self::MEDIA_DIRECTORY;
+        $source_dir ??= self::MEDIA_DIRECTORY;
         $source_path = $source_dir . $media->file_name;
         $base_name = pathinfo($media->file_name, PATHINFO_FILENAME);
         $thumb_dir = self::MEDIA_DIRECTORY_THUMBNAILS;
@@ -217,8 +215,13 @@ class MediaCollection
     }
 
     /**
-     * Generates a fingerprint for an image media item.
-     * Only applicable to images — videos don't get fingerprinted.
+     * Generates a fingerprint for an image media item: a 64-bit perceptual hash
+     * as a string of 0s and 1s. Only applicable to images — videos don't get
+     * fingerprinted.
+     *
+     * Always hashed through GD, never whichever of GD or Imagick is loaded: the
+     * two resample differently, and a fingerprint is only comparable with ones
+     * computed the same way.
      */
     public function createFingerprint(Media $media, ?string $source_dir = null): string
     {
@@ -226,10 +229,9 @@ class MediaCollection
             return '';
         }
 
-        $source_dir = $source_dir ?? self::MEDIA_DIRECTORY;
-        $hasher = new ImageHash(new PerceptualHash());
-        $hash = $hasher->hash($source_dir . $media->file_name);
-        $bits = $hash->toBits();
+        $source_dir ??= self::MEDIA_DIRECTORY;
+        $hasher = ImageHasher::create(GdDriver::class, new PerceptualStrategy());
+        $bits = $hasher->hash($source_dir . $media->file_name)->toBits();
         $media->setBitsFingerprint($bits);
 
         return $bits;
@@ -262,7 +264,7 @@ class MediaCollection
     private static function isAnimatedGif(string $filePath): bool
     {
         $fh = @fopen($filePath, 'rb');
-        if (!$fh) {
+        if ($fh === false) {
             return false;
         }
 
@@ -292,10 +294,10 @@ class MediaCollection
      */
     public function save(Media $media, ?string $source_dir = null): int
     {
-        $source_dir = $source_dir ?? self::MEDIA_DIRECTORY;
+        $source_dir ??= self::MEDIA_DIRECTORY;
 
         // Generate fingerprint for images if not already set
-        if ($media->isImage() && empty($media->bits_fingerprint)) {
+        if ($media->isImage() && $media->bits_fingerprint === '') {
             $this->createFingerprint($media, $source_dir);
         }
 

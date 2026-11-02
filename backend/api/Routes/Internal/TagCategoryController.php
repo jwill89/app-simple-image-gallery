@@ -7,7 +7,7 @@ use Slim\Http\Response;
 use Gallery\Core\CacheGroup;
 use Gallery\Repository\TagCategoryRepository;
 use Gallery\Structure\TagCategory;
-use OpenApi\Attributes as OA;
+use OpenApi\Spec as OAS;
 
 /**
  * TagCategoryController
@@ -31,23 +31,20 @@ class TagCategoryController extends AbstractController
         'neutral', 'rose', 'amber', 'emerald', 'sky', 'violet', 'teal', 'orange', 'lime',
     ];
 
-    private TagCategoryRepository $category_repository;
-
-    public function __construct(TagCategoryRepository $category_repository)
+    public function __construct(private readonly TagCategoryRepository $category_repository)
     {
         parent::__construct();
-        $this->category_repository = $category_repository;
     }
 
     /**
      * GET /tag-categories — All tag categories.
      */
-    #[OA\Get(
+    #[OAS\Operation\Get(
         path: '/tag-categories',
         summary: 'List tag categories',
         tags: ['Tag Categories'],
         responses: [
-            new OA\Response(response: 200, description: 'All categories', content: new OA\JsonContent(type: 'array', items: new OA\Items(ref: '#/components/schemas/TagCategory'))),
+            new OAS\Response(response: 200, description: 'All categories', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/TagCategory'))),
         ]
     )]
     public function getCategories(Request $request, Response $response): Response
@@ -59,23 +56,23 @@ class TagCategoryController extends AbstractController
      * POST /tag-categories — Create a tag category. Returns the created category.
      * Body: { category_name, color?, description?, sort_order? }
      */
-    #[OA\Post(
+    #[OAS\Operation\Post(
         path: '/tag-categories',
         summary: 'Create a tag category',
         tags: ['Tag Categories'],
-        security: [['bearerAuth' => []]],
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(
             required: ['category_name'],
             properties: [
-                new OA\Property(property: 'category_name', type: 'string'),
-                new OA\Property(property: 'color', type: 'string'),
-                new OA\Property(property: 'description', type: 'string'),
-                new OA\Property(property: 'sort_order', type: 'integer'),
+                new OAS\Property(property: 'category_name', schema: new OAS\Schema(type: 'string')),
+                new OAS\Property(property: 'color', schema: new OAS\Schema(type: 'string')),
+                new OAS\Property(property: 'description', schema: new OAS\Schema(type: 'string')),
+                new OAS\Property(property: 'sort_order', schema: new OAS\Schema(type: 'integer')),
             ]
         )),
         responses: [
-            new OA\Response(response: 201, description: 'The created category', content: new OA\JsonContent(ref: '#/components/schemas/TagCategory')),
-            new OA\Response(response: 400, description: 'Validation error', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 201, description: 'The created category', content: new OAS\MediaType\Json(ref: '#/components/schemas/TagCategory')),
+            new OAS\Response(response: 400, description: 'Validation error', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function addCategory(Request $request, Response $response): Response
@@ -100,24 +97,24 @@ class TagCategoryController extends AbstractController
      * PUT /tag-categories/{category_id} — Update a tag category.
      * Returns the updated category. Body: same fields as create.
      */
-    #[OA\Put(
+    #[OAS\Operation\Put(
         path: '/tag-categories/{category_id}',
         summary: 'Update a tag category',
         tags: ['Tag Categories'],
-        security: [['bearerAuth' => []]],
-        parameters: [new OA\Parameter(name: 'category_id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
-        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        parameters: [new OAS\Parameter(name: 'category_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(
             required: ['category_name'],
             properties: [
-                new OA\Property(property: 'category_name', type: 'string'),
-                new OA\Property(property: 'color', type: 'string'),
-                new OA\Property(property: 'description', type: 'string'),
-                new OA\Property(property: 'sort_order', type: 'integer'),
+                new OAS\Property(property: 'category_name', schema: new OAS\Schema(type: 'string')),
+                new OAS\Property(property: 'color', schema: new OAS\Schema(type: 'string')),
+                new OAS\Property(property: 'description', schema: new OAS\Schema(type: 'string')),
+                new OAS\Property(property: 'sort_order', schema: new OAS\Schema(type: 'integer')),
             ]
         )),
         responses: [
-            new OA\Response(response: 200, description: 'The updated category', content: new OA\JsonContent(ref: '#/components/schemas/TagCategory')),
-            new OA\Response(response: 404, description: 'CategoryNotFound', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'The updated category', content: new OAS\MediaType\Json(ref: '#/components/schemas/TagCategory')),
+            new OAS\Response(response: 404, description: 'CategoryNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function editCategory(Request $request, Response $response, array $args): Response
@@ -150,16 +147,16 @@ class TagCategoryController extends AbstractController
     /**
      * DELETE /tag-categories/{category_id} — Delete a category that has no tags.
      */
-    #[OA\Delete(
+    #[OAS\Operation\Delete(
         path: '/tag-categories/{category_id}',
         summary: 'Delete a tag category',
         tags: ['Tag Categories'],
-        security: [['bearerAuth' => []]],
-        parameters: [new OA\Parameter(name: 'category_id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        parameters: [new OAS\Parameter(name: 'category_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
-            new OA\Response(response: 204, description: 'Deleted'),
-            new OA\Response(response: 400, description: 'CategoryInUse', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
-            new OA\Response(response: 404, description: 'CategoryNotFound', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 204, description: 'Deleted'),
+            new OAS\Response(response: 400, description: 'CategoryInUse', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'CategoryNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function deleteCategory(Request $request, Response $response, array $args): Response
@@ -204,7 +201,6 @@ class TagCategoryController extends AbstractController
      * conflict check.
      *
      * @param array<string, mixed> $params
-     * @return TagCategory|Response
      */
     private function buildValidatedCategory(Response $response, array $params, ?TagCategory $existing = null): TagCategory|Response
     {
@@ -213,7 +209,7 @@ class TagCategoryController extends AbstractController
         $description = trim($params['description'] ?? '');
         $sortOrder = (int) ($params['sort_order'] ?? 0);
 
-        if (empty($name)) {
+        if ($name === '') {
             return $this->error($response, 'InvalidInput', 400, 'Category name is required.');
         }
         if (mb_strlen($name) > self::MAX_CATEGORY_NAME_LENGTH) {

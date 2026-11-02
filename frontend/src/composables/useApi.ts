@@ -176,7 +176,7 @@ export function useApi() {
     const token = getAuthToken()
     const headers: HeadersInit = {}
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`
+      headers.Authorization = `Bearer ${token}`
     }
 
     const response = await fetch(`${API_BASE_URL}${url}`, {

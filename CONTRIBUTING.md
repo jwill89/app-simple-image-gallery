@@ -17,8 +17,8 @@ it. See [AGENTS.md §2](AGENTS.md) for the full tree.
 
 ## Prerequisites
 
-- **PHP 8.5+** with `pdo_sqlite`, `curl`, and **GD** (WebP, ideally AVIF).
-- **Composer** and **Node.js** (with npm).
+- **PHP 8.5+** with `pdo_sqlite`, `curl`, `fileinfo`, `mbstring`, and **GD** (WebP, ideally AVIF).
+- **Composer** and **Node.js 26+** (with npm).
 - **`ffmpeg`** on your `PATH` (video/animated thumbnails).
 
 ## Local setup
@@ -51,18 +51,24 @@ npm run dev             # Vite dev server on :5173, proxies /api and /media to h
 
 CI runs these checks on every push and pull request — please run them locally first.
 
-**PHP — PSR-12** (enforced by `phpcs`; config in `backend/phpcs.xml.dist`):
+**PHP — PER-CS 3.0** (PSR-12's successor, enforced by PHP CS Fixer; config in
+`backend/.php-cs-fixer.dist.php`), plus static analysis, Rector and dependency checks:
 
 ```bash
 cd backend
-composer lint           # phpcs: must report 0 errors (line-length warnings are allowed)
-composer lint:fix       # phpcbf: auto-fix most violations
+composer lint           # PHP CS Fixer: must report no files to fix
+composer lint:fix       # apply the fixes
+composer analyse        # PHPStan level 8 + strict and deprecation rules: must report no errors
+composer rector:check   # Rector (PHP 8.5 idioms, dead code): must propose no changes
+composer rector         # apply Rector's changes (review them before committing)
+composer deps:check     # composer-unused + composer-require-checker
+composer normalize      # keep composer.json in normalized order (CI runs --dry-run)
 ```
 
 Keep SQL in the `Repository`/`Storage` layer, return responses via the
 `AbstractController` helpers (`success()` / `created()` / `noContent()` / `error()`),
 and follow the layered flow described in AGENTS.md. **Annotate every new/changed
-endpoint** with `#[OA\...]` attributes (and structure classes with `#[OA\Schema]`),
+endpoint** with `#[OAS\...]` attributes (and structure classes with `#[OAS\Schema]`),
 then regenerate the committed spec:
 
 ```bash
@@ -74,8 +80,11 @@ composer docs           # regenerate backend/openapi.json — CI fails if it dri
 
 ```bash
 cd frontend
-npm run lint            # ESLint (type-checked): must report 0 errors
+npm run lint            # ESLint (type-checked, incl. template accessibility): must report 0 errors
 npm run lint:fix        # auto-fix what it can
+npm run lint:css        # Stylelint: standard rules + the palette rule
+npm run lint:css:fix    # auto-fix what it can
+npm run knip            # Knip: no unused files, exports or dependencies
 npm run format          # Prettier: format the frontend
 npm run format:check    # Prettier: verify formatting (CI gate)
 npm run build           # vue-tsc type-check + vite build; must succeed with no type errors
@@ -83,9 +92,12 @@ npm run build           # vue-tsc type-check + vite build; must succeed with no 
 
 The lint rules and Prettier config are shared across projects via the
 **[@jwill89/eslint-config](https://github.com/jwill89/eslint-config)** git submodule at
-`frontend/eslint-config` (Vue + TypeScript **strictTypeChecked**). `eslint.config.ts` and
-`prettier.config.js` just re-export it. Change rules **in the submodule** (commit + push there,
-then bump the submodule pointer here) — not in the consuming project. Conventions it enforces:
+`frontend/eslint-config` (Vue + TypeScript **strictTypeChecked**). `prettier.config.js`
+re-exports it; `eslint.config.ts` spreads it and adds this project's own rules (template
+accessibility, the Vue style-guide rules behind the conventions in AGENTS.md §8,
+typescript-eslint's stylistic set, no `fetch` outside `useApi.ts`). Change a rule every
+project should get **in the submodule** (commit + push there, then bump the submodule pointer
+here); keep project-specific ones in `eslint.config.ts`. Conventions the rules enforce:
 prefer `catch (e)` (typed `unknown`) with the `getErrorMessage`/`getErrorStatus`/`getErrorCode`
 helpers from `composables/useApi.ts` over `catch (e: any)`; `void`-prefix intentional
 fire-and-forget promises (`void router.push(...)`); prefix genuinely-unused vars/args with `_`.

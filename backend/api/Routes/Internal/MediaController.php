@@ -11,7 +11,7 @@ use Gallery\Core\ResponseCache;
 use Gallery\Collection\MediaCollection;
 use Gallery\Repository\TagRepository;
 use Gallery\Structure\Tag;
-use OpenApi\Attributes as OA;
+use OpenApi\Spec as OAS;
 
 /**
  * MediaController
@@ -22,38 +22,31 @@ use OpenApi\Attributes as OA;
  */
 class MediaController extends AbstractController
 {
-    private MediaCollection $media_collection;
-    private TagRepository $tag_repository;
-    private DanbooruTagger $tagger;
-
     public function __construct(
-        MediaCollection $media_collection,
-        TagRepository $tag_repository,
-        DanbooruTagger $tagger
-    ) {
-        parent::__construct();
-        $this->media_collection = $media_collection;
-        $this->tag_repository = $tag_repository;
+        private readonly MediaCollection $media_collection,
+        private readonly TagRepository $tag_repository,
         // Lazy: only warms its DB caches on first Danbooru import, so injecting
         // it for every media request stays cheap.
-        $this->tagger = $tagger;
+        private readonly DanbooruTagger $tagger
+    ) {
+        parent::__construct();
     }
 
     /**
      * GET /media/page/{page}[/{per_page}] — A page of media items.
      * Returns { items, total_pages, current_page }. per_page is clamped to 1..200.
      */
-    #[OA\Get(
+    #[OAS\Operation\Get(
         path: '/media/page/{page}/{per_page}',
         summary: 'A page of media',
         tags: ['Media'],
         parameters: [
-            new OA\Parameter(name: 'page', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
-            new OA\Parameter(name: 'per_page', in: 'path', required: true, schema: new OA\Schema(type: 'integer', maximum: 200, minimum: 1)),
+            new OAS\Parameter(name: 'page', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'per_page', in: 'path', required: true, schema: new OAS\Schema(type: 'integer', maximum: 200, minimum: 1)),
         ],
         responses: [
-            new OA\Response(response: 200, description: 'A page of media', content: new OA\JsonContent(ref: '#/components/schemas/MediaPage')),
-            new OA\Response(response: 400, description: 'InvalidPageNumber', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'A page of media', content: new OAS\MediaType\Json(ref: '#/components/schemas/MediaPage')),
+            new OAS\Response(response: 400, description: 'InvalidPageNumber', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function getItemsForPage(Request $request, Response $response, array $args): Response
@@ -78,17 +71,17 @@ class MediaController extends AbstractController
     /**
      * GET /media/untagged/{page}[/{per_page}] — A page of media with no tags.
      */
-    #[OA\Get(
+    #[OAS\Operation\Get(
         path: '/media/untagged/{page}/{per_page}',
         summary: 'A page of untagged media',
         tags: ['Media'],
         parameters: [
-            new OA\Parameter(name: 'page', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
-            new OA\Parameter(name: 'per_page', in: 'path', required: true, schema: new OA\Schema(type: 'integer', maximum: 200, minimum: 1)),
+            new OAS\Parameter(name: 'page', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'per_page', in: 'path', required: true, schema: new OAS\Schema(type: 'integer', maximum: 200, minimum: 1)),
         ],
         responses: [
-            new OA\Response(response: 200, description: 'A page of untagged media', content: new OA\JsonContent(ref: '#/components/schemas/MediaPage')),
-            new OA\Response(response: 400, description: 'InvalidPageNumber', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'A page of untagged media', content: new OAS\MediaType\Json(ref: '#/components/schemas/MediaPage')),
+            new OAS\Response(response: 400, description: 'InvalidPageNumber', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function getUntaggedItems(Request $request, Response $response, array $args): Response
@@ -115,18 +108,18 @@ class MediaController extends AbstractController
      * filtered by a comma-separated tag list; a leading '-' excludes a tag
      * (e.g. "cat,-dog"). Returns { items, total_pages, current_page }.
      */
-    #[OA\Get(
+    #[OAS\Operation\Get(
         path: '/media/with-tags/{tag_list}/{page}/{per_page}',
         summary: 'A page of media filtered by tags',
         tags: ['Media'],
         parameters: [
-            new OA\Parameter(name: 'tag_list', in: 'path', required: true, description: "Comma-separated tag names; a leading '-' excludes (e.g. cat,-dog).", schema: new OA\Schema(type: 'string')),
-            new OA\Parameter(name: 'page', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
-            new OA\Parameter(name: 'per_page', in: 'path', required: true, schema: new OA\Schema(type: 'integer', maximum: 200, minimum: 1)),
+            new OAS\Parameter(name: 'tag_list', in: 'path', required: true, description: "Comma-separated tag names; a leading '-' excludes (e.g. cat,-dog).", schema: new OAS\Schema(type: 'string')),
+            new OAS\Parameter(name: 'page', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'per_page', in: 'path', required: true, schema: new OAS\Schema(type: 'integer', maximum: 200, minimum: 1)),
         ],
         responses: [
-            new OA\Response(response: 200, description: 'A page of media', content: new OA\JsonContent(ref: '#/components/schemas/MediaPage')),
-            new OA\Response(response: 404, description: 'NoValidTagsSupplied', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'A page of media', content: new OAS\MediaType\Json(ref: '#/components/schemas/MediaPage')),
+            new OAS\Response(response: 404, description: 'NoValidTagsSupplied', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function getItemsWithTags(Request $request, Response $response, array $args): Response
@@ -137,7 +130,7 @@ class MediaController extends AbstractController
 
         $include_names = [];
         $exclude_names = [];
-        foreach (array_map('trim', explode(',', $tag_list_raw)) as $name) {
+        foreach (array_map(trim(...), explode(',', $tag_list_raw)) as $name) {
             if ($name === '') {
                 continue;
             }
@@ -154,12 +147,12 @@ class MediaController extends AbstractController
         $include_ids = $this->resolveTagIds($include_names, $this->tag_repository);
         $exclude_ids = $this->resolveTagIds($exclude_names, $this->tag_repository);
 
-        if (empty($include_ids) && empty($exclude_ids)) {
+        if ($include_ids === [] && $exclude_ids === []) {
             return $this->error($response, 'NoValidTagsSupplied', 404, 'None of the specified tag names matched existing tags.');
         }
 
         return $this->cachedSuccess($response, CacheGroup::Media, "tags:{$tag_list_raw}:{$page}:{$per_page}", ResponseCache::TTL_SHORT, function () use ($include_ids, $exclude_ids, $page, $per_page) {
-            if (!empty($exclude_ids)) {
+            if ($exclude_ids !== []) {
                 $items = $this->media_collection->getWithTagFilter($include_ids, $exclude_ids, $page, $per_page);
                 $total = $this->media_collection->totalWithTagFilter($include_ids, $exclude_ids);
             } else {
@@ -184,14 +177,14 @@ class MediaController extends AbstractController
     /**
      * GET /media/{media_id} — A single media item by ID.
      */
-    #[OA\Get(
+    #[OAS\Operation\Get(
         path: '/media/{media_id}',
         summary: 'A single media item',
         tags: ['Media'],
-        parameters: [new OA\Parameter(name: 'media_id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        parameters: [new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
-            new OA\Response(response: 200, description: 'The media item', content: new OA\JsonContent(ref: '#/components/schemas/Media')),
-            new OA\Response(response: 404, description: 'MediaNotFound', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'The media item', content: new OAS\MediaType\Json(ref: '#/components/schemas/Media')),
+            new OAS\Response(response: 404, description: 'MediaNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function getItem(Request $request, Response $response, array $args): Response
@@ -211,13 +204,13 @@ class MediaController extends AbstractController
     /**
      * GET /media/random — A single random media item.
      */
-    #[OA\Get(
+    #[OAS\Operation\Get(
         path: '/media/random',
         summary: 'A random media item',
         tags: ['Media'],
         responses: [
-            new OA\Response(response: 200, description: 'A random media item', content: new OA\JsonContent(ref: '#/components/schemas/Media')),
-            new OA\Response(response: 404, description: 'MediaNotFound', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'A random media item', content: new OAS\MediaType\Json(ref: '#/components/schemas/Media')),
+            new OAS\Response(response: 404, description: 'MediaNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function getRandomItem(Request $request, Response $response): Response
@@ -232,19 +225,17 @@ class MediaController extends AbstractController
     /**
      * GET /media/count — The total media count, as { count }.
      */
-    #[OA\Get(
+    #[OAS\Operation\Get(
         path: '/media/count',
         summary: 'Total media count',
         tags: ['Media'],
         responses: [
-            new OA\Response(response: 200, description: 'The count', content: new OA\JsonContent(ref: '#/components/schemas/Count')),
+            new OAS\Response(response: 200, description: 'The count', content: new OAS\MediaType\Json(ref: '#/components/schemas/Count')),
         ]
     )]
     public function getCount(Request $request, Response $response): Response
     {
-        return $this->cachedSuccess($response, CacheGroup::Media, 'count', ResponseCache::TTL_MEDIUM, function () {
-            return ['count' => $this->media_collection->totalMedia()];
-        });
+        return $this->cachedSuccess($response, CacheGroup::Media, 'count', ResponseCache::TTL_MEDIUM, fn() => ['count' => $this->media_collection->totalMedia()]);
     }
 
     /**
@@ -252,20 +243,20 @@ class MediaController extends AbstractController
      * Body: { ids: int[] } (max 200). Missing IDs are silently skipped.
      * A public batched read (uses POST only to carry a large id list).
      */
-    #[OA\Post(
+    #[OAS\Operation\Post(
         path: '/media/by-ids',
         summary: 'Batch-fetch media by IDs',
         tags: ['Media'],
-        requestBody: new OA\RequestBody(
+        requestBody: new OAS\RequestBody(
             required: true,
-            content: new OA\JsonContent(
+            content: new OAS\MediaType\Json(
                 required: ['ids'],
-                properties: [new OA\Property(property: 'ids', type: 'array', items: new OA\Items(type: 'integer'))]
+                properties: [new OAS\Property(property: 'ids', schema: new OAS\Schema(type: 'array', items: new OAS\Schema\Items(type: 'integer')))]
             )
         ),
         responses: [
-            new OA\Response(response: 200, description: 'Matching media items', content: new OA\JsonContent(type: 'array', items: new OA\Items(ref: '#/components/schemas/Media'))),
-            new OA\Response(response: 400, description: 'InvalidInput', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'Matching media items', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/Media'))),
+            new OAS\Response(response: 400, description: 'InvalidInput', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function getItemsByIds(Request $request, Response $response): Response
@@ -273,14 +264,14 @@ class MediaController extends AbstractController
         $params = $this->parsedBody($request);
         $rawIds = $params['ids'] ?? [];
 
-        if (!is_array($rawIds) || empty($rawIds)) {
+        if (!is_array($rawIds) || $rawIds === []) {
             return $this->error($response, 'InvalidInput', 400, 'A non-empty array of media IDs is required.');
         }
 
         // Cap at 200 to prevent abuse
-        $ids = array_slice(array_filter(array_map('intval', $rawIds), fn($id) => $id > 0), 0, 200);
+        $ids = array_slice(array_filter(array_map(intval(...), $rawIds), fn($id) => $id > 0), 0, 200);
 
-        if (empty($ids)) {
+        if ($ids === []) {
             return $this->error($response, 'InvalidInput', 400, 'No valid media IDs were provided.');
         }
 
@@ -290,15 +281,15 @@ class MediaController extends AbstractController
     /**
      * DELETE /media/{media_id} — Delete a media item (DB row, file, thumbnails).
      */
-    #[OA\Delete(
+    #[OAS\Operation\Delete(
         path: '/media/{media_id}',
         summary: 'Delete a media item',
         tags: ['Media'],
-        security: [['bearerAuth' => []]],
-        parameters: [new OA\Parameter(name: 'media_id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        parameters: [new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
-            new OA\Response(response: 204, description: 'Deleted'),
-            new OA\Response(response: 404, description: 'MediaNotFound', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 204, description: 'Deleted'),
+            new OAS\Response(response: 404, description: 'MediaNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function deleteItem(Request $request, Response $response, array $args): Response
@@ -330,21 +321,21 @@ class MediaController extends AbstractController
      * POST /media/bulk-delete — Delete one or more media items by ID.
      * Body: { media_ids: int[] }. Returns the deleted and failed ID lists.
      */
-    #[OA\Post(
+    #[OAS\Operation\Post(
         path: '/media/bulk-delete',
         summary: 'Bulk-delete media items',
         tags: ['Media'],
-        security: [['bearerAuth' => []]],
-        requestBody: new OA\RequestBody(
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        requestBody: new OAS\RequestBody(
             required: true,
-            content: new OA\JsonContent(
+            content: new OAS\MediaType\Json(
                 required: ['media_ids'],
-                properties: [new OA\Property(property: 'media_ids', type: 'array', items: new OA\Items(type: 'integer'))]
+                properties: [new OAS\Property(property: 'media_ids', schema: new OAS\Schema(type: 'array', items: new OAS\Schema\Items(type: 'integer')))]
             )
         ),
         responses: [
-            new OA\Response(response: 200, description: 'Deletion outcome', content: new OA\JsonContent(ref: '#/components/schemas/BulkDeleteResult')),
-            new OA\Response(response: 400, description: 'InvalidInput', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'Deletion outcome', content: new OAS\MediaType\Json(ref: '#/components/schemas/BulkDeleteResult')),
+            new OAS\Response(response: 400, description: 'InvalidInput', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function bulkDelete(Request $request, Response $response): Response
@@ -352,7 +343,7 @@ class MediaController extends AbstractController
         $params = $this->parsedBody($request);
         $media_ids = $params['media_ids'] ?? [];
 
-        if (empty($media_ids) || !is_array($media_ids)) {
+        if (!is_array($media_ids) || $media_ids === []) {
             return $this->error($response, 'InvalidInput', 400, 'A list of media IDs to delete is required.');
         }
 
@@ -375,12 +366,12 @@ class MediaController extends AbstractController
                 } else {
                     $failed[] = $id;
                 }
-            } catch (\Throwable $e) {
+            } catch (\Throwable) {
                 $failed[] = $id;
             }
         }
 
-        if (!empty($deleted)) {
+        if ($deleted !== []) {
             $this->invalidateCache(CacheGroup::Media, CacheGroup::Tags);
         }
 
@@ -394,14 +385,14 @@ class MediaController extends AbstractController
     /**
      * GET /media/{media_id}/tags — Tags applied to a media item. Cached.
      */
-    #[OA\Get(
+    #[OAS\Operation\Get(
         path: '/media/{media_id}/tags',
         summary: "A media item's tags",
         tags: ['Media'],
-        parameters: [new OA\Parameter(name: 'media_id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        parameters: [new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
-            new OA\Response(response: 200, description: 'The tags', content: new OA\JsonContent(type: 'array', items: new OA\Items(ref: '#/components/schemas/Tag'))),
-            new OA\Response(response: 404, description: 'MediaDoesNotExist', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'The tags', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/Tag'))),
+            new OAS\Response(response: 404, description: 'MediaDoesNotExist', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function getMediaTags(Request $request, Response $response, array $args): Response
@@ -418,9 +409,7 @@ class MediaController extends AbstractController
             return $this->error($response, 'MediaDoesNotExist', 404, 'The media item could not be found.');
         }
 
-        return $this->cachedSuccess($response, CacheGroup::Tags, "for:media:{$media_id}", ResponseCache::TTL_SHORT, function () use ($media) {
-            return $this->tag_repository->getTagsForMedia($media);
-        });
+        return $this->cachedSuccess($response, CacheGroup::Tags, "for:media:{$media_id}", ResponseCache::TTL_SHORT, fn() => $this->tag_repository->getTagsForMedia($media));
     }
 
     /**
@@ -428,21 +417,21 @@ class MediaController extends AbstractController
      * resolved). Body: { tag_ids: int[] }. Returns the item's updated tag list.
      * Public (anyone may tag).
      */
-    #[OA\Patch(
+    #[OAS\Operation\Patch(
         path: '/media/{media_id}/tags',
         summary: 'Add tags to a media item',
         tags: ['Media'],
-        parameters: [new OA\Parameter(name: 'media_id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
-        requestBody: new OA\RequestBody(
+        parameters: [new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        requestBody: new OAS\RequestBody(
             required: true,
-            content: new OA\JsonContent(
+            content: new OAS\MediaType\Json(
                 required: ['tag_ids'],
-                properties: [new OA\Property(property: 'tag_ids', type: 'array', items: new OA\Items(type: 'integer'))]
+                properties: [new OAS\Property(property: 'tag_ids', schema: new OAS\Schema(type: 'array', items: new OAS\Schema\Items(type: 'integer')))]
             )
         ),
         responses: [
-            new OA\Response(response: 200, description: 'Updated tag list', content: new OA\JsonContent(type: 'array', items: new OA\Items(ref: '#/components/schemas/Tag'))),
-            new OA\Response(response: 404, description: 'MediaDoesNotExist / TagDoesNotExist', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'Updated tag list', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/Tag'))),
+            new OAS\Response(response: 404, description: 'MediaDoesNotExist / TagDoesNotExist', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function addMediaTags(Request $request, Response $response, array $args): Response
@@ -461,16 +450,16 @@ class MediaController extends AbstractController
             return $this->error($response, 'MediaDoesNotExist', 404, 'The media item could not be found.');
         }
 
-        $tag_ids = array_filter(array_map('intval', (array) $tag_ids_raw), fn($id) => $id > 0);
+        $tag_ids = array_filter(array_map(intval(...), (array) $tag_ids_raw), fn($id) => $id > 0);
 
-        if (empty($tag_ids)) {
+        if ($tag_ids === []) {
             return $this->error($response, 'InvalidTagList', 400, 'At least one valid tag must be provided.');
         }
 
         // Validate that every supplied tag exists in a single query (no N+1).
         $existing_ids = $this->tag_repository->getExistingIds($tag_ids);
         $missing = array_values(array_diff($tag_ids, $existing_ids));
-        if (!empty($missing)) {
+        if ($missing !== []) {
             return $this->error($response, 'TagDoesNotExist', 404, "Tag #{$missing[0]} does not exist.");
         }
 
@@ -491,17 +480,17 @@ class MediaController extends AbstractController
      * DELETE /media/{media_id}/tags/{tag_id} — Remove a tag from a media item.
      * Returns the item's updated tag list. Public (anyone may tag).
      */
-    #[OA\Delete(
+    #[OAS\Operation\Delete(
         path: '/media/{media_id}/tags/{tag_id}',
         summary: 'Remove a tag from a media item',
         tags: ['Media'],
         parameters: [
-            new OA\Parameter(name: 'media_id', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
-            new OA\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
         ],
         responses: [
-            new OA\Response(response: 200, description: 'Updated tag list', content: new OA\JsonContent(type: 'array', items: new OA\Items(ref: '#/components/schemas/Tag'))),
-            new OA\Response(response: 404, description: 'MediaDoesNotExist / CouldNotFindTag', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'Updated tag list', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/Tag'))),
+            new OAS\Response(response: 404, description: 'MediaDoesNotExist / CouldNotFindTag', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function removeMediaTag(Request $request, Response $response, array $args): Response
@@ -546,22 +535,22 @@ class MediaController extends AbstractController
      * media item. Body: { danbooru_post_id? }. With a post ID, imports directly;
      * otherwise auto-looks-up by MD5 hash then IQDB visual similarity.
      */
-    #[OA\Post(
+    #[OAS\Operation\Post(
         path: '/media/{media_id}/danbooru-tags',
         summary: 'Import Danbooru tags for a media item',
         tags: ['Media'],
-        security: [['bearerAuth' => []]],
-        parameters: [new OA\Parameter(name: 'media_id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
-        requestBody: new OA\RequestBody(
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        parameters: [new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        requestBody: new OAS\RequestBody(
             required: false,
-            content: new OA\JsonContent(properties: [new OA\Property(property: 'danbooru_post_id', type: 'integer', nullable: true)])
+            content: new OAS\MediaType\Json(properties: [new OAS\Property(property: 'danbooru_post_id', schema: new OAS\Schema(type: 'integer', nullable: true))])
         ),
         responses: [
-            new OA\Response(response: 200, description: 'Import result', content: new OA\JsonContent(ref: '#/components/schemas/DanbooruFetchResult')),
-            new OA\Response(response: 404, description: 'MediaDoesNotExist / NotFoundOnDanbooru', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
-            new OA\Response(response: 429, description: 'DanbooruRateLimited', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
-            new OA\Response(response: 500, description: 'DanbooruNotConfigured / DanbooruAuthFailed', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
-            new OA\Response(response: 503, description: 'DanbooruUnreachable / DanbooruUnavailable', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'Import result', content: new OAS\MediaType\Json(ref: '#/components/schemas/DanbooruFetchResult')),
+            new OAS\Response(response: 404, description: 'MediaDoesNotExist / NotFoundOnDanbooru', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 429, description: 'DanbooruRateLimited', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 500, description: 'DanbooruNotConfigured / DanbooruAuthFailed', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 503, description: 'DanbooruUnreachable / DanbooruUnavailable', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function fetchDanbooruTags(Request $request, Response $response, array $args): Response

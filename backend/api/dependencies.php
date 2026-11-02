@@ -15,5 +15,5 @@ declare(strict_types=1);
 use Gallery\Core\DatabaseConnection;
 
 return [
-    PDO::class => static fn(): PDO => DatabaseConnection::getInstance(),
+    PDO::class => DatabaseConnection::getInstance(...),
 ];

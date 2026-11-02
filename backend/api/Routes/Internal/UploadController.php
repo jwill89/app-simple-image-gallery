@@ -8,7 +8,7 @@ use Gallery\Collection\MediaCollection;
 use Gallery\Core\CacheGroup;
 use Gallery\Core\DanbooruTagger;
 use Gallery\Structure\Media;
-use OpenApi\Attributes as OA;
+use OpenApi\Spec as OAS;
 
 /**
  * UploadController class
@@ -18,46 +18,43 @@ use OpenApi\Attributes as OA;
  */
 class UploadController extends AbstractController
 {
-    private MediaCollection $media_collection;
-    private DanbooruTagger $tagger;
-
     private const array IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif', 'avif'];
     private const array VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'm4v'];
     private const int MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB
 
-    public function __construct(MediaCollection $media_collection, DanbooruTagger $tagger)
-    {
-        parent::__construct();
-        $this->media_collection = $media_collection;
+    public function __construct(
+        private readonly MediaCollection $media_collection,
         // The tagger is lazy: it only warms its DB caches on first import, so
         // injecting it here is cheap even when an upload doesn't fetch tags.
-        $this->tagger = $tagger;
+        private readonly DanbooruTagger $tagger
+    ) {
+        parent::__construct();
     }
 
     /**
      * POST /media — Upload one or more files (multipart/form-data with files[]).
      * Media type is auto-detected from each file's extension.
      */
-    #[OA\Post(
+    #[OAS\Operation\Post(
         path: '/media',
         summary: 'Upload media (create)',
         tags: ['Media'],
-        security: [['bearerAuth' => []]],
-        requestBody: new OA\RequestBody(
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        requestBody: new OAS\RequestBody(
             required: true,
-            content: new OA\MediaType(
+            content: new OAS\MediaType(
                 mediaType: 'multipart/form-data',
-                schema: new OA\Schema(
+                schema: new OAS\Schema(
                     properties: [
-                        new OA\Property(property: 'files[]', type: 'array', items: new OA\Items(type: 'string', format: 'binary')),
-                        new OA\Property(property: 'fetch_tags', type: 'boolean', description: 'Fetch Danbooru tags for uploaded images.'),
+                        new OAS\Property(property: 'files[]', schema: new OAS\Schema(type: 'array', items: new OAS\Schema\Items(type: 'string', format: 'binary'))),
+                        new OAS\Property(property: 'fetch_tags', schema: new OAS\Schema(type: 'boolean', description: 'Fetch Danbooru tags for uploaded images.')),
                     ]
                 )
             )
         ),
         responses: [
-            new OA\Response(response: 201, description: 'Upload result', content: new OA\JsonContent(ref: '#/components/schemas/UploadSummary')),
-            new OA\Response(response: 400, description: 'NoFilesUploaded', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 201, description: 'Upload result', content: new OAS\MediaType\Json(ref: '#/components/schemas/UploadSummary')),
+            new OAS\Response(response: 400, description: 'NoFilesUploaded', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ]
     )]
     public function create(Request $request, Response $response): Response
@@ -71,12 +68,12 @@ class UploadController extends AbstractController
             $files = [$files];
         }
 
-        if (empty($files)) {
+        if ($files === []) {
             return $this->error($response, 'NoFilesUploaded', 400, 'No files were included in the upload request.');
         }
 
         // Check if Danbooru tag fetching was requested (applies to images only)
-        $fetchTags = !empty($params['fetch_tags']) && DanbooruTagger::isConfigured();
+        $fetchTags = (bool) ($params['fetch_tags'] ?? false) && DanbooruTagger::isConfigured();
 
         $all_extensions = array_merge(self::IMAGE_EXTENSIONS, self::VIDEO_EXTENSIONS);
         $target_dir = MediaCollection::getFullDirectory();
@@ -148,7 +145,7 @@ class UploadController extends AbstractController
             // its extension, so a script/polyglot disguised with a media
             // extension can't land in the publicly-served media directory.
             if (class_exists('finfo')) {
-                $mime = (string) (new \finfo(FILEINFO_MIME_TYPE))->file($dest_path);
+                $mime = (string) new \finfo(FILEINFO_MIME_TYPE)->file($dest_path);
                 if (!str_starts_with($mime, 'image/') && !str_starts_with($mime, 'video/')) {
                     unlink($dest_path);
                     $results[] = [

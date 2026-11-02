@@ -6,7 +6,7 @@ import type { Tag, TagCategory, Count } from '../types'
 
 // Domain types are generated from the OpenAPI spec — re-export the ones used
 // across the app so existing `from '../stores/gallery'` imports keep working.
-export type { Tag, TagCategory, Media, MediaItem } from '../types'
+export type { Tag, TagCategory, MediaItem } from '../types'
 
 export const useGalleryStore = defineStore('gallery', () => {
   const api = useApi()

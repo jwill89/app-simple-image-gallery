@@ -4,46 +4,34 @@ declare(strict_types=1);
 
 namespace Gallery\Tests\Unit;
 
-use OpenApi\Generator;
+use Gallery\Tests\Support\OpenApiDocument;
+use OpenApi\Builder\Result;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Guards the OpenAPI contract:
- *  - the `#[OA\*]` attributes across api/ + includes/ produce a valid document;
+ *  - the `#[OAS\*]` attributes across api/ + includes/ produce a document with
+ *    no errors reported while building it;
  *  - the committed openapi.json is up to date (regenerate with `composer docs`).
  */
 final class OpenApiSpecTest extends TestCase
 {
-    private const string API_DIR = __DIR__ . '/../../api';
-    private const string INCLUDES_DIR = __DIR__ . '/../../includes';
-    private const string COMMITTED_SPEC = __DIR__ . '/../../openapi.json';
-
     /**
-     * Scan the annotations and produce the spec object (matching `composer docs`).
+     * Scan the attributes and build the document, as `composer docs` does.
      */
-    private function generateSpec(): \OpenApi\Annotations\OpenApi
+    private function generateSpec(): Result
     {
-        $generator = new Generator();
-        $generator->setVersion('3.1.0');
-        $spec = $generator->generate([self::API_DIR, self::INCLUDES_DIR]);
-
-        if ($spec === null) {
-            throw new \RuntimeException('OpenAPI generation produced no document.');
-        }
-
-        return $spec;
+        return OpenApiDocument::builder()->build();
     }
 
     public function testSpecIsValid(): void
     {
-        $spec = $this->generateSpec();
-        $this->assertTrue($spec->validate(), 'Generated OpenAPI document failed validation.');
+        $this->assertTrue($this->generateSpec()->isValid(), 'Building the OpenAPI document reported errors.');
     }
 
     public function testCoreResourcesAreDocumented(): void
     {
-        /** @var array<string, mixed> $spec */
-        $spec = json_decode($this->generateSpec()->toJson(), true);
+        $spec = $this->generateSpec()->toArray();
 
         foreach (['/media', '/media/{media_id}', '/tags', '/tag-categories', '/tag-implications', '/auth/login', '/version'] as $path) {
             $this->assertArrayHasKey($path, $spec['paths'], "Missing documented path: {$path}");
@@ -58,10 +46,10 @@ final class OpenApiSpecTest extends TestCase
 
     public function testCommittedSpecIsUpToDate(): void
     {
-        $this->assertFileExists(self::COMMITTED_SPEC, 'openapi.json is missing — run `composer docs`.');
+        $this->assertFileExists(OpenApiDocument::outputPath(), 'openapi.json is missing — run `composer docs`.');
 
-        $fresh = json_decode($this->generateSpec()->toJson(), true);
-        $committed = json_decode((string) file_get_contents(self::COMMITTED_SPEC), true);
+        $fresh = $this->generateSpec()->toArray();
+        $committed = json_decode((string) file_get_contents(OpenApiDocument::outputPath()), true);
 
         $this->assertEquals(
             $fresh,

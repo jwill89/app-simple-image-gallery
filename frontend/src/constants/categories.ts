@@ -33,7 +33,7 @@ export const VALID_COLORS = [
   'lime',
 ] as const
 
-export type ValidColor = (typeof VALID_COLORS)[number]
+type ValidColor = (typeof VALID_COLORS)[number]
 
 const DEFAULT_COLOR: ValidColor = 'neutral'
 

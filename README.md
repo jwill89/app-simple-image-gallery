@@ -22,7 +22,7 @@ duplicate detection, favorites, and admin-gated uploads.
 - **Search** — filter by multiple tags, including exclusions (`-tag`).
 - **Danbooru import** — auto-fetch tags by MD5 hash with an IQDB visual-similarity
   fallback; import rules are editable in the UI.
-- **Duplicate detection** — perceptual hashing (LSH → Hamming → SSIM).
+- **Duplicate detection** — perceptual hashing (LSH → Hamming), then a worst-region comparison that tells re-saved copies from variants.
 - **Favorites** — stored locally in the browser.
 - **Admin actions** — password-gated uploads and deletes via a bearer token.
 - **PWA caching** — a service worker caches thumbnails and prefetches the next page.
@@ -32,15 +32,16 @@ duplicate detection, favorites, and admin-gated uploads.
 - **Backend:** PHP 8.5, [Slim 4](https://www.slimframework.com/), SQLite (WAL),
   [Phinx](https://phinx.org/) migrations, Monolog.
 - **Frontend:** Vue 3 + TypeScript, Pinia, Vue Router, Vite, Bulma.
-- **Media tooling:** `ffmpeg` (thumbnails), PHP GD + `jenssegers/imagehash`
+- **Media tooling:** `ffmpeg` (thumbnails), PHP GD + `intervention/imagehash`
   (fingerprinting / duplicate detection).
 
 ## Requirements
 
-- PHP **8.5+** with `pdo_sqlite`, `curl`, and **GD** (WebP, ideally AVIF) extensions.
+- PHP **8.5+** with `pdo_sqlite`, `curl`, `fileinfo`, `mbstring`, and **GD** (WebP, ideally AVIF)
+  extensions. `composer install` refuses to run without them.
 - `ffmpeg` available on the system `PATH` (used for thumbnail generation).
 - Apache with `mod_rewrite` (the included `.htaccess` files drive routing).
-- [Composer](https://getcomposer.org/) and [Node.js](https://nodejs.org/) (for building the frontend).
+- [Composer](https://getcomposer.org/) and [Node.js](https://nodejs.org/) **26+** (for building the frontend).
 
 ## Setup
 
@@ -151,6 +152,7 @@ Other maintenance scripts (run from anywhere; they `chdir` to the app root):
 
 ```bash
 php backend/scripts/dupes.php                    # scan for duplicates → dupes/dupes-YYYY-MM-DD.json
+php backend/scripts/dupes.php --tune --max-distance=8 --max-region-diff=off  # calibrate the scan (--help)
 php backend/scripts/regenerate-thumbnails.php    # rebuild all thumbnails
 php backend/scripts/regenerate-fingerprints.php  # rebuild perceptual fingerprints
 php backend/scripts/regenerate-metadata.php      # backfill dimensions/duration/file size on existing media

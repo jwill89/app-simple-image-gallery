@@ -46,7 +46,7 @@ foreach (array_slice($cliArgs, 1) as $arg) {
     } elseif ($arg === '-v' || $arg === '--verbose') {
         $verbose = true;
     } elseif (is_numeric($arg)) {
-        $singleMediaId = (int)$arg;
+        $singleMediaId = (int) $arg;
     }
 }
 
@@ -65,7 +65,7 @@ if ($singleMediaId !== null) {
     $stmt = $db->prepare('SELECT media_id, hash, file_name FROM media WHERE media_id = :id');
     $stmt->execute([':id' => $singleMediaId]);
     $mediaItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    if (empty($mediaItems)) {
+    if ($mediaItems === []) {
         echo "Error: Media #{$singleMediaId} not found in database.\n";
         exit(1);
     }
@@ -84,7 +84,7 @@ if ($verbose) {
 echo "\n\n";
 
 // Create tagger instance (loads import rules from DB, warms tag/category caches)
-$container = (new \DI\ContainerBuilder())->addDefinitions(__DIR__ . '/../api/dependencies.php')->build();
+$container = new \DI\ContainerBuilder()->addDefinitions(__DIR__ . '/../api/dependencies.php')->build();
 $tagger = $container->get(DanbooruTagger::class);
 
 // Enable debug output if verbose
@@ -107,7 +107,7 @@ $stats = [
 
 // Process each media item
 foreach ($mediaItems as $index => $item) {
-    $mediaId = (int)$item['media_id'];
+    $mediaId = (int) $item['media_id'];
     $md5 = $item['hash'];
     $fileName = $item['file_name'];
     $current = $index + 1;

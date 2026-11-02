@@ -1,14 +1,17 @@
-includes:
-    - vendor/phpstan/phpstan-phpunit/extension.neon
-    - vendor/phpstan/phpstan-phpunit/rules.neon
+# phpstan-strict-rules, phpstan-deprecation-rules and phpstan-phpunit load
+# through phpstan/extension-installer, so they need no `includes:` here.
 
 parameters:
     level: 8
     paths:
         - includes/Gallery
         - api
+        - bin
+        - db
         - scripts
         - tests
+        - index.php
+        - phinx.php
     # PHPStan never executes code, so the legacy db/gallery.db is never touched.
     treatPhpDocTypesAsCertain: false
     ignoreErrors:
@@ -27,3 +30,9 @@ parameters:
         -
             identifier: method.nonObject
             message: '#Cannot call method \w+\(\) on PDOStatement\|false#'
+        # PHPUnit's assertions are static methods that its own docs call as
+        # $this->assertSame(); strict-rules' "static via instance" check stays on
+        # for application code.
+        -
+            identifier: staticMethod.dynamicCall
+            path: tests/*

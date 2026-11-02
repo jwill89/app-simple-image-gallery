@@ -11,15 +11,8 @@ use PDO;
  */
 class RateLimiter
 {
-    private PDO $db;
-    private int $maxRequests;
-    private int $windowSeconds;
-
-    public function __construct(PDO $db, int $maxRequests = 120, int $windowSeconds = 60)
+    public function __construct(private readonly PDO $db, private readonly int $maxRequests = 120, private readonly int $windowSeconds = 60)
     {
-        $this->db = $db;
-        $this->maxRequests = $maxRequests;
-        $this->windowSeconds = $windowSeconds;
         $this->ensureTable();
     }
 
@@ -80,7 +73,7 @@ class RateLimiter
                 ->execute([':ip' => $ip, ':time' => time()]);
 
             $this->db->commit();
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             $this->db->rollBack();
             // On error, allow the request to proceed
             return ['allowed' => true, 'remaining' => $this->maxRequests, 'retry_after' => 0];
