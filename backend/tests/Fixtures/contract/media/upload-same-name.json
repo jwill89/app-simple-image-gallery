@@ -1,0 +1,66 @@
+{
+    "id": "media/upload-same-name",
+    "route": "POST /media",
+    "about": "Two files with the same name: the second is saved with a _1 suffix.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/media",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "multipart/form-data"
+                },
+                "multipart": [
+                    {
+                        "name": "files[]",
+                        "filename": "tiny.png",
+                        "type": "image/png",
+                        "file": "uploads/tiny.png"
+                    },
+                    {
+                        "name": "files[]",
+                        "filename": "tiny.png",
+                        "type": "image/png",
+                        "file": "uploads/tiny.jpg"
+                    }
+                ]
+            },
+            "response": {
+                "status": 201,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "results": [
+                        {
+                            "file_name": "tiny.png",
+                            "status": "success",
+                            "id": 31,
+                            "hash": "fb9061fd4b59b0856ea0514a8fb0c966"
+                        },
+                        {
+                            "file_name": "tiny_1.png",
+                            "status": "success",
+                            "id": 32,
+                            "hash": "7d4ccfd98a607b1658f805c92c65c7b3"
+                        }
+                    ],
+                    "total_uploaded": 2,
+                    "total_duplicates": 0,
+                    "total_failed": 0
+                }
+            }
+        }
+    ]
+}

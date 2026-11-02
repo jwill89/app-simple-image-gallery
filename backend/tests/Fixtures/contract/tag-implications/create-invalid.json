@@ -1,0 +1,140 @@
+{
+    "id": "tag-implications/create-invalid",
+    "route": "POST /tag-implications",
+    "about": "Self: 400 CannotImplySelf. animal → kitten would close kitten → cat → animal: 400 CycleDetected. Unknown tag: 404 TagDoesNotExist. No ids: 400 InvalidTagID.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tag-implications",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "tag_id": 3,
+                    "implied_tag_id": 3
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "CannotImplySelf",
+                    "message": "A tag cannot imply itself."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tag-implications",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "tag_id": 1,
+                    "implied_tag_id": 5
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "error": "CycleDetected",
+                    "message": "This implication would create a circular dependency."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tag-implications",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "tag_id": 3,
+                    "implied_tag_id": 999
+                }
+            },
+            "response": {
+                "status": 404,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "117"
+                },
+                "json": {
+                    "error": "TagDoesNotExist",
+                    "message": "One or both of the specified tags could not be found."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tag-implications",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {}
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "116"
+                },
+                "json": {
+                    "error": "InvalidTagID",
+                    "message": "Both tag IDs must be positive numbers."
+                }
+            }
+        }
+    ]
+}

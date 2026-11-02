@@ -1,0 +1,73 @@
+{
+    "id": "media/show-invalid-id",
+    "route": "GET /media/{media_id}",
+    "about": "Zero, negative and non-numeric ids: 400 InvalidMediaID. The route takes any segment, so a non-number is a 400, not a 404.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/0",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "InvalidMediaID",
+                    "message": "The media ID must be a positive number."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/-1",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "error": "InvalidMediaID",
+                    "message": "The media ID must be a positive number."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/abc",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "117"
+                },
+                "json": {
+                    "error": "InvalidMediaID",
+                    "message": "The media ID must be a positive number."
+                }
+            }
+        }
+    ]
+}

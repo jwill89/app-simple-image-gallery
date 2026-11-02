@@ -1,0 +1,65 @@
+{
+    "id": "tag-categories/delete-not-found",
+    "route": "DELETE /tag-categories/{category_id}",
+    "about": "Unknown id: 404 CategoryNotFound. Id 0: 400 InvalidInput.",
+    "steps": [
+        {
+            "request": {
+                "method": "DELETE",
+                "path": "/api/tag-categories/999",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>"
+                }
+            },
+            "response": {
+                "status": 404,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "CategoryNotFound",
+                    "message": "The category does not exist."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "DELETE",
+                "path": "/api/tag-categories/0",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>"
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "error": "InvalidInput",
+                    "message": "A valid category ID is required."
+                }
+            }
+        }
+    ]
+}

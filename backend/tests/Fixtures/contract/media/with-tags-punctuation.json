@@ -1,0 +1,44 @@
+{
+    "id": "media/with-tags-punctuation",
+    "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+    "about": "\"k-on!\": a hyphen inside a name is not an exclusion.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/with-tags/k-on!/1",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "items": [
+                        {
+                            "media_id": 15,
+                            "media_type": "image",
+                            "file_name": "kon-01.jpg",
+                            "file_time": 1767272400,
+                            "hash": "60e9012826556d079bc1cd341165875b",
+                            "bits_fingerprint": "1100100110010001100100100100110110000101111000001011101001101100",
+                            "width": 1280,
+                            "height": 720,
+                            "duration": 0,
+                            "file_size": 150000
+                        }
+                    ],
+                    "total_pages": 1,
+                    "current_page": 1
+                }
+            }
+        }
+    ]
+}

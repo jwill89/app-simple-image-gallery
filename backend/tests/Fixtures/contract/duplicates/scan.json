@@ -1,0 +1,344 @@
+{
+    "id": "duplicates/scan",
+    "route": "POST /duplicates/scan",
+    "about": "Default settings (distance ≤ 6, region difference ≤ 36): pair A (a re-save) and pair C (no thumbnails) are reported; pair B (a variant) is rejected by the region check, pair D is dismissed and pair E is 7 bits apart. The report then reads back from the new file. No cache group is invalidated.",
+    "steps": [
+        {
+            "probe": true,
+            "request": {
+                "method": "GET",
+                "path": "/api/media/count",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "count": 30
+                }
+            }
+        },
+        {
+            "probe": true,
+            "request": {
+                "method": "GET",
+                "path": "/api/tags",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": [
+                    {
+                        "tag_id": 1,
+                        "category_id": 1,
+                        "tag_name": "animal"
+                    },
+                    {
+                        "tag_id": 13,
+                        "category_id": 2,
+                        "tag_name": "artist one"
+                    },
+                    {
+                        "tag_id": 14,
+                        "category_id": 2,
+                        "tag_name": "artist two"
+                    },
+                    {
+                        "tag_id": 2,
+                        "category_id": 1,
+                        "tag_name": "blue sky"
+                    },
+                    {
+                        "tag_id": 9,
+                        "category_id": 1,
+                        "tag_name": "c++"
+                    },
+                    {
+                        "tag_id": 11,
+                        "category_id": 1,
+                        "tag_name": "café"
+                    },
+                    {
+                        "tag_id": 3,
+                        "category_id": 1,
+                        "tag_name": "cat"
+                    },
+                    {
+                        "tag_id": 4,
+                        "category_id": 1,
+                        "tag_name": "dog"
+                    },
+                    {
+                        "tag_id": 15,
+                        "category_id": 3,
+                        "tag_name": "hero"
+                    },
+                    {
+                        "tag_id": 10,
+                        "category_id": 1,
+                        "tag_name": "k-on!"
+                    },
+                    {
+                        "tag_id": 5,
+                        "category_id": 1,
+                        "tag_name": "kitten"
+                    },
+                    {
+                        "tag_id": 6,
+                        "category_id": 1,
+                        "tag_name": "night"
+                    },
+                    {
+                        "tag_id": 7,
+                        "category_id": 1,
+                        "tag_name": "outdoors"
+                    },
+                    {
+                        "tag_id": 16,
+                        "category_id": 3,
+                        "tag_name": "sidekick"
+                    },
+                    {
+                        "tag_id": 8,
+                        "category_id": 1,
+                        "tag_name": "smile"
+                    },
+                    {
+                        "tag_id": 12,
+                        "category_id": 1,
+                        "tag_name": "unused tag"
+                    }
+                ]
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/duplicates/scan",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "117"
+                },
+                "json": {
+                    "success": true,
+                    "message": "Scan completed successfully.",
+                    "images_compared": 26,
+                    "lsh_candidates": 10,
+                    "duplicates_found": 2,
+                    "execution_time": "<seconds>"
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/duplicates/report",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "116"
+                },
+                "json": {
+                    "report_file": "dupes-<today>.json",
+                    "generated_at": "<now>",
+                    "images_compared": 26,
+                    "duplicates_found": 2,
+                    "matches": [
+                        {
+                            "media_1": {
+                                "media_id": 3,
+                                "file_name": "dupe-a1.png",
+                                "hash": "5c49a87a1439b12632cbc5178fbc8e29"
+                            },
+                            "media_2": {
+                                "media_id": 4,
+                                "file_name": "dupe-a2.jpg",
+                                "hash": "fddc55a3d180b2f6dbb1763e03f383ac"
+                            },
+                            "distance": 0,
+                            "ssim": 0.9958
+                        },
+                        {
+                            "media_1": {
+                                "media_id": 10,
+                                "file_name": "near-c1.jpg",
+                                "hash": "24c6b612fe2b4700d5bdd39d81c76b1f"
+                            },
+                            "media_2": {
+                                "media_id": 11,
+                                "file_name": "near-c2.jpg",
+                                "hash": "d04b2c9a2a550a2dfa1063dfb8eaa39f"
+                            },
+                            "distance": 2,
+                            "ssim": null
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "probe": true,
+            "request": {
+                "method": "GET",
+                "path": "/api/media/count",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "HIT",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "115"
+                },
+                "json": {
+                    "count": 30
+                }
+            }
+        },
+        {
+            "probe": true,
+            "request": {
+                "method": "GET",
+                "path": "/api/tags",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "HIT",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "114"
+                },
+                "json": [
+                    {
+                        "tag_id": 1,
+                        "category_id": 1,
+                        "tag_name": "animal"
+                    },
+                    {
+                        "tag_id": 13,
+                        "category_id": 2,
+                        "tag_name": "artist one"
+                    },
+                    {
+                        "tag_id": 14,
+                        "category_id": 2,
+                        "tag_name": "artist two"
+                    },
+                    {
+                        "tag_id": 2,
+                        "category_id": 1,
+                        "tag_name": "blue sky"
+                    },
+                    {
+                        "tag_id": 9,
+                        "category_id": 1,
+                        "tag_name": "c++"
+                    },
+                    {
+                        "tag_id": 11,
+                        "category_id": 1,
+                        "tag_name": "café"
+                    },
+                    {
+                        "tag_id": 3,
+                        "category_id": 1,
+                        "tag_name": "cat"
+                    },
+                    {
+                        "tag_id": 4,
+                        "category_id": 1,
+                        "tag_name": "dog"
+                    },
+                    {
+                        "tag_id": 15,
+                        "category_id": 3,
+                        "tag_name": "hero"
+                    },
+                    {
+                        "tag_id": 10,
+                        "category_id": 1,
+                        "tag_name": "k-on!"
+                    },
+                    {
+                        "tag_id": 5,
+                        "category_id": 1,
+                        "tag_name": "kitten"
+                    },
+                    {
+                        "tag_id": 6,
+                        "category_id": 1,
+                        "tag_name": "night"
+                    },
+                    {
+                        "tag_id": 7,
+                        "category_id": 1,
+                        "tag_name": "outdoors"
+                    },
+                    {
+                        "tag_id": 16,
+                        "category_id": 3,
+                        "tag_name": "sidekick"
+                    },
+                    {
+                        "tag_id": 8,
+                        "category_id": 1,
+                        "tag_name": "smile"
+                    },
+                    {
+                        "tag_id": 12,
+                        "category_id": 1,
+                        "tag_name": "unused tag"
+                    }
+                ]
+            }
+        }
+    ]
+}

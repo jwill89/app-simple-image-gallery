@@ -1,0 +1,36 @@
+{
+    "id": "media/untagged-none",
+    "route": "GET /media/untagged/{page}/{per_page?}",
+    "about": "Nothing untagged: no items, total_pages 1.",
+    "setup": {
+        "sql": [
+            "DELETE FROM media WHERE media_id IN (11, 17, 22, 27)"
+        ]
+    },
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/untagged/1",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "items": [],
+                    "total_pages": 1,
+                    "current_page": 1
+                }
+            }
+        }
+    ]
+}

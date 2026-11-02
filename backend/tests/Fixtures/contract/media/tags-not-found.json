@@ -1,0 +1,51 @@
+{
+    "id": "media/tags-not-found",
+    "route": "GET /media/{media_id}/tags",
+    "about": "An unknown item: 404 MediaDoesNotExist; id 0: 400 InvalidMediaID.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/999/tags",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 404,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "MediaDoesNotExist",
+                    "message": "The media item could not be found."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/0/tags",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "error": "InvalidMediaID",
+                    "message": "The media ID must be a positive number."
+                }
+            }
+        }
+    ]
+}

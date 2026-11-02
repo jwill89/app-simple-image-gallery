@@ -1,0 +1,63 @@
+{
+    "id": "media/upload-fetch-tags-not-configured",
+    "route": "POST /media",
+    "about": "fetch_tags=1 without Danbooru credentials is ignored: no tag fields, no total_tags_applied.",
+    "setup": {
+        "env": {
+            "DANBOORU_LOGIN": ""
+        }
+    },
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/media",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "multipart/form-data"
+                },
+                "multipart": [
+                    {
+                        "name": "files[]",
+                        "filename": "tiny.png",
+                        "type": "image/png",
+                        "file": "uploads/tiny.png"
+                    },
+                    {
+                        "name": "fetch_tags",
+                        "value": "1"
+                    }
+                ]
+            },
+            "response": {
+                "status": 201,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "results": [
+                        {
+                            "file_name": "tiny.png",
+                            "status": "success",
+                            "id": 31,
+                            "hash": "fb9061fd4b59b0856ea0514a8fb0c966"
+                        }
+                    ],
+                    "total_uploaded": 1,
+                    "total_duplicates": 0,
+                    "total_failed": 0
+                }
+            }
+        }
+    ]
+}

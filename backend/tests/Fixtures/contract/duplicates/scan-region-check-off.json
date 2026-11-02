@@ -1,0 +1,113 @@
+{
+    "id": "duplicates/scan-region-check-off",
+    "route": "POST /duplicates/scan",
+    "about": "DUPLICATE_MAX_REGION_DIFF=off: the variant pair B is reported too.",
+    "setup": {
+        "env": {
+            "DUPLICATE_MAX_REGION_DIFF": "off"
+        }
+    },
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/duplicates/scan",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "success": true,
+                    "message": "Scan completed successfully.",
+                    "images_compared": 26,
+                    "lsh_candidates": 10,
+                    "duplicates_found": 3,
+                    "execution_time": "<seconds>"
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/duplicates/report",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "report_file": "dupes-<today>.json",
+                    "generated_at": "<now>",
+                    "images_compared": 26,
+                    "duplicates_found": 3,
+                    "matches": [
+                        {
+                            "media_1": {
+                                "media_id": 3,
+                                "file_name": "dupe-a1.png",
+                                "hash": "5c49a87a1439b12632cbc5178fbc8e29"
+                            },
+                            "media_2": {
+                                "media_id": 4,
+                                "file_name": "dupe-a2.jpg",
+                                "hash": "fddc55a3d180b2f6dbb1763e03f383ac"
+                            },
+                            "distance": 0,
+                            "ssim": 0.9958
+                        },
+                        {
+                            "media_1": {
+                                "media_id": 7,
+                                "file_name": "variant-b1.png",
+                                "hash": "7e07cd4e5550601cead4f151c07ac1e9"
+                            },
+                            "media_2": {
+                                "media_id": 8,
+                                "file_name": "variant-b2.png",
+                                "hash": "ddb0732bc98e86304708c10d4912bb0a"
+                            },
+                            "distance": 3,
+                            "ssim": 0.9827
+                        },
+                        {
+                            "media_1": {
+                                "media_id": 10,
+                                "file_name": "near-c1.jpg",
+                                "hash": "24c6b612fe2b4700d5bdd39d81c76b1f"
+                            },
+                            "media_2": {
+                                "media_id": 11,
+                                "file_name": "near-c2.jpg",
+                                "hash": "d04b2c9a2a550a2dfa1063dfb8eaa39f"
+                            },
+                            "distance": 2,
+                            "ssim": null
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}

@@ -1,0 +1,51 @@
+{
+    "id": "danbooru/category-mappings",
+    "route": "GET /danbooru/category-mappings",
+    "about": "All category mappings, with the gallery category name, by Danbooru category id.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/danbooru/category-mappings",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": [
+                    {
+                        "danbooru_category_id": 0,
+                        "danbooru_category_name": "General",
+                        "gallery_category_id": 1,
+                        "gallery_category_name": "General"
+                    },
+                    {
+                        "danbooru_category_id": 1,
+                        "danbooru_category_name": "Artist",
+                        "gallery_category_id": 2,
+                        "gallery_category_name": "Artist"
+                    },
+                    {
+                        "danbooru_category_id": 3,
+                        "danbooru_category_name": "Copyright",
+                        "gallery_category_id": 4,
+                        "gallery_category_name": "Source"
+                    },
+                    {
+                        "danbooru_category_id": 4,
+                        "danbooru_category_name": "Character",
+                        "gallery_category_id": 3,
+                        "gallery_category_name": "Character"
+                    }
+                ]
+            }
+        }
+    ]
+}

@@ -1,0 +1,81 @@
+{
+    "id": "media/by-ids",
+    "route": "POST /media/by-ids",
+    "about": "Public (no token). Numeric strings count; unknown, zero and negative ids are skipped; the order is the listing order, not the request order.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/media/by-ids",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "ids": [
+                        3,
+                        1,
+                        999,
+                        "5",
+                        -2,
+                        0,
+                        3
+                    ]
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": [
+                    {
+                        "media_id": 5,
+                        "media_type": "video",
+                        "file_name": "clip-01.mp4",
+                        "file_time": 1767236400,
+                        "hash": "d5d460c9701f5c80fefa578102766445",
+                        "bits_fingerprint": "",
+                        "width": 1920,
+                        "height": 1080,
+                        "duration": 12.5,
+                        "file_size": 5242880
+                    },
+                    {
+                        "media_id": 3,
+                        "media_type": "image",
+                        "file_name": "dupe-a1.png",
+                        "file_time": 1767232800,
+                        "hash": "5c49a87a1439b12632cbc5178fbc8e29",
+                        "bits_fingerprint": "0010110011000100011000101111001010100000101011101110101001011110",
+                        "width": 1000,
+                        "height": 1400,
+                        "duration": 0,
+                        "file_size": 350000
+                    },
+                    {
+                        "media_id": 1,
+                        "media_type": "image",
+                        "file_name": "cat-01.jpg",
+                        "file_time": 1767225600,
+                        "hash": "dc5d38c939e8d8814795082b8c3a3e34",
+                        "bits_fingerprint": "1000001101110111010101011011101111001110111000011010010000001101",
+                        "width": 1200,
+                        "height": 1600,
+                        "duration": 0,
+                        "file_size": 245760
+                    }
+                ]
+            }
+        }
+    ]
+}

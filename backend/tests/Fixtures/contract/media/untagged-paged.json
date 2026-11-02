@@ -1,0 +1,44 @@
+{
+    "id": "media/untagged-paged",
+    "route": "GET /media/untagged/{page}/{per_page?}",
+    "about": "Page 2 at 3 per page.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/untagged/2/3",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "items": [
+                        {
+                            "media_id": 11,
+                            "media_type": "image",
+                            "file_name": "near-c2.jpg",
+                            "file_time": 1767258000,
+                            "hash": "d04b2c9a2a550a2dfa1063dfb8eaa39f",
+                            "bits_fingerprint": "0110001000010011110100100100111010010010011111010101110100100111",
+                            "width": 640,
+                            "height": 480,
+                            "duration": 0,
+                            "file_size": 64100
+                        }
+                    ],
+                    "total_pages": 2,
+                    "current_page": 2
+                }
+            }
+        }
+    ]
+}

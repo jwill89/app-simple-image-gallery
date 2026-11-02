@@ -1,0 +1,29 @@
+{
+    "id": "system/version",
+    "route": "GET /version",
+    "about": "Application and API versions.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/version",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "version": "4.0.0",
+                    "api_version": "4.0.0"
+                }
+            }
+        }
+    ]
+}

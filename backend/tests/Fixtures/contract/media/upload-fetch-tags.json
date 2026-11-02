@@ -1,0 +1,361 @@
+{
+    "id": "media/upload-fetch-tags",
+    "route": "POST /media",
+    "about": "fetch_tags=1 looks the upload up on Danbooru (the stub matches its MD5) and applies the tags: per-file tag fields, total_tags_applied, and the tags group invalidated too.",
+    "steps": [
+        {
+            "probe": true,
+            "request": {
+                "method": "GET",
+                "path": "/api/media/count",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "count": 30
+                }
+            }
+        },
+        {
+            "probe": true,
+            "request": {
+                "method": "GET",
+                "path": "/api/tags",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": [
+                    {
+                        "tag_id": 1,
+                        "category_id": 1,
+                        "tag_name": "animal"
+                    },
+                    {
+                        "tag_id": 13,
+                        "category_id": 2,
+                        "tag_name": "artist one"
+                    },
+                    {
+                        "tag_id": 14,
+                        "category_id": 2,
+                        "tag_name": "artist two"
+                    },
+                    {
+                        "tag_id": 2,
+                        "category_id": 1,
+                        "tag_name": "blue sky"
+                    },
+                    {
+                        "tag_id": 9,
+                        "category_id": 1,
+                        "tag_name": "c++"
+                    },
+                    {
+                        "tag_id": 11,
+                        "category_id": 1,
+                        "tag_name": "café"
+                    },
+                    {
+                        "tag_id": 3,
+                        "category_id": 1,
+                        "tag_name": "cat"
+                    },
+                    {
+                        "tag_id": 4,
+                        "category_id": 1,
+                        "tag_name": "dog"
+                    },
+                    {
+                        "tag_id": 15,
+                        "category_id": 3,
+                        "tag_name": "hero"
+                    },
+                    {
+                        "tag_id": 10,
+                        "category_id": 1,
+                        "tag_name": "k-on!"
+                    },
+                    {
+                        "tag_id": 5,
+                        "category_id": 1,
+                        "tag_name": "kitten"
+                    },
+                    {
+                        "tag_id": 6,
+                        "category_id": 1,
+                        "tag_name": "night"
+                    },
+                    {
+                        "tag_id": 7,
+                        "category_id": 1,
+                        "tag_name": "outdoors"
+                    },
+                    {
+                        "tag_id": 16,
+                        "category_id": 3,
+                        "tag_name": "sidekick"
+                    },
+                    {
+                        "tag_id": 8,
+                        "category_id": 1,
+                        "tag_name": "smile"
+                    },
+                    {
+                        "tag_id": 12,
+                        "category_id": 1,
+                        "tag_name": "unused tag"
+                    }
+                ]
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/media",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "multipart/form-data"
+                },
+                "multipart": [
+                    {
+                        "name": "files[]",
+                        "filename": "tiny.png",
+                        "type": "image/png",
+                        "file": "uploads/tiny.png"
+                    },
+                    {
+                        "name": "fetch_tags",
+                        "value": "1"
+                    }
+                ]
+            },
+            "response": {
+                "status": 201,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "117"
+                },
+                "json": {
+                    "results": [
+                        {
+                            "file_name": "tiny.png",
+                            "status": "success",
+                            "id": 31,
+                            "hash": "fb9061fd4b59b0856ea0514a8fb0c966",
+                            "tags_found": true,
+                            "tags_applied": 3,
+                            "tags_method": "md5"
+                        }
+                    ],
+                    "total_uploaded": 1,
+                    "total_duplicates": 0,
+                    "total_failed": 0,
+                    "total_tags_applied": 3
+                }
+            },
+            "danbooru_calls": [
+                "GET /posts.json?tags=md5:fb9061fd4b59b0856ea0514a8fb0c966"
+            ]
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/31/tags",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "116"
+                },
+                "json": [
+                    {
+                        "tag_id": 17,
+                        "category_id": 1,
+                        "tag_name": "one woman"
+                    },
+                    {
+                        "tag_id": 8,
+                        "category_id": 1,
+                        "tag_name": "smile"
+                    },
+                    {
+                        "tag_id": 18,
+                        "category_id": 4,
+                        "tag_name": "original"
+                    }
+                ]
+            }
+        },
+        {
+            "probe": true,
+            "request": {
+                "method": "GET",
+                "path": "/api/media/count",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "115"
+                },
+                "json": {
+                    "count": 31
+                }
+            }
+        },
+        {
+            "probe": true,
+            "request": {
+                "method": "GET",
+                "path": "/api/tags",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "114"
+                },
+                "json": [
+                    {
+                        "tag_id": 1,
+                        "category_id": 1,
+                        "tag_name": "animal"
+                    },
+                    {
+                        "tag_id": 13,
+                        "category_id": 2,
+                        "tag_name": "artist one"
+                    },
+                    {
+                        "tag_id": 14,
+                        "category_id": 2,
+                        "tag_name": "artist two"
+                    },
+                    {
+                        "tag_id": 2,
+                        "category_id": 1,
+                        "tag_name": "blue sky"
+                    },
+                    {
+                        "tag_id": 9,
+                        "category_id": 1,
+                        "tag_name": "c++"
+                    },
+                    {
+                        "tag_id": 11,
+                        "category_id": 1,
+                        "tag_name": "café"
+                    },
+                    {
+                        "tag_id": 3,
+                        "category_id": 1,
+                        "tag_name": "cat"
+                    },
+                    {
+                        "tag_id": 4,
+                        "category_id": 1,
+                        "tag_name": "dog"
+                    },
+                    {
+                        "tag_id": 15,
+                        "category_id": 3,
+                        "tag_name": "hero"
+                    },
+                    {
+                        "tag_id": 10,
+                        "category_id": 1,
+                        "tag_name": "k-on!"
+                    },
+                    {
+                        "tag_id": 5,
+                        "category_id": 1,
+                        "tag_name": "kitten"
+                    },
+                    {
+                        "tag_id": 6,
+                        "category_id": 1,
+                        "tag_name": "night"
+                    },
+                    {
+                        "tag_id": 17,
+                        "category_id": 1,
+                        "tag_name": "one woman"
+                    },
+                    {
+                        "tag_id": 18,
+                        "category_id": 4,
+                        "tag_name": "original"
+                    },
+                    {
+                        "tag_id": 7,
+                        "category_id": 1,
+                        "tag_name": "outdoors"
+                    },
+                    {
+                        "tag_id": 16,
+                        "category_id": 3,
+                        "tag_name": "sidekick"
+                    },
+                    {
+                        "tag_id": 8,
+                        "category_id": 1,
+                        "tag_name": "smile"
+                    },
+                    {
+                        "tag_id": 12,
+                        "category_id": 1,
+                        "tag_name": "unused tag"
+                    }
+                ]
+            }
+        }
+    ]
+}

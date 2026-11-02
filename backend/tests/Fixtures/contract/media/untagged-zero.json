@@ -1,0 +1,29 @@
+{
+    "id": "media/untagged-zero",
+    "route": "GET /media/untagged/{page}/{per_page?}",
+    "about": "Page 0: 400 InvalidPageNumber.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/untagged/0",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "InvalidPageNumber",
+                    "message": "Page number must be 1 or greater."
+                }
+            }
+        }
+    ]
+}

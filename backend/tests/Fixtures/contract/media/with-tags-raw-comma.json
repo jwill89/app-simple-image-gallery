@@ -1,0 +1,44 @@
+{
+    "id": "media/with-tags-raw-comma",
+    "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+    "about": "The same search with an unencoded comma.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/with-tags/cat,artist%20one/1",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "items": [
+                        {
+                            "media_id": 1,
+                            "media_type": "image",
+                            "file_name": "cat-01.jpg",
+                            "file_time": 1767225600,
+                            "hash": "dc5d38c939e8d8814795082b8c3a3e34",
+                            "bits_fingerprint": "1000001101110111010101011011101111001110111000011010010000001101",
+                            "width": 1200,
+                            "height": 1600,
+                            "duration": 0,
+                            "file_size": 245760
+                        }
+                    ],
+                    "total_pages": 1,
+                    "current_page": 1
+                }
+            }
+        }
+    ]
+}

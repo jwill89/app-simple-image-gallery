@@ -4,6 +4,13 @@ Operational guide for AI coding agents (and humans) working in this repository.
 Read this before making changes. It describes the architecture, conventions,
 data model, commands, and the non-obvious gotchas that will bite you.
 
+> **Laravel migration in progress** (branch `laravel-migration`): the Slim backend is
+> being moved to Laravel without changing the API contract. The plan, its phases and
+> each phase's "Done when" line are in [docs/laravel-migration.md](docs/laravel-migration.md).
+> The recorded contract the new backend must match lives in `backend/tests/Fixtures/contract/`
+> (`php backend/bin/record-contract.php` re-records it). Until the plan's Phase 8, this file
+> still describes the Slim backend.
+
 ---
 
 ## 1. What this project is
@@ -100,7 +107,8 @@ via `__DIR__`/`chdir(__DIR__ . '/..')`, so `backend/` *is* the app root in both 
 │   │
 │   ├── tests/                 # PHPUnit 13 suite
 │   │   ├── Support/           # DatabaseTestCase + schema.sql (fresh in-memory SQLite per test)
-│   │   └── Unit/              # by layer: Structure/, Core/, Storage/
+│   │   ├── Unit/              # by layer: Structure/, Core/, Storage/
+│   │   └── Fixtures/          # recorded API contract (contract/), its fixture DB + files (bin/record-contract.php)
 │   │
 │   ├── vendor/                # Composer deps (gitignored, regenerated on the host)
 │   ├── cache/api/             # File-based response cache (gitignored)
@@ -135,6 +143,7 @@ via `__DIR__`/`chdir(__DIR__ . '/..')`, so `backend/` *is* the app root in both 
 ├── .editorconfig              # LF, UTF-8, 4 spaces (2 for frontend files, YAML, Markdown)
 ├── PSScriptAnalyzerSettings.psd1  # PowerShell lint settings for scripts/
 ├── README.md · CONTRIBUTING.md · CHANGELOG.md · LICENSE
+├── docs/laravel-migration.md  # Laravel migration plan (phases, endpoint inventory, deployment)
 └── scripts/                   # Dev-only: deploy.ps1 (PuTTY pscp/plink → droplet) + config template
 ```
 

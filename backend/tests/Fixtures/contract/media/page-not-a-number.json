@@ -1,0 +1,29 @@
+{
+    "id": "media/page-not-a-number",
+    "route": "GET /media/page/{page}/{per_page?}",
+    "about": "A non-numeric page reads as 0: 400 InvalidPageNumber, not 404.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/page/abc",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "InvalidPageNumber",
+                    "message": "Page number must be 1 or greater."
+                }
+            }
+        }
+    ]
+}

@@ -1,0 +1,34 @@
+{
+    "id": "media/random-empty",
+    "route": "GET /media/random",
+    "about": "No media: 404 MediaNotFound.",
+    "setup": {
+        "sql": [
+            "DELETE FROM media"
+        ]
+    },
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/random",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 404,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "MediaNotFound",
+                    "message": "No media items are available."
+                }
+            }
+        }
+    ]
+}

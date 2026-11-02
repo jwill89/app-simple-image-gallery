@@ -1,0 +1,68 @@
+{
+    "id": "media/with-tags-paged",
+    "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+    "about": "Page 2 at 3 per page.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/with-tags/cat/2/3",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "items": [
+                        {
+                            "media_id": 13,
+                            "media_type": "image",
+                            "file_name": "dismissed-d2.png",
+                            "file_time": 1767265200,
+                            "hash": "611597c56916b8f389c7c5c7f3ce7b1d",
+                            "bits_fingerprint": "0110101101111100101111001001111101100111110100011011110011001100",
+                            "width": 500,
+                            "height": 500,
+                            "duration": 0,
+                            "file_size": 50001
+                        },
+                        {
+                            "media_id": 12,
+                            "media_type": "image",
+                            "file_name": "dismissed-d1.png",
+                            "file_time": 1767261600,
+                            "hash": "c8e119812ba8425a63642b880ce60791",
+                            "bits_fingerprint": "0110101101111100101111001001111100100111110100011011110011001100",
+                            "width": 500,
+                            "height": 500,
+                            "duration": 0,
+                            "file_size": 50000
+                        },
+                        {
+                            "media_id": 2,
+                            "media_type": "image",
+                            "file_name": "cat-02.png",
+                            "file_time": 1767229200,
+                            "hash": "280ac0254c400465415e5686f6dc97de",
+                            "bits_fingerprint": "1010110101101111101100010001100001011010000011010110001100001111",
+                            "width": 800,
+                            "height": 800,
+                            "duration": 0,
+                            "file_size": 102400
+                        }
+                    ],
+                    "total_pages": 3,
+                    "current_page": 2
+                }
+            }
+        }
+    ]
+}

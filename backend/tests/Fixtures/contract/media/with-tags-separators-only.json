@@ -1,0 +1,51 @@
+{
+    "id": "media/with-tags-separators-only",
+    "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+    "about": "A list of only a comma, or only a bare -, names nothing: 404 NoValidTagsSupplied.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/with-tags/%2C/1",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 404,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "NoValidTagsSupplied",
+                    "message": "None of the specified tag names matched existing tags."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/with-tags/-/1",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 404,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "error": "NoValidTagsSupplied",
+                    "message": "None of the specified tag names matched existing tags."
+                }
+            }
+        }
+    ]
+}

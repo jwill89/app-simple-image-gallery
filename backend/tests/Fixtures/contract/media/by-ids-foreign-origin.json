@@ -1,0 +1,35 @@
+{
+    "id": "media/by-ids-foreign-origin",
+    "route": "POST /media/by-ids",
+    "about": "Public, but still a POST: the CSRF origin check applies.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/media/by-ids",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://evil.example",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "ids": [
+                        1
+                    ]
+                }
+            },
+            "response": {
+                "status": 403,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN"
+                },
+                "json": {
+                    "error": "ForbiddenOrigin",
+                    "message": "The request origin is not allowed."
+                }
+            }
+        }
+    ]
+}

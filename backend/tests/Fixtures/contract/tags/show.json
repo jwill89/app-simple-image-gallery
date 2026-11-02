@@ -1,0 +1,30 @@
+{
+    "id": "tags/show",
+    "route": "GET /tags/{tag_id}",
+    "about": "One tag.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/tags/3",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "tag_id": 3,
+                    "category_id": 1,
+                    "tag_name": "cat"
+                }
+            }
+        }
+    ]
+}

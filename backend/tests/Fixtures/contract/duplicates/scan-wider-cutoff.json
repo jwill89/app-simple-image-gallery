@@ -1,0 +1,113 @@
+{
+    "id": "duplicates/scan-wider-cutoff",
+    "route": "POST /duplicates/scan",
+    "about": "DUPLICATE_MAX_DISTANCE=8: pair E (7 bits apart) is reported too.",
+    "setup": {
+        "env": {
+            "DUPLICATE_MAX_DISTANCE": "8"
+        }
+    },
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/duplicates/scan",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "success": true,
+                    "message": "Scan completed successfully.",
+                    "images_compared": 26,
+                    "lsh_candidates": 22,
+                    "duplicates_found": 3,
+                    "execution_time": "<seconds>"
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/duplicates/report",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "report_file": "dupes-<today>.json",
+                    "generated_at": "<now>",
+                    "images_compared": 26,
+                    "duplicates_found": 3,
+                    "matches": [
+                        {
+                            "media_1": {
+                                "media_id": 3,
+                                "file_name": "dupe-a1.png",
+                                "hash": "5c49a87a1439b12632cbc5178fbc8e29"
+                            },
+                            "media_2": {
+                                "media_id": 4,
+                                "file_name": "dupe-a2.jpg",
+                                "hash": "fddc55a3d180b2f6dbb1763e03f383ac"
+                            },
+                            "distance": 0,
+                            "ssim": 0.9958
+                        },
+                        {
+                            "media_1": {
+                                "media_id": 10,
+                                "file_name": "near-c1.jpg",
+                                "hash": "24c6b612fe2b4700d5bdd39d81c76b1f"
+                            },
+                            "media_2": {
+                                "media_id": 11,
+                                "file_name": "near-c2.jpg",
+                                "hash": "d04b2c9a2a550a2dfa1063dfb8eaa39f"
+                            },
+                            "distance": 2,
+                            "ssim": null
+                        },
+                        {
+                            "media_1": {
+                                "media_id": 19,
+                                "file_name": "edge-e1.png",
+                                "hash": "38cb8f45021334ec89f0d6a3e7d1745a"
+                            },
+                            "media_2": {
+                                "media_id": 20,
+                                "file_name": "edge-e2.png",
+                                "hash": "1f339c46e92a346653aa384ad407a9cb"
+                            },
+                            "distance": 7,
+                            "ssim": null
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}

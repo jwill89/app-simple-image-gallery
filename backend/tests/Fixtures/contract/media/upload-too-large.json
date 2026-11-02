@@ -1,0 +1,53 @@
+{
+    "id": "media/upload-too-large",
+    "route": "POST /media",
+    "about": "A file over upload_max_filesize is reported per file as \"Upload error code: 1\" (UPLOAD_ERR_INI_SIZE). The recording server sets the limit to 1M so a 1.5 MB file trips it; production allows 100M.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/media",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "multipart/form-data"
+                },
+                "multipart": [
+                    {
+                        "name": "files[]",
+                        "filename": "big.png",
+                        "type": "image/png",
+                        "generated_bytes": 1500000
+                    }
+                ]
+            },
+            "response": {
+                "status": 201,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "results": [
+                        {
+                            "file_name": "big.png",
+                            "status": "error",
+                            "message": "Upload error code: 1"
+                        }
+                    ],
+                    "total_uploaded": 0,
+                    "total_duplicates": 0,
+                    "total_failed": 1
+                }
+            }
+        }
+    ]
+}

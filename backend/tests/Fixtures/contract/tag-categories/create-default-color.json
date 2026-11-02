@@ -1,0 +1,40 @@
+{
+    "id": "tag-categories/create-default-color",
+    "route": "POST /tag-categories",
+    "about": "Without color the default is \"white\", which is not a valid colour: 400 InvalidColor. A colour is effectively required.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tag-categories",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "category_name": "Meta"
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "InvalidColor",
+                    "message": "The selected color is not valid."
+                }
+            }
+        }
+    ]
+}

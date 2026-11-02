@@ -1,0 +1,40 @@
+{
+    "id": "tags/create-exists",
+    "route": "POST /tags",
+    "about": "A name that exists in other letter case: 400 TagAlreadyExists, quoting the lowercased name.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "tag_name": "CAT"
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "TagAlreadyExists",
+                    "message": "A tag named \"cat\" already exists."
+                }
+            }
+        }
+    ]
+}

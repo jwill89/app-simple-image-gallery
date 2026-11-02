@@ -1,0 +1,35 @@
+{
+    "id": "media/tags-add-foreign-origin",
+    "route": "PATCH /media/{media_id}/tags",
+    "about": "Public, but the CSRF origin check still applies.",
+    "steps": [
+        {
+            "request": {
+                "method": "PATCH",
+                "path": "/api/media/11/tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://evil.example",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "tag_ids": [
+                        8
+                    ]
+                }
+            },
+            "response": {
+                "status": 403,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN"
+                },
+                "json": {
+                    "error": "ForbiddenOrigin",
+                    "message": "The request origin is not allowed."
+                }
+            }
+        }
+    ]
+}

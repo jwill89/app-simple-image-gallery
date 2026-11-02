@@ -1,0 +1,97 @@
+{
+    "id": "tag-implications/index",
+    "route": "GET /tag-implications",
+    "about": "All implications by tag name, then implied name; cached.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/tag-implications",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": [
+                    {
+                        "tag_id": 2,
+                        "tag_name": "blue sky",
+                        "implied_tag_id": 7,
+                        "implied_tag_name": "outdoors"
+                    },
+                    {
+                        "tag_id": 3,
+                        "tag_name": "cat",
+                        "implied_tag_id": 1,
+                        "implied_tag_name": "animal"
+                    },
+                    {
+                        "tag_id": 4,
+                        "tag_name": "dog",
+                        "implied_tag_id": 1,
+                        "implied_tag_name": "animal"
+                    },
+                    {
+                        "tag_id": 5,
+                        "tag_name": "kitten",
+                        "implied_tag_id": 3,
+                        "implied_tag_name": "cat"
+                    }
+                ]
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/tag-implications",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "HIT",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": [
+                    {
+                        "tag_id": 2,
+                        "tag_name": "blue sky",
+                        "implied_tag_id": 7,
+                        "implied_tag_name": "outdoors"
+                    },
+                    {
+                        "tag_id": 3,
+                        "tag_name": "cat",
+                        "implied_tag_id": 1,
+                        "implied_tag_name": "animal"
+                    },
+                    {
+                        "tag_id": 4,
+                        "tag_name": "dog",
+                        "implied_tag_id": 1,
+                        "implied_tag_name": "animal"
+                    },
+                    {
+                        "tag_id": 5,
+                        "tag_name": "kitten",
+                        "implied_tag_id": 3,
+                        "implied_tag_name": "cat"
+                    }
+                ]
+            }
+        }
+    ]
+}

@@ -1,0 +1,54 @@
+{
+    "id": "tags/delete-migrate-to-zero",
+    "route": "DELETE /tags/{tag_id}/migrate-to/{target_tag_id}",
+    "about": "A target of 0 means no migration: a plain delete, 204.",
+    "steps": [
+        {
+            "request": {
+                "method": "DELETE",
+                "path": "/api/tags/12/migrate-to/0",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>"
+                }
+            },
+            "response": {
+                "status": 204,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "text": ""
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/tags/12",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 404,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "error": "TagDoesNotExist",
+                    "message": "The requested tag could not be found."
+                }
+            }
+        }
+    ]
+}

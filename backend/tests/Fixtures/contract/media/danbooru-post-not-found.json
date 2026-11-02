@@ -1,0 +1,43 @@
+{
+    "id": "media/danbooru-post-not-found",
+    "route": "POST /media/{media_id}/danbooru-tags",
+    "about": "An unknown danbooru_post_id: 404 NotFoundOnDanbooru, naming the post.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/media/1/danbooru-tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "danbooru_post_id": 9999
+                }
+            },
+            "response": {
+                "status": 404,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "NotFoundOnDanbooru",
+                    "message": "Danbooru post #9999 could not be found."
+                }
+            },
+            "danbooru_calls": [
+                "GET /posts/9999.json"
+            ]
+        }
+    ]
+}

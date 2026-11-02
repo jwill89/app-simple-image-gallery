@@ -1,0 +1,182 @@
+{
+    "id": "media/upload-mixed",
+    "route": "POST /media",
+    "about": "Six files in one request: accepted JPEG and static GIF, an animated GIF (stored as video), a text file named .png (rejected by content), a .txt (rejected by extension) and a copy of media 2 (duplicate). Still 201. The animated GIF's width/height/duration come from ffprobe where it is installed; without it, as here, width/height fall back to getimagesize and duration is 0.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/media",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "multipart/form-data"
+                },
+                "multipart": [
+                    {
+                        "name": "files[]",
+                        "filename": "tiny.jpg",
+                        "type": "image/jpeg",
+                        "file": "uploads/tiny.jpg"
+                    },
+                    {
+                        "name": "files[]",
+                        "filename": "static.gif",
+                        "type": "image/gif",
+                        "file": "uploads/static.gif"
+                    },
+                    {
+                        "name": "files[]",
+                        "filename": "animated.gif",
+                        "type": "image/gif",
+                        "file": "uploads/animated.gif"
+                    },
+                    {
+                        "name": "files[]",
+                        "filename": "not-an-image.png",
+                        "type": "image/png",
+                        "file": "uploads/not-an-image.png"
+                    },
+                    {
+                        "name": "files[]",
+                        "filename": "notes.txt",
+                        "type": "text/plain",
+                        "file": "uploads/notes.txt"
+                    },
+                    {
+                        "name": "files[]",
+                        "filename": "duplicate.png",
+                        "type": "image/png",
+                        "file": "uploads/duplicate.png"
+                    }
+                ]
+            },
+            "response": {
+                "status": 201,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "results": [
+                        {
+                            "file_name": "tiny.jpg",
+                            "status": "success",
+                            "id": 31,
+                            "hash": "7d4ccfd98a607b1658f805c92c65c7b3"
+                        },
+                        {
+                            "file_name": "static.gif",
+                            "status": "success",
+                            "id": 32,
+                            "hash": "5e9febf3b44d4e88dac51a5f4026b8d7"
+                        },
+                        {
+                            "file_name": "animated.gif",
+                            "status": "success",
+                            "id": 33,
+                            "hash": "7fe7583a0342a106bb2eb8665174857a"
+                        },
+                        {
+                            "file_name": "not-an-image.png",
+                            "status": "error",
+                            "message": "File content is not a valid image or video."
+                        },
+                        {
+                            "file_name": "notes.txt",
+                            "status": "error",
+                            "message": "Invalid file type: .txt"
+                        },
+                        {
+                            "file_name": "duplicate.png",
+                            "status": "duplicate",
+                            "existing_id": 2,
+                            "hash": "280ac0254c400465415e5686f6dc97de"
+                        }
+                    ],
+                    "total_uploaded": 3,
+                    "total_duplicates": 1,
+                    "total_failed": 2
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/media/by-ids",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "ids": [
+                        31,
+                        32,
+                        33
+                    ]
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": [
+                    {
+                        "media_id": 33,
+                        "media_type": "video",
+                        "file_name": "animated.gif",
+                        "file_time": "<now>",
+                        "hash": "7fe7583a0342a106bb2eb8665174857a",
+                        "bits_fingerprint": "",
+                        "width": 1,
+                        "height": 1,
+                        "duration": 0,
+                        "file_size": 85
+                    },
+                    {
+                        "media_id": 32,
+                        "media_type": "image",
+                        "file_name": "static.gif",
+                        "file_time": "<now>",
+                        "hash": "5e9febf3b44d4e88dac51a5f4026b8d7",
+                        "bits_fingerprint": "1101111010010111011110010111100101111101011101110111011101110111",
+                        "width": 40,
+                        "height": 56,
+                        "duration": 0,
+                        "file_size": 992
+                    },
+                    {
+                        "media_id": 31,
+                        "media_type": "image",
+                        "file_name": "tiny.jpg",
+                        "file_time": "<now>",
+                        "hash": "7d4ccfd98a607b1658f805c92c65c7b3",
+                        "bits_fingerprint": "1101111010010110011110010111100101111001011101110110011101100111",
+                        "width": 40,
+                        "height": 56,
+                        "duration": 0,
+                        "file_size": 1269
+                    }
+                ]
+            }
+        }
+    ]
+}

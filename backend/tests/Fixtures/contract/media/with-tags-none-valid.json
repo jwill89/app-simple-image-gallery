@@ -1,0 +1,29 @@
+{
+    "id": "media/with-tags-none-valid",
+    "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+    "about": "No name matches a tag: 404 NoValidTagsSupplied.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/with-tags/no-such-tag/1",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 404,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "NoValidTagsSupplied",
+                    "message": "None of the specified tag names matched existing tags."
+                }
+            }
+        }
+    ]
+}

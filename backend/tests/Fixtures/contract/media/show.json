@@ -1,0 +1,67 @@
+{
+    "id": "media/show",
+    "route": "GET /media/{media_id}",
+    "about": "An image and a video.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/1",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "media_id": 1,
+                    "media_type": "image",
+                    "file_name": "cat-01.jpg",
+                    "file_time": 1767225600,
+                    "hash": "dc5d38c939e8d8814795082b8c3a3e34",
+                    "bits_fingerprint": "1000001101110111010101011011101111001110111000011010010000001101",
+                    "width": 1200,
+                    "height": 1600,
+                    "duration": 0,
+                    "file_size": 245760
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/5",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "media_id": 5,
+                    "media_type": "video",
+                    "file_name": "clip-01.mp4",
+                    "file_time": 1767236400,
+                    "hash": "d5d460c9701f5c80fefa578102766445",
+                    "bits_fingerprint": "",
+                    "width": 1920,
+                    "height": 1080,
+                    "duration": 12.5,
+                    "file_size": 5242880
+                }
+            }
+        }
+    ]
+}

@@ -1,0 +1,42 @@
+{
+    "id": "media/random",
+    "route": "GET /media/random",
+    "about": "A random item, recorded with one item left so the answer is fixed.",
+    "setup": {
+        "sql": [
+            "DELETE FROM media WHERE media_id <> 6"
+        ]
+    },
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/random",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "media_id": 6,
+                    "media_type": "image",
+                    "file_name": "dog-01.webp",
+                    "file_time": 1767240000,
+                    "hash": "a35748317a7addf46898c1a400384d87",
+                    "bits_fingerprint": "1110011110111011000110111110101110011101010010001111110100101100",
+                    "width": 1024,
+                    "height": 768,
+                    "duration": 0,
+                    "file_size": 88000
+                }
+            }
+        }
+    ]
+}

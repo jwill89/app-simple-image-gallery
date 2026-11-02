@@ -1,0 +1,41 @@
+{
+    "id": "tags/create-dev-origin",
+    "route": "POST /tags",
+    "about": "The second allowed origin (the Vite dev server) passes and is echoed in the CORS headers.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "http://localhost:5173",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "tag_name": "from dev"
+                }
+            },
+            "response": {
+                "status": 201,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "http://localhost:5173",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "tag_id": 17,
+                    "category_id": 1,
+                    "tag_name": "from dev"
+                }
+            }
+        }
+    ]
+}

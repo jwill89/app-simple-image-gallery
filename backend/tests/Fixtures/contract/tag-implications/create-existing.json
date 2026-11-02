@@ -1,0 +1,43 @@
+{
+    "id": "tag-implications/create-existing",
+    "route": "POST /tag-implications",
+    "about": "An implication that already exists: 201 again.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tag-implications",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "tag_id": 3,
+                    "implied_tag_id": 1
+                }
+            },
+            "response": {
+                "status": 201,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "tag_id": 3,
+                    "tag_name": "cat",
+                    "implied_tag_id": 1,
+                    "implied_tag_name": "animal"
+                }
+            }
+        }
+    ]
+}
