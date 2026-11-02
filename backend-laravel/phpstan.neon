@@ -1,0 +1,14 @@
+# Larastan, phpstan-strict-rules and phpstan-deprecation-rules load through
+# phpstan/extension-installer, so they need no `includes:` here. Same level as the
+# Slim backend's phpstan.neon.
+
+parameters:
+    level: 8
+    paths:
+        - app
+        - bootstrap/app.php
+        - config
+        - database
+        - routes
+        - tests
+    treatPhpDocTypesAsCertain: false

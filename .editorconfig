@@ -16,5 +16,5 @@ indent_size = 4
 indent_size = 2
 
 # composer.json and the generated openapi.json are 4-space JSON.
-[backend/**.json]
+[{backend,backend-laravel}/**.json]
 indent_size = 4

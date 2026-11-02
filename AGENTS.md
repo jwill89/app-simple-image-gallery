@@ -8,8 +8,9 @@ data model, commands, and the non-obvious gotchas that will bite you.
 > being moved to Laravel without changing the API contract. The plan, its phases and
 > each phase's "Done when" line are in [docs/laravel-migration.md](docs/laravel-migration.md).
 > The recorded contract the new backend must match lives in `backend/tests/Fixtures/contract/`
-> (`php backend/bin/record-contract.php` re-records it). Until the plan's Phase 8, this file
-> still describes the Slim backend.
+> (`php backend/bin/record-contract.php` re-records it). The Laravel app is built in
+> `backend-laravel/` (its README covers setup and checks; CI runs it as `backend-laravel`).
+> Until the plan's Phase 8, this file still describes the Slim backend.
 
 ---
 
@@ -119,6 +120,8 @@ via `__DIR__`/`chdir(__DIR__ . '/..')`, so `backend/` *is* the app root in both 
 │       ├── (root)             # cron.php INPUT folder: drop new files here for ingestion
 │       ├── full/              # canonical full-size files (served directly)
 │       └── thumbs/            # generated WebP thumbnails: <base>.webp (200px) and <base>@2x.webp (400px)
+│
+├── backend-laravel/           # Laravel 13 backend being built beside backend/ (docs/laravel-migration.md)
 │
 ├── frontend/                  # Vue 3 + Vite source
 │   ├── vite.config.ts         # Vite + Vitest config (build outDir, dev proxy, test block)
