@@ -6,7 +6,7 @@ data model, and conventions, read **[AGENTS.md](AGENTS.md)** first.
 
 ## Project layout
 
-```
+```text
 backend/    PHP 8.5 + Laravel 13 API and SPA shell, SQLite, queued jobs, artisan commands
 frontend/   Vue 3 + TypeScript SPA (Vite, Pinia, Vue Router, Bulma)
 scripts/    Dev-only deploy script and its config template
@@ -34,9 +34,11 @@ php artisan migrate
 composer dev             # php artisan serve on :8000
 ```
 
-Never point `DB_DATABASE` at a database another app is using. Set at least
-`GALLERY_ADMIN_PASSWORD` in `backend/.env`, or admin login stays disabled; the other keys are
-described in `.env.example` and [AGENTS.md §3](AGENTS.md).
+Never point `DB_DATABASE` at a database another app is using. Make yourself an admin account
+with `php artisan gallery:user <name> --admin` (it asks for the password); the settings are
+described in `.env.example` and [AGENTS.md §3](AGENTS.md). Leave the Turnstile secret empty
+locally, or use Cloudflare's always-pass test keys, which `.env.example` lists. The Vite dev
+server's origin, `http://localhost:5173`, must be in `GALLERY_ALLOWED_ORIGINS` for any write.
 
 **Frontend** (run from `frontend/`):
 
@@ -173,7 +175,7 @@ php artisan migrate
 
 ## Security & secrets
 
-- **Never commit secrets.** `backend/.env` (admin password, Danbooru API key, `APP_KEY`) and
+- **Never commit secrets.** `backend/.env` (`APP_KEY`, the Danbooru API key, the Turnstile secret) and
   `scripts/deploy.config.ps1` (host, SSH user, key path) are gitignored — keep them that way.
 - The SSH private key lives **outside** the repo; only its path is referenced.
 - Report a security concern privately to the maintainer rather than opening a public

@@ -7,9 +7,12 @@ namespace App\Providers;
 use App\Exceptions\ApiException;
 use App\Models\DanbooruCategoryMapping;
 use App\Models\DanbooruTagMapping;
+use App\Models\FavoriteList;
 use App\Models\Media;
+use App\Models\SavedSearch;
 use App\Models\Tag;
 use App\Models\TagCategory;
+use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -41,6 +44,9 @@ class AppServiceProvider extends ServiceProvider
             'danbooru_category_id' => DanbooruCategoryMapping::class,
             // A Danbooru tag mapping's; the only route with a bare {id}.
             'id' => DanbooruTagMapping::class,
+            'user_id' => User::class,
+            'list_id' => FavoriteList::class,
+            'search_id' => SavedSearch::class,
         ];
         foreach ($models as $parameter => $model) {
             Route::pattern($parameter, '[0-9]+');

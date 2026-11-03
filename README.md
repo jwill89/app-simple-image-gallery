@@ -3,13 +3,14 @@
 A self-hosted personal media gallery for images, GIFs, and videos, with a
 Danbooru-style tagging system. It supports tag categories and implications,
 include/exclude tag search, automatic tag importing from Danbooru, perceptual
-duplicate detection, favorites, and admin-gated uploads.
+duplicate detection, accounts with favorite lists, blocked tags and saved
+searches, and admin-gated uploads.
 
 > - **[AGENTS.md](AGENTS.md)** — in-depth architecture, data model, and conventions.
 > - **API reference** — the live contract is the OpenAPI 3.1 spec at `/api/openapi.json`
 >   ([backend/openapi.json](backend/openapi.json) in the repo), browsable at **`/api/docs`** (Scalar).
 > - **[CONTRIBUTING.md](CONTRIBUTING.md)** — local setup, coding standards, and PR flow.
-> - **[CHANGELOG.md](CHANGELOG.md)** — release history (current version: **5.0.0**).
+> - **[CHANGELOG.md](CHANGELOG.md)** — release history (current version: **6.0.0**).
 
 ---
 
@@ -22,12 +23,16 @@ duplicate detection, favorites, and admin-gated uploads.
 - **Search** — filter by multiple tags, including exclusions (`-tag`).
 - **Danbooru import** — auto-fetch tags by MD5 hash with an IQDB visual-similarity
   fallback; import rules are editable in the UI.
-- **Duplicate detection** — perceptual hashing (LSH → Hamming), then a worst-region comparison that tells re-saved copies from variants.
+- **Duplicate detection** — perceptual hashing (LSH → Hamming), then a worst-region comparison
+  that tells re-saved copies from variants.
 - **Uploads** — any number of files at once (sent in batches the server accepts), with the
   outcome of each file and of its Danbooru lookup.
 - **Nightly ingest** — files dropped into the media folder are added every night.
-- **Favorites** — stored locally in the browser.
-- **Admin actions** — password-gated uploads and deletes via a bearer token.
+- **Accounts** — open sign-up and login by username and password, with Cloudflare Turnstile
+  to keep bots out. An account keeps favorites in lists of its own, hides media carrying the tags
+  it blocks, and saves searches. Without one, favorites stay in the browser.
+- **Admin actions** — uploads, deletes, tag management, the duplicate scan and the Users page
+  belong to admin accounts.
 - **PWA caching** — a service worker caches thumbnails and prefetches the next page.
 
 ## Tech stack
@@ -45,7 +50,8 @@ duplicate detection, favorites, and admin-gated uploads.
 - `ffmpeg` and `ffprobe` on the system `PATH` (thumbnails and video metadata).
 - Apache with `mod_rewrite`, serving the app's `public/` folder.
 - A queue worker and a cron entry for the scheduler (see [Background work](#background-work)).
-- [Composer](https://getcomposer.org/) and [Node.js](https://nodejs.org/) **26+** (for building the frontend).
+- [Composer](https://getcomposer.org/) and [Node.js](https://nodejs.org/) **26+** (for building
+  the frontend).
 
 ## Setup
 
@@ -63,8 +69,14 @@ duplicate detection, favorites, and admin-gated uploads.
    # The SQLite database: an absolute path.
    DB_DATABASE=/var/www/gallery.example.com/db/gallery.db
 
-   # Required: admin password for uploads/deletes. Login is refused while it is empty.
-   GALLERY_ADMIN_PASSWORD=your-strong-password
+   # Whether anyone may make an account (on unless "false"). Admins come from
+   # `php artisan gallery:user`, never from sign-up.
+   GALLERY_ALLOW_SIGNUP=true
+
+   # Optional, recommended: Cloudflare Turnstile keys, the bot check on sign-up and login.
+   # With no secret, nothing is checked.
+   CLOUDFLARE_TURNSTILE_SITEKEY=0x4AAAAAAA...
+   CLOUDFLARE_TURNSTILE_SECRET=0x4AAAAAAA...
 
    # Comma-separated list of allowed origins (CORS + CSRF check).
    GALLERY_ALLOWED_ORIGINS=https://gallery.example.com
@@ -93,6 +105,7 @@ duplicate detection, favorites, and admin-gated uploads.
    ```bash
    php artisan migrate
    php artisan storage:link   # public/media → GALLERY_MEDIA_PATH
+   php artisan gallery:user yourname --admin   # your admin account; asks for its password
    ```
 
 4. **Build the frontend**
@@ -124,7 +137,7 @@ duplicate detection, favorites, and admin-gated uploads.
 
 - **Scheduler** — the nightly ingest and token pruning. Add a cron entry for the same user:
 
-  ```
+  ```cron
   * * * * * cd /path/to/backend && php artisan schedule:run >> /dev/null 2>&1
   ```
 
@@ -208,12 +221,17 @@ Do **not** edit a migration that has already run in production — add a new one
 
 ## Security notes
 
-- Set a strong `GALLERY_ADMIN_PASSWORD`. With it empty, login is refused, so no default
-  password can ever grant access.
+- Make the admin account with `php artisan gallery:user <name> --admin`, which asks for the
+  password rather than taking it on the command line. Sign-up never makes an admin, and there is
+  always one admin left.
+- Set the Turnstile keys on a public site, and close sign-up (`GALLERY_ALLOW_SIGNUP=false`) if
+  you don't want new accounts.
 - Keep `GALLERY_ALLOWED_ORIGINS` tight — it backs both CORS and the CSRF
   origin check. State-changing requests with no `Origin`/`Referer` are rejected.
-- Login is rate-limited (10 attempts / 5 minutes per IP) on top of the global
-  request limiter (120 a minute per IP). Login tokens are stored hashed and expire after 24 hours.
+- Login is rate-limited (10 attempts / 5 minutes per IP), and sign-up (5 accounts an hour per
+  IP), on top of the global request limiter (120 a minute per IP). Behind Cloudflare, the IP is
+  the visitor's: only Cloudflare's own addresses are trusted to say who it is. Login tokens are
+  stored hashed and expire after a day, or 30 days with "keep me signed in".
 - Serve only `backend/public/`; the `.env`, the code and the data sit outside it.
 - `backend/.env` and the database are gitignored and must never be committed.
 

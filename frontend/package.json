@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "5.0.0",
+  "version": "6.0.0",
   "type": "module",
   "engines": {
     "node": ">=26"
@@ -20,7 +20,8 @@
     "gen:types": "npx --yes openapi-typescript@^7 ../backend/openapi.json -o src/types/api.generated.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "lint:md": "cd .. && markdownlint-cli2"
   },
   "dependencies": {
     "bulma": "^1.0.4",
@@ -41,6 +42,7 @@
     "happy-dom": "^21.0.4",
     "jiti": "^2.7.0",
     "knip": "^6.44.1",
+    "markdownlint-cli2": "^0.24.0",
     "postcss-html": "^2.0.0",
     "prettier": "^3.9.10",
     "stylelint": "^17.16.0",

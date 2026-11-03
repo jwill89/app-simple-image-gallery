@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useApi, getErrorMessage, hasAuthToken } from '../composables/useApi'
+import { ref, onMounted, computed } from 'vue'
+import { useApi, getErrorMessage } from '../composables/useApi'
 import { useGalleryStore } from '../stores/gallery'
 import { useToastStore } from '../stores/toast'
 import { endpoints } from '../api/endpoints'
@@ -11,12 +11,15 @@ import EmptyState from '../components/EmptyState.vue'
 import PageHeader from '../components/PageHeader.vue'
 import AppDialog from '../components/AppDialog.vue'
 import AppTooltip from '../components/AppTooltip.vue'
+import { useAuthStore } from '../stores/auth'
 
 const api = useApi()
 const store = useGalleryStore()
 const toastStore = useToastStore()
 
-const authenticated = ref(hasAuthToken())
+const auth = useAuthStore()
+// Editing is an admin's.
+const authenticated = computed(() => auth.isAdmin)
 const loading = ref(false)
 const loadFailed = ref(false)
 const categories = ref<TagCategory[]>([])

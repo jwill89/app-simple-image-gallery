@@ -30,12 +30,21 @@ return [
     // releases from) and the HTTP API contract version, which moves only when
     // the API surface changes and is set in the OpenAPI document's metadata.
     // Both are served by GET /api/version.
-    'version' => '5.0.0',
+    'version' => '6.0.0',
     'api_version' => App\OpenApi\OpenApiSpec::API_VERSION,
 
-    // Admin password for the protected endpoints. Login is refused while it is
-    // empty, so no default password can ever grant access.
-    'admin_password' => $raw('GALLERY_ADMIN_PASSWORD'),
+    // Whether anyone may create an account: on unless set to "false" (or "0",
+    // "off", "no"). Admins come from `php artisan gallery:user`, never sign-up.
+    'allow_signup' => !in_array(strtolower($raw('GALLERY_ALLOW_SIGNUP')), ['false', '0', 'off', 'no'], true),
+
+    // Cloudflare Turnstile, the check that sign-up and login aren't a bot's.
+    // The site key goes to the browser (GET /api/auth/config), the secret only
+    // to Cloudflare. Without a secret nothing is checked: local development
+    // and the tests run without one.
+    'turnstile' => [
+        'site_key' => $raw('CLOUDFLARE_TURNSTILE_SITEKEY'),
+        'secret' => $raw('CLOUDFLARE_TURNSTILE_SECRET'),
+    ],
 
     // Public base URL, without a trailing slash. Builds the absolute image URLs
     // Danbooru's IQDB lookup fetches.

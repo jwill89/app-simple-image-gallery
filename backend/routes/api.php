@@ -2,17 +2,21 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DanbooruCategoryMappingController;
 use App\Http\Controllers\Api\DanbooruTagMappingController;
 use App\Http\Controllers\Api\DuplicateController;
+use App\Http\Controllers\Api\FavoriteListController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\MediaTagController;
+use App\Http\Controllers\Api\SavedSearchController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\TagCategoryController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\TagImplicationController;
 use App\Http\Controllers\Api\UploadController;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -20,10 +24,10 @@ use Illuminate\Support\Facades\Route;
 | API routes (prefixed /api)
 |--------------------------------------------------------------------------
 |
-| API 5. The recordings in tests/Fixtures/contract/ say how the Slim app
+| API 6. The recordings in tests/Fixtures/contract/ say how the Slim app
 | answered API 4; tests/Feature/Contract/ContractTest.php replays them, and
-| divergences.php lists what API 5 answers differently. The api group adds
-| the 120-a-minute rate limiter.
+| divergences.php lists what API 5 and 6 answer differently. The api group
+| adds the 120-a-minute rate limiter.
 |
 | A path id is digits and names a record that exists, or the request is a 404
 | (AppServiceProvider binds each {…_id} to its model).
@@ -32,7 +36,8 @@ use Illuminate\Support\Facades\Route;
 
 // Public reads. Each answers with an ETag and Cache-Control: no-cache, so a
 // browser keeps the body and asks again with If-None-Match: an unchanged
-// answer is a 304 with no body.
+// answer is a 304 with no body. A signed-in account's token, when sent, still
+// counts: its blocked tags leave the media listings (App\Support\Viewer).
 Route::middleware('cache.headers:no_cache;private;etag')->group(static function (): void {
     Route::get('/version', [SystemController::class, 'version']);
 
@@ -60,6 +65,8 @@ Route::get('/openapi.json', [SystemController::class, 'openApi']);
 Route::get('/docs', [SystemController::class, 'docs']);
 Route::get('/media/random', [MediaController::class, 'random']);
 
+Route::get('/auth/config', [AuthController::class, 'config']);
+Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
 
 // A read that is a POST only to carry a long list of ids.
@@ -69,9 +76,39 @@ Route::post('/media/by-ids', [MediaController::class, 'byIds']);
 Route::patch('/media/{media_id}/tags', [MediaTagController::class, 'store']);
 Route::delete('/media/{media_id}/tags/{tag_id}', [MediaTagController::class, 'destroy']);
 
-// Every other write needs the admin's token.
+// An account's own things: any signed-in account.
 Route::middleware('auth:sanctum')->group(static function (): void {
     Route::delete('/auth/token', [AuthController::class, 'logout']);
+    Route::get('/auth/me', [AuthController::class, 'me']);
+
+    Route::patch('/account/password', [AccountController::class, 'changePassword']);
+    Route::delete('/account', [AccountController::class, 'destroy']);
+    Route::get('/account/blocked-tags', [AccountController::class, 'blockedTags']);
+    Route::put('/account/blocked-tags/{tag_id}', [AccountController::class, 'blockTag']);
+    Route::delete('/account/blocked-tags/{tag_id}', [AccountController::class, 'unblockTag']);
+
+    Route::get('/lists', [FavoriteListController::class, 'index']);
+    Route::post('/lists', [FavoriteListController::class, 'store']);
+    Route::patch('/lists/{list_id}', [FavoriteListController::class, 'update']);
+    Route::delete('/lists/{list_id}', [FavoriteListController::class, 'destroy']);
+    Route::get('/lists/{list_id}/ids', [FavoriteListController::class, 'ids']);
+    Route::get('/lists/{list_id}/media', [FavoriteListController::class, 'media']);
+    Route::post('/lists/{list_id}/media', [FavoriteListController::class, 'addMany']);
+    Route::put('/lists/{list_id}/media/{media_id}', [FavoriteListController::class, 'add']);
+    Route::delete('/lists/{list_id}/media/{media_id}', [FavoriteListController::class, 'remove']);
+    Route::get('/media/{media_id}/lists', [FavoriteListController::class, 'holding']);
+
+    Route::get('/saved-searches', [SavedSearchController::class, 'index']);
+    Route::post('/saved-searches', [SavedSearchController::class, 'store']);
+    Route::patch('/saved-searches/{search_id}', [SavedSearchController::class, 'update']);
+    Route::delete('/saved-searches/{search_id}', [SavedSearchController::class, 'destroy']);
+});
+
+// Every other write needs an admin account.
+Route::middleware(['auth:sanctum', 'admin'])->group(static function (): void {
+    Route::get('/users', [UserController::class, 'index']);
+    Route::patch('/users/{user_id}', [UserController::class, 'update']);
+    Route::delete('/users/{user_id}', [UserController::class, 'destroy']);
 
     Route::post('/media', [UploadController::class, 'store']);
     Route::post('/media/bulk-delete', [MediaController::class, 'bulkDestroy']);

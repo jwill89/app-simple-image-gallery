@@ -28,6 +28,12 @@ export type TagImplication = Required<Schemas['TagImplication']>
 export type CategoryMapping = Required<Schemas['CategoryMapping']>
 /** A Danbooru→gallery tag-name mapping. */
 export type TagMapping = Required<Schemas['TagMapping']>
+/** An account (GET /auth/me, the admin's GET /users). */
+export type User = Required<Schemas['User']>
+/** One of an account's lists of media; the default one is "Favorites". */
+export type FavoriteList = Required<Schemas['FavoriteList']>
+/** A tag search an account keeps by name; `query` as the gallery URL writes it. */
+export type SavedSearch = Required<Schemas['SavedSearch']>
 
 // ── Composite responses ─────────────────────────────────────────────
 /** A numbered page of media (GET /media/page/…, /media/untagged/…, /media/with-tags/…). */
@@ -60,7 +66,18 @@ export interface TagListPage {
 export type TagImportStatus = Required<Schemas['TagImportStatus']>
 
 export type Count = Required<Schemas['Count']>
-export type LoginResponse = Required<Schemas['LoginResponse']>
+/** A login or sign-up's token, and the account it signs in. */
+export interface LoginResponse {
+  token: string
+  user: User
+}
+
+/** What the sign-in and sign-up pages need (GET /auth/config). */
+export interface AuthConfig {
+  signup_open: boolean
+  /** Turnstile's site key; null while the server doesn't check for bots. */
+  turnstile_site_key: string | null
+}
 export type BulkDeleteResult = Required<Schemas['BulkDeleteResult']>
 
 /** Result of importing Danbooru tags for a media item. */

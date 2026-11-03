@@ -63,8 +63,13 @@ return [
     |
     */
 
-    // 24 hours, as the Slim app's tokens lasted.
-    'expiration' => 1440,
+    // The longest any token lasts: 30 days, a "keep me signed in" login. Each
+    // token also carries its own expires_at (User::issueToken()): a day, or 30.
+    'expiration' => 43200,
+
+    // Not recorded: a signed-in account sends its token with every listing it
+    // reads, and noting when each was used would make every read a write.
+    'last_used_at' => false,
 
     /*
     |--------------------------------------------------------------------------

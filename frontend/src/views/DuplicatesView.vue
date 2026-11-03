@@ -1,31 +1,25 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import {
-  useApi,
-  getErrorMessage,
-  getErrorStatus,
-  hasAuthToken,
-  setAuthToken,
-} from '../composables/useApi'
+import { ref, onMounted, computed, watch } from 'vue'
+import { useApi, getErrorMessage, getErrorStatus } from '../composables/useApi'
+import { useAuthStore } from '../stores/auth'
 import { useGalleryStore } from '../stores/gallery'
 import { useToastStore } from '../stores/toast'
 import { endpoints } from '../api/endpoints'
-import type { DuplicateReport, DuplicateMatch, BulkDeleteResult, LoginResponse } from '../types'
+import type { DuplicateReport, DuplicateMatch, BulkDeleteResult } from '../types'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import PageHeader from '../components/PageHeader.vue'
 import EmptyState from '../components/EmptyState.vue'
 import StatRow from '../components/StatRow.vue'
 import AppDialog from '../components/AppDialog.vue'
+import SignInGate from '../components/SignInGate.vue'
 
 const api = useApi()
 const store = useGalleryStore()
 const toastStore = useToastStore()
 
-// Auth state
-const authenticated = ref(hasAuthToken())
-const passwordInput = ref('')
-const authError = ref<string | null>(null)
-const authLoading = ref(false)
+// The page is an admin's (the report itself is public; scanning and deleting aren't).
+const auth = useAuthStore()
+const authenticated = computed(() => auth.isAdmin)
 
 const report = ref<DuplicateReport | null>(null)
 const loading = ref(false)
@@ -39,25 +33,6 @@ const selectedMedia = ref<Set<number>>(new Set())
 const hasSelection = computed(() => selectedMedia.value.size > 0)
 const selectionCount = computed(() => selectedMedia.value.size)
 
-async function login() {
-  authLoading.value = true
-  authError.value = null
-  try {
-    const result = await api.post<LoginResponse>(endpoints.auth.login, {
-      password: passwordInput.value,
-    })
-    if (!result) throw new Error('No token returned')
-    setAuthToken(result.token)
-    authenticated.value = true
-    passwordInput.value = ''
-    await loadReport()
-  } catch {
-    authError.value = 'Invalid password'
-  } finally {
-    authLoading.value = false
-  }
-}
-
 async function loadReport() {
   loading.value = true
   loadFailed.value = false
@@ -66,10 +41,8 @@ async function loadReport() {
     report.value = (await api.get<DuplicateReport>(endpoints.duplicates.report)) ?? null
   } catch (e) {
     const status = getErrorStatus(e)
-    if (status === 401) {
-      authenticated.value = false
-      return
-    }
+    // A 401 has signed the account out; the gate shows the sign-in link.
+    if (status === 401) return
     if (status === 404) {
       report.value = null
     } else {
@@ -203,60 +176,18 @@ function ssimClass(ssim: number | null): string {
 }
 
 onMounted(() => {
-  if (authenticated.value) {
-    void loadReport()
-  }
+  if (authenticated.value) void loadReport()
+})
+// Signed in as an admin after the page opened (the account loads at start-up).
+watch(authenticated, (isAdmin) => {
+  if (isAdmin) void loadReport()
 })
 </script>
 
 <template>
   <section class="section">
     <div class="container">
-      <!-- Login Gate -->
-      <template v-if="!authenticated">
-        <div class="columns is-centered">
-          <div class="column is-4">
-            <div class="box">
-              <h2 class="title is-4 has-text-centered">
-                <span class="icon"><i class="fa-solid fa-lock" /></span>
-                Authentication Required
-              </h2>
-              <p class="has-text-centered mb-4">
-                Enter the admin password to access the duplicates page.
-              </p>
-              <div class="field">
-                <div class="control has-icons-left">
-                  <input
-                    v-model="passwordInput"
-                    class="input"
-                    :class="{ 'is-danger': authError }"
-                    type="password"
-                    aria-label="Admin password"
-                    placeholder="Password"
-                    @keyup.enter="login"
-                  />
-                  <span class="icon is-left"><i class="fa-solid fa-key" /></span>
-                </div>
-                <p v-if="authError" class="help is-danger">
-                  {{ authError }}
-                </p>
-              </div>
-              <button
-                type="button"
-                class="button is-primary is-fullwidth"
-                :class="{ 'is-loading': authLoading }"
-                :disabled="authLoading || !passwordInput"
-                @click="login"
-              >
-                Login
-              </button>
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <!-- Authenticated Content -->
-      <template v-else>
+      <SignInGate admin>
         <PageHeader title="Duplicates" :meta="report ? `${report.duplicates_found} pairs` : ''">
           <template #actions>
             <button
@@ -480,7 +411,7 @@ onMounted(() => {
             </div>
           </div>
         </template>
-      </template>
+      </SignInGate>
 
       <!-- Bulk deletion is the most destructive action in the app; it was the
            last thing still behind a native confirm(), which can't be styled,

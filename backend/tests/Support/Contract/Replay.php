@@ -39,7 +39,6 @@ final class Replay
 
     /** The .env the recordings were made with, and the config key each variable is. */
     private const array ENV = [
-        'GALLERY_ADMIN_PASSWORD' => ['gallery.admin_password', 'contract-password'],
         'GALLERY_URL' => ['gallery.url', 'https://gallery.test'],
         'GALLERY_ALLOWED_ORIGINS' => ['gallery.allowed_origins', 'https://gallery.test,http://localhost:5173'],
         'DANBOORU_LOGIN' => ['gallery.danbooru.login', 'contract'],
@@ -189,7 +188,8 @@ final class Replay
             DB::connection()->getPdo()->exec($statement);
         }
 
-        $admin = User::admin();
+        // The recorder's admin, an account with is_admin set since API 6.
+        $admin = User::query()->create(['username' => 'admin', 'password' => 'contract-password', 'is_admin' => true]);
         $admin->tokens()->create(['name' => 'admin', 'token' => hash('sha256', self::ADMIN_TOKEN), 'abilities' => ['*']]);
         $expired = $admin->tokens()->create(['name' => 'admin', 'token' => hash('sha256', self::EXPIRED_TOKEN), 'abilities' => ['*']]);
         $expired->forceFill(['created_at' => Carbon::createFromTimestamp(1700000000)])->save();

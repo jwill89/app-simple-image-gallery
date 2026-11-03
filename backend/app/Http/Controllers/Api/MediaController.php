@@ -12,6 +12,7 @@ use App\Models\Media;
 use App\Models\Tag;
 use App\Support\CacheGroup;
 use App\Support\ResponseCache;
+use App\Support\Viewer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,7 +23,12 @@ use Illuminate\Support\Facades\Log;
 use OpenApi\Spec as OAS;
 use Throwable;
 
-/** Media items: the paged listings and tag search, single reads, and deletes. */
+/**
+ * Media items: the paged listings and tag search, single reads, and deletes.
+ * Every listing, count and random pick leaves out media carrying a tag the
+ * signed-in account blocks (App\Support\Viewer); a single read doesn't, and
+ * the app asks before showing it.
+ */
 final class MediaController extends Controller
 {
     private const int DEFAULT_PER_PAGE = 40;
@@ -52,13 +58,14 @@ final class MediaController extends Controller
             new OAS\Response(response: 400, description: 'InvalidPageNumber', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ],
     )]
-    public function index(string $page, ?string $perPage = null): JsonResponse
+    public function index(Request $request, string $page, ?string $perPage = null): JsonResponse
     {
         $page = self::pageNumber($page);
         $perPage = self::pageSize($perPage);
+        $hidden = Viewer::hiddenTags($request);
 
         // An empty gallery has 0 pages here, where the other listings say 1.
-        return $this->cache->remember(CacheGroup::Media, "page:{$page}:{$perPage}", ResponseCache::TTL_SHORT, static fn(): array => self::mediaPage(Media::query(), $page, $perPage, atLeastOnePage: false));
+        return $this->cache->remember(CacheGroup::Media, "page:{$page}:{$perPage}" . Viewer::cacheKey($hidden), ResponseCache::TTL_SHORT, static fn(): array => self::mediaPage(Media::query()->hidingTags($hidden), $page, $perPage, atLeastOnePage: false));
     }
 
     /**
@@ -83,6 +90,7 @@ final class MediaController extends Controller
         $page = self::pageNumber($page);
         $perPage = self::pageSize($perPage);
 
+        // Untagged media carries no tag to block.
         return $this->cache->remember(CacheGroup::Media, "untagged:{$page}:{$perPage}", ResponseCache::TTL_SHORT, static fn(): array => self::mediaPage(Media::query()->untagged(), $page, $perPage));
     }
 
@@ -106,7 +114,7 @@ final class MediaController extends Controller
             new OAS\Response(response: 404, description: 'NoValidTagsSupplied', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ],
     )]
-    public function search(string $tagList, string $page, ?string $perPage = null): JsonResponse
+    public function search(Request $request, string $tagList, string $page, ?string $perPage = null): JsonResponse
     {
         // Unlike the other listings, page 0 is answered (as the first page,
         // with current_page 0), not refused.
@@ -114,11 +122,12 @@ final class MediaController extends Controller
         $perPage = self::pageSize($perPage);
 
         [$includeIds, $excludeIds] = self::tagSearch($tagList);
+        $hidden = Viewer::hiddenTags($request);
 
         // Keyed by the list as written, so a search in other letter case is
         // cached separately.
-        return $this->cache->remember(CacheGroup::Media, "tags:{$tagList}:{$page}:{$perPage}", ResponseCache::TTL_SHORT, static fn(): array => self::mediaPage(
-            Media::query()->taggedWith($includeIds, $excludeIds),
+        return $this->cache->remember(CacheGroup::Media, "tags:{$tagList}:{$page}:{$perPage}" . Viewer::cacheKey($hidden), ResponseCache::TTL_SHORT, static fn(): array => self::mediaPage(
+            Media::query()->taggedWith($includeIds, $excludeIds)->hidingTags($hidden),
             $page,
             $perPage,
         ));
@@ -187,7 +196,7 @@ final class MediaController extends Controller
         }
         $perPage = self::pageSize($request->filled('per_page') ? $request->string('per_page')->toString() : null);
 
-        $query = Media::query();
+        $query = Media::query()->hidingTags(Viewer::hiddenTags($request));
         if ($request->boolean('untagged')) {
             $query->untagged();
         } elseif ($request->filled('tags')) {
@@ -214,9 +223,9 @@ final class MediaController extends Controller
             new OAS\Response(response: 404, description: 'MediaNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ],
     )]
-    public function random(): MediaResource
+    public function random(Request $request): MediaResource
     {
-        return new MediaResource(Media::pickRandom() ?? throw new ApiException('MediaNotFound', 404, 'No media items are available.'));
+        return new MediaResource(Media::pickRandom(Viewer::hiddenTags($request)) ?? throw new ApiException('MediaNotFound', 404, 'No media items are available.'));
     }
 
     /**
@@ -231,9 +240,11 @@ final class MediaController extends Controller
             new OAS\Response(response: 200, description: 'The count', content: new OAS\MediaType\Json(ref: '#/components/schemas/Count')),
         ],
     )]
-    public function count(): JsonResponse
+    public function count(Request $request): JsonResponse
     {
-        return $this->cache->remember(CacheGroup::Media, 'count', ResponseCache::TTL_MEDIUM, static fn(): array => ['count' => Media::query()->count()]);
+        $hidden = Viewer::hiddenTags($request);
+
+        return $this->cache->remember(CacheGroup::Media, 'count' . Viewer::cacheKey($hidden), ResponseCache::TTL_MEDIUM, static fn(): array => ['count' => Media::query()->hidingTags($hidden)->count()]);
     }
 
     /**
@@ -272,7 +283,7 @@ final class MediaController extends Controller
         }
 
         // In listing order, not the order asked for.
-        return MediaResource::collection(Media::query()->whereKey($ids)->newestFirst()->get());
+        return MediaResource::collection(Media::query()->whereKey($ids)->hidingTags(Viewer::hiddenTags($request))->newestFirst()->get());
     }
 
     /**

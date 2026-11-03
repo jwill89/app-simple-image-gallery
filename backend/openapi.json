@@ -3,7 +3,7 @@
     "info": {
         "title": "Gallery API",
         "description": "Internal HTTP API for the self-hosted media gallery — a **hybrid REST-RPC**\ninterface served under the `/api` base path. All responses are JSON.\n\n**Conventions**\n- Reads return `200` with the resource or collection.\n- Creates return `201` with the created resource.\n- Updates (`PUT`/`PATCH`) return `200` with the updated resource.\n- Deletes return `204` with no body.\n- Non-CRUD actions (login, migrate, scan, bulk operations) are `POST`\n  verbs that return `200` with a small result object.\n- Errors return `{ \"error\": \"<MachineCode>\", \"message\": \"<human text>\" }`\n  with a `4xx`/`5xx` status. `error` is a stable PascalCase code safe to\n  branch on; `message` is for display and may change.\n\n**Auth** — a Bearer token (`Authorization: Bearer <token>`) obtained from\n`POST /auth/login` (valid 24h). All `GET`s are public; state-changing\nmethods require a token, except a small public allowlist (media tagging\nand the batched `POST /media/by-ids` read).",
-        "version": "5.0.0"
+        "version": "6.0.0"
     },
     "servers": [
         {
@@ -12,14 +12,78 @@
         }
     ],
     "paths": {
-        "/auth/login": {
-            "post": {
+        "/account/password": {
+            "patch": {
                 "tags": [
-                    "Auth"
+                    "Account"
                 ],
-                "summary": "Log in as admin",
-                "description": "POST /auth/login — Exchange the admin password for a bearer token.\nBody: { password }. Returns { token } valid for 24 hours.",
-                "operationId": "login",
+                "summary": "Change your password",
+                "description": "PATCH /account/password — Change the password. Every other login of the\naccount is signed out; this one stays.",
+                "operationId": "changePassword",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "current_password": {
+                                        "type": "string"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "minLength": 8,
+                                        "maxLength": 200
+                                    }
+                                },
+                                "required": [
+                                    "current_password",
+                                    "password"
+                                ]
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "204": {
+                        "description": "Changed"
+                    },
+                    "400": {
+                        "description": "MissingCredentials, WeakPassword",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "IncorrectPassword",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/account": {
+            "delete": {
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Delete your account",
+                "description": "DELETE /account — Delete the account, with its lists, blocked tags and\nsaved searches. Body: { password }. The last admin can't.",
+                "operationId": "deleteAccount",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -39,6 +103,334 @@
                     "required": true
                 },
                 "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    },
+                    "400": {
+                        "description": "MissingCredentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "IncorrectPassword",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "LastAdmin",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/account/blocked-tags": {
+            "get": {
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Your blocked tags",
+                "description": "GET /account/blocked-tags — The tags whose media this account doesn't\nsee in listings, by name.",
+                "operationId": "listBlockedTags",
+                "responses": {
+                    "200": {
+                        "description": "The blocked tags",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Tag"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/account/blocked-tags/{tag_id}": {
+            "put": {
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Block a tag",
+                "description": "PUT /account/blocked-tags/{tag_id} — Block a tag: media carrying it\nleaves this account's listings. Blocking it again changes nothing.",
+                "operationId": "blockTag",
+                "parameters": [
+                    {
+                        "name": "tag_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Blocked"
+                    },
+                    "404": {
+                        "description": "TagNotFound",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Unblock a tag",
+                "description": "DELETE /account/blocked-tags/{tag_id} — Unblock a tag.",
+                "operationId": "unblockTag",
+                "parameters": [
+                    {
+                        "name": "tag_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Unblocked"
+                    },
+                    "404": {
+                        "description": "TagNotFound",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/auth/config": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Sign-up and login settings",
+                "description": "GET /auth/config — What the sign-up and login pages need to know:\nwhether sign-up is open, and the Turnstile site key (null while the bot\ncheck is off).",
+                "operationId": "authConfig",
+                "responses": {
+                    "200": {
+                        "description": "The settings",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "signup_open": {
+                                            "type": "boolean"
+                                        },
+                                        "turnstile_site_key": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/register": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Create an account",
+                "description": "POST /auth/register — Create an account and sign it in. Body:\n{ username, password, remember?, turnstile_token? }.",
+                "operationId": "register",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "username": {
+                                        "type": "string",
+                                        "minLength": 3,
+                                        "maxLength": 32,
+                                        "pattern": "^[A-Za-z0-9._-]{3,32}$"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "minLength": 8,
+                                        "maxLength": 200
+                                    },
+                                    "remember": {
+                                        "type": "boolean",
+                                        "description": "Keep the login for 30 days instead of one."
+                                    },
+                                    "turnstile_token": {
+                                        "type": "string",
+                                        "description": "The Turnstile widget's token (action \"register\"), when GET /auth/config gives a site key."
+                                    }
+                                },
+                                "required": [
+                                    "username",
+                                    "password"
+                                ]
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "The account, signed in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LoginResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "InvalidUsername, WeakPassword, CaptchaRequired",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "SignupClosed, CaptchaFailed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "UsernameTaken",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TooManySignups",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "CaptchaUnavailable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Log in",
+                "description": "POST /auth/login — Exchange a username and password for a bearer token.\nBody: { username, password, remember?, turnstile_token? }. The token\nlasts a day, or 30 with remember.",
+                "operationId": "login",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "username": {
+                                        "type": "string"
+                                    },
+                                    "password": {
+                                        "type": "string"
+                                    },
+                                    "remember": {
+                                        "type": "boolean",
+                                        "description": "Keep the login for 30 days instead of one."
+                                    },
+                                    "turnstile_token": {
+                                        "type": "string",
+                                        "description": "The Turnstile widget's token (action \"login\"), when GET /auth/config gives a site key."
+                                    }
+                                },
+                                "required": [
+                                    "username",
+                                    "password"
+                                ]
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
                     "200": {
                         "description": "Issued token",
                         "content": {
@@ -49,8 +441,28 @@
                             }
                         }
                     },
+                    "400": {
+                        "description": "MissingCredentials, CaptchaRequired",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
                     "401": {
-                        "description": "InvalidPassword",
+                        "description": "InvalidCredentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "CaptchaFailed",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -70,7 +482,7 @@
                         }
                     },
                     "503": {
-                        "description": "AdminNotConfigured",
+                        "description": "CaptchaUnavailable",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -80,6 +492,43 @@
                         }
                     }
                 }
+            }
+        },
+        "/auth/me": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "The signed-in account",
+                "description": "GET /auth/me — The account the token signs in.",
+                "operationId": "currentUser",
+                "responses": {
+                    "200": {
+                        "description": "The account",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/User"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/auth/token": {
@@ -559,6 +1008,578 @@
                     },
                     "400": {
                         "description": "InvalidInput",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/lists": {
+            "get": {
+                "tags": [
+                    "Lists"
+                ],
+                "summary": "Your lists",
+                "description": "GET /lists — The account's lists: the default first, then by name.",
+                "operationId": "listFavoriteLists",
+                "responses": {
+                    "200": {
+                        "description": "The lists",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FavoriteList"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Lists"
+                ],
+                "summary": "Make a list",
+                "description": "POST /lists — Make a list. Body: { name }.",
+                "operationId": "createFavoriteList",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 60
+                                    }
+                                },
+                                "required": [
+                                    "name"
+                                ]
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "The list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FavoriteList"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "InvalidListName",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "ListExists",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/lists/{list_id}": {
+            "patch": {
+                "tags": [
+                    "Lists"
+                ],
+                "summary": "Rename a list",
+                "description": "PATCH /lists/{list_id} — Rename a list. Body: { name }.",
+                "operationId": "renameFavoriteList",
+                "parameters": [
+                    {
+                        "name": "list_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 60
+                                    }
+                                },
+                                "required": [
+                                    "name"
+                                ]
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FavoriteList"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "InvalidListName",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "ListNotFound",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "ListExists",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Lists"
+                ],
+                "summary": "Delete a list",
+                "description": "DELETE /lists/{list_id} — Delete a list (not its media). The default\nlist can't be.",
+                "operationId": "deleteFavoriteList",
+                "parameters": [
+                    {
+                        "name": "list_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    },
+                    "404": {
+                        "description": "ListNotFound",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "DefaultList",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/lists/{list_id}/ids": {
+            "get": {
+                "tags": [
+                    "Lists"
+                ],
+                "summary": "The media ids in a list",
+                "description": "GET /lists/{list_id}/ids — Every media id in a list, for marking cards.",
+                "operationId": "favoriteListIds",
+                "parameters": [
+                    {
+                        "name": "list_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The ids",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "integer"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "ListNotFound",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/lists/{list_id}/media": {
+            "get": {
+                "tags": [
+                    "Lists"
+                ],
+                "summary": "A page of a list",
+                "description": "GET /lists/{list_id}/media?page=&per_page= — A page of a list, the most\nrecently added first. Media carrying a tag the account blocks is left\nout, as from every listing.",
+                "operationId": "favoriteListMedia",
+                "parameters": [
+                    {
+                        "name": "list_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 200,
+                            "default": 40
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of the list",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MediaPage"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "ListNotFound",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Lists"
+                ],
+                "summary": "Add many media to a list",
+                "description": "POST /lists/{list_id}/media — Add many media at once. Body:\n{ media_ids: int[] } (at most 2000). Ids of media that don't exist are\nskipped. Answers { added }, how many weren't in the list already.",
+                "operationId": "addManyToFavoriteList",
+                "parameters": [
+                    {
+                        "name": "list_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "media_ids": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        },
+                                        "maxItems": 2000
+                                    }
+                                },
+                                "required": [
+                                    "media_ids"
+                                ]
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "How many were added",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "added": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "InvalidInput",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "ListNotFound",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/lists/{list_id}/media/{media_id}": {
+            "put": {
+                "tags": [
+                    "Lists"
+                ],
+                "summary": "Add media to a list",
+                "description": "PUT /lists/{list_id}/media/{media_id} — Add media to a list. Adding it\nagain changes nothing.",
+                "operationId": "addToFavoriteList",
+                "parameters": [
+                    {
+                        "name": "list_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "media_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Added"
+                    },
+                    "404": {
+                        "description": "ListNotFound, MediaNotFound",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Lists"
+                ],
+                "summary": "Take media out of a list",
+                "description": "DELETE /lists/{list_id}/media/{media_id} — Take media out of a list.",
+                "operationId": "removeFromFavoriteList",
+                "parameters": [
+                    {
+                        "name": "list_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "media_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Removed"
+                    },
+                    "404": {
+                        "description": "ListNotFound, MediaNotFound",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/media/{media_id}/lists": {
+            "get": {
+                "tags": [
+                    "Lists"
+                ],
+                "summary": "Your lists that hold this media",
+                "description": "GET /media/{media_id}/lists — Which of the account's lists hold this\nmedia, by id.",
+                "operationId": "listsHoldingMedia",
+                "parameters": [
+                    {
+                        "name": "media_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The list ids",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "integer"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "MediaNotFound",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1451,6 +2472,230 @@
                         }
                     }
                 }
+            }
+        },
+        "/saved-searches": {
+            "get": {
+                "tags": [
+                    "Saved searches"
+                ],
+                "summary": "Your saved searches",
+                "description": "GET /saved-searches — The account's saved searches, by name.",
+                "operationId": "listSavedSearches",
+                "responses": {
+                    "200": {
+                        "description": "The searches",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/SavedSearch"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Saved searches"
+                ],
+                "summary": "Save a search",
+                "description": "POST /saved-searches — Save a search. Body: { name, query }.",
+                "operationId": "createSavedSearch",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 60
+                                    },
+                                    "query": {
+                                        "type": "string",
+                                        "maxLength": 500
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "query"
+                                ]
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "The search",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SavedSearch"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "InvalidSearchName, InvalidQuery",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "SearchExists",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/saved-searches/{search_id}": {
+            "patch": {
+                "tags": [
+                    "Saved searches"
+                ],
+                "summary": "Change a saved search",
+                "description": "PATCH /saved-searches/{search_id} — Rename a search or change its query.\nBody: { name?, query? }.",
+                "operationId": "updateSavedSearch",
+                "parameters": [
+                    {
+                        "name": "search_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 60
+                                    },
+                                    "query": {
+                                        "type": "string",
+                                        "maxLength": 500
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The search",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SavedSearch"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "InvalidSearchName, InvalidQuery",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "SearchNotFound",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "SearchExists",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Saved searches"
+                ],
+                "summary": "Delete a saved search",
+                "description": "DELETE /saved-searches/{search_id} — Delete a saved search.",
+                "operationId": "deleteSavedSearch",
+                "parameters": [
+                    {
+                        "name": "search_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    },
+                    "404": {
+                        "description": "SearchNotFound",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/version": {
@@ -2371,6 +3616,181 @@
                     }
                 ]
             }
+        },
+        "/users": {
+            "get": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "List accounts",
+                "description": "GET /users — Every account, by username.",
+                "operationId": "listUsers",
+                "responses": {
+                    "200": {
+                        "description": "The accounts",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/User"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/users/{user_id}": {
+            "patch": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Change an account",
+                "description": "PATCH /users/{user_id} — Make an account an admin or not, or set its\npassword (which signs it out everywhere).",
+                "operationId": "updateUser",
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "is_admin": {
+                                        "type": "boolean"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "minLength": 8,
+                                        "maxLength": 200
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The account",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/User"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "WeakPassword",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "UserNotFound",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "LastAdmin",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Delete an account",
+                "description": "DELETE /users/{user_id} — Delete an account, with its lists, blocked\ntags and saved searches.",
+                "operationId": "deleteUser",
+                "parameters": [
+                    {
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    },
+                    "404": {
+                        "description": "UserNotFound",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "LastAdmin",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -2562,11 +3982,14 @@
             },
             "LoginResponse": {
                 "type": "object",
-                "description": "Issued admin bearer token.",
+                "description": "A bearer token, and the account it signs in.",
                 "properties": {
                     "token": {
                         "type": "string",
-                        "description": "Bearer token, valid for 24 hours."
+                        "description": "Bearer token, valid for a day, or 30 with remember."
+                    },
+                    "user": {
+                        "$ref": "#/components/schemas/User"
                     }
                 }
             },
@@ -2952,6 +4375,60 @@
                         "type": "integer"
                     }
                 }
+            },
+            "User": {
+                "type": "object",
+                "description": "An account.",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "is_admin": {
+                        "type": "boolean"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "FavoriteList": {
+                "type": "object",
+                "description": "One of an account's lists of media.",
+                "properties": {
+                    "list_id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "is_default": {
+                        "type": "boolean",
+                        "description": "The list the heart on a card adds to; it can be renamed, not deleted."
+                    },
+                    "media_count": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "SavedSearch": {
+                "type": "object",
+                "description": "A tag search an account keeps by name.",
+                "properties": {
+                    "search_id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "query": {
+                        "type": "string",
+                        "description": "As the gallery's URL writes it: \"cat,-dog\", or \"untagged\"."
+                    }
+                }
             }
         },
         "securitySchemes": {
@@ -2994,6 +4471,22 @@
         {
             "name": "Duplicates",
             "description": "Perceptual-hash duplicate detection."
+        },
+        {
+            "name": "Account",
+            "description": "Account"
+        },
+        {
+            "name": "Lists",
+            "description": "Lists"
+        },
+        {
+            "name": "Saved searches",
+            "description": "Saved searches"
+        },
+        {
+            "name": "Users",
+            "description": "Users"
         }
     ]
 }

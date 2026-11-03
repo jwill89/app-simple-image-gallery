@@ -56,12 +56,12 @@ beforeEach(function (): void {
     });
 });
 
-function adminToken(?Carbon $issued = null): string
+/** A login's token for the admin; $expiresAt ends it sooner (or already). */
+function adminToken(?Carbon $expiresAt = null): string
 {
-    $token = bin2hex(random_bytes(32));
-    $record = User::admin()->tokens()->create(['name' => 'admin', 'token' => hash('sha256', $token), 'abilities' => ['*']]);
-    if ($issued !== null) {
-        $record->forceFill(['created_at' => $issued])->save();
+    $token = adminUser()->issueToken();
+    if ($expiresAt !== null) {
+        adminUser()->tokens()->latest('id')->firstOrFail()->forceFill(['expires_at' => $expiresAt])->save();
     }
 
     return $token;
@@ -75,7 +75,7 @@ test('a write without a token is 401 Unauthorized, and still counted by the rate
 });
 
 test('an expired token, or one without the Bearer scheme, is 401', function (): void {
-    $expired = adminToken(now()->subMinutes(1441));
+    $expired = adminToken(now()->subMinute());
     $current = adminToken();
 
     withHeaders(['Origin' => ALLOWED, 'Authorization' => "Bearer {$expired}"])->postJson('/api/test/protected')->assertStatus(401);
@@ -83,8 +83,8 @@ test('an expired token, or one without the Bearer scheme, is 401', function (): 
 });
 
 test('a token from login is accepted', function (): void {
-    config(['gallery.admin_password' => 'secret']);
-    $token = withHeaders(['Origin' => ALLOWED])->postJson('/api/auth/login', ['password' => 'secret'])->assertOk()->json('token');
+    User::factory()->create(['username' => 'someone', 'password' => 'secret-password']);
+    $token = withHeaders(['Origin' => ALLOWED])->postJson('/api/auth/login', ['username' => 'someone', 'password' => 'secret-password'])->assertOk()->json('token');
 
     expect($token)->toBeString()->toMatch('/^[0-9a-f]{64}$/');
     withHeaders(['Origin' => ALLOWED, 'Authorization' => "Bearer {$token}"])->postJson('/api/test/protected')->assertOk();

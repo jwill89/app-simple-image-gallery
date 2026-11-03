@@ -6,9 +6,12 @@ namespace App\Exceptions;
 
 use App\Models\DanbooruCategoryMapping;
 use App\Models\DanbooruTagMapping;
+use App\Models\FavoriteList;
 use App\Models\Media;
+use App\Models\SavedSearch;
 use App\Models\Tag;
 use App\Models\TagCategory;
+use App\Models\User;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -80,6 +83,9 @@ final class ApiExceptionRenderer
             Tag::class => ['TagNotFound', 'The tag could not be found.'],
             TagCategory::class => ['CategoryNotFound', 'The category could not be found.'],
             DanbooruCategoryMapping::class, DanbooruTagMapping::class => ['MappingNotFound', 'The import rule could not be found.'],
+            User::class => ['UserNotFound', 'The account could not be found.'],
+            FavoriteList::class => ['ListNotFound', 'The list could not be found.'],
+            SavedSearch::class => ['SearchNotFound', 'The saved search could not be found.'],
             default => ['NotFound', 'The requested record could not be found.'],
         };
     }

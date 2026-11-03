@@ -1,23 +1,18 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useApi, getErrorMessage, hasAuthToken, setAuthToken } from '../composables/useApi'
+import { useApi, getErrorMessage } from '../composables/useApi'
 import { useGalleryStore } from '../stores/gallery'
 import { useToastStore } from '../stores/toast'
 import { endpoints } from '../api/endpoints'
 import { UPLOAD_LIMITS, planUploadBatches } from '../constants/uploads'
-import type { LoginResponse, TagImportStatus } from '../types'
+import type { TagImportStatus } from '../types'
 import AppAlert from '../components/AppAlert.vue'
 import PageHeader from '../components/PageHeader.vue'
+import SignInGate from '../components/SignInGate.vue'
 
 const api = useApi()
 const store = useGalleryStore()
 const toastStore = useToastStore()
-
-// Auth state
-const authenticated = ref(hasAuthToken())
-const passwordInput = ref('')
-const authError = ref<string | null>(null)
-const authLoading = ref(false)
 
 // Upload state
 const fetchTags = ref(false)
@@ -140,24 +135,6 @@ const uploadSummary = computed(() => {
 
 const hasFiles = computed(() => selectedFiles.value.length > 0)
 const totalSize = computed(() => selectedFiles.value.reduce((sum, f) => sum + f.size, 0))
-
-async function login() {
-  authLoading.value = true
-  authError.value = null
-  try {
-    const result = await api.post<LoginResponse>(endpoints.auth.login, {
-      password: passwordInput.value,
-    })
-    if (!result) throw new Error('No token returned')
-    setAuthToken(result.token)
-    authenticated.value = true
-    passwordInput.value = ''
-  } catch {
-    authError.value = 'Invalid password'
-  } finally {
-    authLoading.value = false
-  }
-}
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -522,49 +499,7 @@ function reportTagImports(settled: TagImportStatus[], stillWaiting: number) {
 <template>
   <section class="section">
     <div class="container">
-      <!-- Login Gate -->
-      <template v-if="!authenticated">
-        <div class="columns is-centered">
-          <div class="column is-4">
-            <div class="box">
-              <h2 class="title is-4 has-text-centered">
-                <span class="icon"><i class="fa-solid fa-lock" /></span>
-                Authentication Required
-              </h2>
-              <p class="has-text-centered mb-4">Enter the admin password to access uploads.</p>
-              <div class="field">
-                <div class="control has-icons-left">
-                  <input
-                    v-model="passwordInput"
-                    class="input"
-                    :class="{ 'is-danger': authError }"
-                    type="password"
-                    aria-label="Admin password"
-                    placeholder="Password"
-                    @keyup.enter="login"
-                  />
-                  <span class="icon is-left"><i class="fa-solid fa-key" /></span>
-                </div>
-                <p v-if="authError" class="help is-danger">
-                  {{ authError }}
-                </p>
-              </div>
-              <button
-                type="button"
-                class="button is-primary is-fullwidth"
-                :class="{ 'is-loading': authLoading }"
-                :disabled="authLoading || !passwordInput"
-                @click="login"
-              >
-                Login
-              </button>
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <!-- Authenticated Content -->
-      <template v-else>
+      <SignInGate admin>
         <PageHeader
           title="Upload"
           :meta="`${store.totalMedia.toLocaleString()} items in gallery`"
@@ -722,7 +657,7 @@ function reportTagImports(settled: TagImportStatus[], stillWaiting: number) {
         >
           {{ uploadSummary.message }}
         </AppAlert>
-      </template>
+      </SignInGate>
     </div>
   </section>
 </template>

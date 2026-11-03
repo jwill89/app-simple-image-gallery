@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import { useApi, getErrorMessage, getFieldError, hasAuthToken } from '../composables/useApi'
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
+import { useApi, getErrorMessage, getFieldError } from '../composables/useApi'
 import { useTagSearch } from '../composables/useTagSearch'
 import { useGalleryStore } from '../stores/gallery'
 import { useToastStore } from '../stores/toast'
@@ -19,6 +19,7 @@ import PaginationBar from '../components/PaginationBar.vue'
 import AppDialog from '../components/AppDialog.vue'
 import AppMenu from '../components/AppMenu.vue'
 import AppMenuItem from '../components/AppMenuItem.vue'
+import { useAuthStore } from '../stores/auth'
 
 /** Wait this long after a keystroke before asking the server. */
 const INPUT_DELAY_MS = 150
@@ -27,7 +28,9 @@ const api = useApi()
 const store = useGalleryStore()
 const toastStore = useToastStore()
 
-const authenticated = ref(hasAuthToken())
+const auth = useAuthStore()
+// Editing is an admin's.
+const authenticated = computed(() => auth.isAdmin)
 
 // One page of the list, searched, sorted and paged by the server: the gallery
 // has thousands of tags, too many to fetch whole and sort here.

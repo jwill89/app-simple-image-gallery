@@ -21,9 +21,43 @@ function query(params: Record<string, string | number | boolean | undefined>): s
 export const endpoints = {
   version: '/version',
   auth: {
+    /** Whether sign-up is open, and the Turnstile site key. */
+    config: '/auth/config',
+    register: '/auth/register',
     login: '/auth/login',
+    /** The account the token signs in. */
+    me: '/auth/me',
     /** DELETE: revoke the token the request carries (log out). */
     logout: '/auth/token',
+  },
+  account: {
+    /** DELETE, with { password }: the account itself. */
+    self: '/account',
+    password: '/account/password',
+    blockedTags: '/account/blocked-tags',
+    /** PUT blocks the tag, DELETE unblocks it. */
+    blockedTag: (tagId: Id) => `/account/blocked-tags/${tagId}`,
+  },
+  lists: {
+    all: '/lists',
+    byId: (listId: Id) => `/lists/${listId}`,
+    /** Every media id in the list. */
+    ids: (listId: Id) => `/lists/${listId}/ids`,
+    /** GET a page of it (latest added first); POST { media_ids } adds many. */
+    media: (listId: Id, page?: number, perPage?: number) =>
+      `/lists/${listId}/media${query({ page, per_page: perPage })}`,
+    /** PUT adds the media to the list, DELETE takes it out. */
+    item: (listId: Id, mediaId: Id) => `/lists/${listId}/media/${mediaId}`,
+    /** The ids of the account's lists that hold this media. */
+    holding: (mediaId: Id) => `/media/${mediaId}/lists`,
+  },
+  savedSearches: {
+    all: '/saved-searches',
+    byId: (searchId: Id) => `/saved-searches/${searchId}`,
+  },
+  users: {
+    all: '/users',
+    byId: (userId: Id) => `/users/${userId}`,
   },
   media: {
     page: (page: Id, perPage: Id) => `/media/page/${page}/${perPage}`,
