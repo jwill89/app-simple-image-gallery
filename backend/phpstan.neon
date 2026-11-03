@@ -12,3 +12,12 @@ parameters:
         - routes
         - tests
     treatPhpDocTypesAsCertain: false
+    ignoreErrors:
+        # Larastan describes every query-builder method an Eloquent builder
+        # forwards to (orderBy, whereIn, …) as static: its
+        # EloquentBuilderMethodReflection::isStatic() always returns true. So
+        # strict-rules reports each of those instance calls as a dynamic call to
+        # a static method. None of them is static.
+        -
+            identifier: staticMethod.dynamicCall
+            message: '#^Dynamic call to static method Illuminate\\Database\\Eloquent\\Builder<.+>::\w+\(\)\.$#'

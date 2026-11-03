@@ -18,7 +18,7 @@ export interface paths {
          * @description POST /auth/login — Exchange the admin password for a bearer token.
          *     Body: { password }. Returns { token } valid for 24 hours.
          */
-        post: operations["d19b53098572bc1c035e34307fd6a7d3"];
+        post: operations["login"];
         delete?: never;
         options?: never;
         head?: never;
@@ -36,14 +36,14 @@ export interface paths {
          * List category mappings
          * @description GET /danbooru/category-mappings — All Danbooru→gallery category mappings.
          */
-        get: operations["22d9bcf4f926e3a9b39fcb32127a38ba"];
+        get: operations["listDanbooruCategoryMappings"];
         put?: never;
         /**
          * Create a category mapping
          * @description POST /danbooru/category-mappings — Map a Danbooru category to a gallery
          *     category. Body: { danbooru_category_id, danbooru_category_name, gallery_category_id }.
          */
-        post: operations["e6f08412d1beec7a2bc9e36fdeadd2f8"];
+        post: operations["saveDanbooruCategoryMapping"];
         delete?: never;
         options?: never;
         head?: never;
@@ -64,7 +64,7 @@ export interface paths {
          * Delete a category mapping
          * @description DELETE /danbooru/category-mappings/{danbooru_category_id} — Remove a mapping.
          */
-        delete: operations["001c8226c2296eb22a0d32d80a4e7c50"];
+        delete: operations["deleteDanbooruCategoryMapping"];
         options?: never;
         head?: never;
         patch?: never;
@@ -81,14 +81,14 @@ export interface paths {
          * List tag name mappings
          * @description GET /danbooru/tag-mappings — All Danbooru→gallery tag-name mappings.
          */
-        get: operations["dc012fab6f7b6f142e9de0fd0b2819d0"];
+        get: operations["listDanbooruTagMappings"];
         put?: never;
         /**
          * Create a tag name mapping
          * @description POST /danbooru/tag-mappings — Map a Danbooru tag name to a gallery tag name.
          *     Body: { danbooru_tag, gallery_tag }.
          */
-        post: operations["c74f706262d1d4bde1d22ca6ffa8f306"];
+        post: operations["createDanbooruTagMapping"];
         delete?: never;
         options?: never;
         head?: never;
@@ -108,13 +108,13 @@ export interface paths {
          * @description PUT /danbooru/tag-mappings/{id} — Update a tag-name mapping.
          *     Body: { danbooru_tag, gallery_tag }.
          */
-        put: operations["a2c2f92cb7e1ace2f9bfad750dcf698a"];
+        put: operations["updateDanbooruTagMapping"];
         post?: never;
         /**
          * Delete a tag name mapping
          * @description DELETE /danbooru/tag-mappings/{id} — Remove a tag-name mapping.
          */
-        delete: operations["4d60bfb4f3c69d92f7f8337102474e9f"];
+        delete: operations["deleteDanbooruTagMapping"];
         options?: never;
         head?: never;
         patch?: never;
@@ -132,7 +132,7 @@ export interface paths {
          * @description GET /duplicates/report — The latest duplicate-scan report, with dismissed
          *     pairs filtered out and each pair enriched with media file names/hashes.
          */
-        get: operations["cf87d7c7b3fda80a991907a425d0fc0f"];
+        get: operations["getDuplicateReport"];
         put?: never;
         post?: never;
         delete?: never;
@@ -155,7 +155,7 @@ export interface paths {
          * @description POST /duplicates/scan — Run the perceptual-hash duplicate scanner and
          *     return summary stats (images compared, candidates, duplicates found).
          */
-        post: operations["1723375dae6967be7242b04b58a65e47"];
+        post: operations["runDuplicateScan"];
         delete?: never;
         options?: never;
         head?: never;
@@ -176,7 +176,7 @@ export interface paths {
          * @description POST /duplicates/dismissals — Dismiss a pair of media items as not-duplicates.
          *     Body: { media_id_1, media_id_2 }.
          */
-        post: operations["70b30de80982dfb5b34e060d84757c9f"];
+        post: operations["dismissDuplicatePair"];
         delete?: never;
         options?: never;
         head?: never;
@@ -195,7 +195,7 @@ export interface paths {
          * @description GET /media/page/{page}[/{per_page}] — A page of media items.
          *     Returns { items, total_pages, current_page }. per_page is clamped to 1..200.
          */
-        get: operations["e36edad483d19175abc37f3425d78d4f"];
+        get: operations["listMedia"];
         put?: never;
         post?: never;
         delete?: never;
@@ -215,7 +215,7 @@ export interface paths {
          * A page of untagged media
          * @description GET /media/untagged/{page}[/{per_page}] — A page of media with no tags.
          */
-        get: operations["e6ddd2db1d30f900c523e5d4f4c5929e"];
+        get: operations["listUntaggedMedia"];
         put?: never;
         post?: never;
         delete?: never;
@@ -237,7 +237,7 @@ export interface paths {
          *     filtered by a comma-separated tag list; a leading '-' excludes a tag
          *     (e.g. "cat,-dog"). Returns { items, total_pages, current_page }.
          */
-        get: operations["6c7638b89708ed00c34ab4c7359dee21"];
+        get: operations["searchMediaByTags"];
         put?: never;
         post?: never;
         delete?: never;
@@ -257,14 +257,14 @@ export interface paths {
          * A single media item
          * @description GET /media/{media_id} — A single media item by ID.
          */
-        get: operations["93a3cbb87461ec463456431a291b42b7"];
+        get: operations["getMedia"];
         put?: never;
         post?: never;
         /**
          * Delete a media item
          * @description DELETE /media/{media_id} — Delete a media item (DB row, file, thumbnails).
          */
-        delete: operations["bc2c9367eface3854e5a3f5dd85e4c60"];
+        delete: operations["deleteMedia"];
         options?: never;
         head?: never;
         patch?: never;
@@ -281,7 +281,7 @@ export interface paths {
          * A random media item
          * @description GET /media/random — A single random media item.
          */
-        get: operations["c1b812df796aa1e537afca9600c6990a"];
+        get: operations["getRandomMedia"];
         put?: never;
         post?: never;
         delete?: never;
@@ -301,7 +301,7 @@ export interface paths {
          * Total media count
          * @description GET /media/count — The total media count, as { count }.
          */
-        get: operations["1e179cec05cf0eef3555de51a0a686c6"];
+        get: operations["countMedia"];
         put?: never;
         post?: never;
         delete?: never;
@@ -325,7 +325,7 @@ export interface paths {
          *     Body: { ids: int[] } (max 200). Missing IDs are silently skipped.
          *     A public batched read (uses POST only to carry a large id list).
          */
-        post: operations["b370f569a77c422bb41e6d7977479e4a"];
+        post: operations["getMediaByIds"];
         delete?: never;
         options?: never;
         head?: never;
@@ -346,7 +346,7 @@ export interface paths {
          * @description POST /media/bulk-delete — Delete one or more media items by ID.
          *     Body: { media_ids: int[] }. Returns the deleted and failed ID lists.
          */
-        post: operations["6aedfe7046057e8d9cc4373a58f46be3"];
+        post: operations["bulkDeleteMedia"];
         delete?: never;
         options?: never;
         head?: never;
@@ -364,7 +364,7 @@ export interface paths {
          * A media item's tags
          * @description GET /media/{media_id}/tags — Tags applied to a media item. Cached.
          */
-        get: operations["ab04a8f3ded716c3f8147a45937b12ab"];
+        get: operations["listMediaTags"];
         put?: never;
         post?: never;
         delete?: never;
@@ -376,7 +376,7 @@ export interface paths {
          *     resolved). Body: { tag_ids: int[] }. Returns the item's updated tag list.
          *     Public (anyone may tag).
          */
-        patch: operations["986db528dbc801613c7e3a5e5028e29b"];
+        patch: operations["addMediaTags"];
         trace?: never;
     };
     "/media/{media_id}/tags/{tag_id}": {
@@ -394,7 +394,7 @@ export interface paths {
          * @description DELETE /media/{media_id}/tags/{tag_id} — Remove a tag from a media item.
          *     Returns the item's updated tag list. Public (anyone may tag).
          */
-        delete: operations["5a455845a66f449bce743bbbf21aaec9"];
+        delete: operations["removeMediaTag"];
         options?: never;
         head?: never;
         patch?: never;
@@ -415,7 +415,7 @@ export interface paths {
          *     media item. Body: { danbooru_post_id? }. With a post ID, imports directly;
          *     otherwise auto-looks-up by MD5 hash then IQDB visual similarity.
          */
-        post: operations["6740f36bf05702b4a32eb09cb780f124"];
+        post: operations["importDanbooruTags"];
         delete?: never;
         options?: never;
         head?: never;
@@ -433,7 +433,7 @@ export interface paths {
          * Application and API version
          * @description GET /version — The running application and API contract versions.
          */
-        get: operations["b58bcc79d28366e5312ce30aada568ae"];
+        get: operations["getVersion"];
         put?: never;
         post?: never;
         delete?: never;
@@ -456,7 +456,7 @@ export interface paths {
          *     Serves the spec committed to the repo (regenerated with `composer docs`),
          *     so production does not depend on swagger-php being installed.
          */
-        get: operations["af9e6f6d2c7c09dec463f379e35acd1b"];
+        get: operations["getOpenApiSpec"];
         put?: never;
         post?: never;
         delete?: never;
@@ -476,7 +476,7 @@ export interface paths {
          * Interactive API reference (Scalar)
          * @description GET /docs — The interactive API reference (Scalar), pointed at the spec.
          */
-        get: operations["7ce25c6fca2a2bd67d758cee99044f42"];
+        get: operations["getApiDocs"];
         put?: never;
         post?: never;
         delete?: never;
@@ -496,14 +496,14 @@ export interface paths {
          * List tag categories
          * @description GET /tag-categories — All tag categories.
          */
-        get: operations["344bd2707a98746738eb6b0b3ed143ff"];
+        get: operations["listTagCategories"];
         put?: never;
         /**
          * Create a tag category
          * @description POST /tag-categories — Create a tag category. Returns the created category.
          *     Body: { category_name, color?, description?, sort_order? }
          */
-        post: operations["dc114b35e6a6392f6c75717bf3f23651"];
+        post: operations["createTagCategory"];
         delete?: never;
         options?: never;
         head?: never;
@@ -523,13 +523,13 @@ export interface paths {
          * @description PUT /tag-categories/{category_id} — Update a tag category.
          *     Returns the updated category. Body: same fields as create.
          */
-        put: operations["2cda0d143e8dfc92355bb0452d037f19"];
+        put: operations["updateTagCategory"];
         post?: never;
         /**
          * Delete a tag category
          * @description DELETE /tag-categories/{category_id} — Delete a category that has no tags.
          */
-        delete: operations["c1c34eafc2deb4bbe13b3114487847b6"];
+        delete: operations["deleteTagCategory"];
         options?: never;
         head?: never;
         patch?: never;
@@ -546,14 +546,14 @@ export interface paths {
          * List all tags
          * @description GET /tags — All tags (id, name, category). Cached.
          */
-        get: operations["914076a044e72c93ac5e739f052b71e5"];
+        get: operations["listTags"];
         put?: never;
         /**
          * Create a tag
          * @description POST /tags — Create a tag. Body: { tag_name, category_id? (default 1) }.
          *     Returns the created tag.
          */
-        post: operations["595b6c6e60d4db82867b9aac8fccd85c"];
+        post: operations["createTag"];
         delete?: never;
         options?: never;
         head?: never;
@@ -572,7 +572,7 @@ export interface paths {
          * @description GET /tags/display — All tags with category and usage/implication counts,
          *     for the tags-management page. Cached.
          */
-        get: operations["2ea1bafb5afae11c3f755af5f21d4a9c"];
+        get: operations["listTagsForDisplay"];
         put?: never;
         post?: never;
         delete?: never;
@@ -592,13 +592,13 @@ export interface paths {
          * A single tag
          * @description GET /tags/{tag_id} — A single tag by ID.
          */
-        get: operations["516d4cb67ae4252a9bc173311de5e68f"];
+        get: operations["getTag"];
         /**
          * Update a tag
          * @description PUT /tags/{tag_id} — Rename and/or recategorize a tag.
          *     Body: { tag_name, category_id? (default 1) }. Returns the updated tag.
          */
-        put: operations["25adaf316f2f4f1b67d2a97fc0c51be6"];
+        put: operations["updateTag"];
         post?: never;
         /**
          * Delete a tag
@@ -606,7 +606,7 @@ export interface paths {
          *     DELETE /tags/{tag_id}/migrate-to/{target_tag_id} — migrate this tag's media
          *     to the target first, then delete this tag.
          */
-        delete: operations["f027b0d6d7e013be44cf6be55a027706"];
+        delete: operations["deleteTag"];
         options?: never;
         head?: never;
         patch?: never;
@@ -628,7 +628,7 @@ export interface paths {
          *     DELETE /tags/{tag_id}/migrate-to/{target_tag_id} — migrate this tag's media
          *     to the target first, then delete this tag.
          */
-        delete: operations["3fc0029729ae4febe19a3d71da0d5cd6"];
+        delete: operations["migrateAndDeleteTag"];
         options?: never;
         head?: never;
         patch?: never;
@@ -648,7 +648,7 @@ export interface paths {
          * @description POST /tags/{tag_id}/migrate — Move all media from this tag to the target,
          *     then delete this tag. Body: { target_tag_id }.
          */
-        post: operations["cdb54be9af6ceae381d97625192996ca"];
+        post: operations["migrateTag"];
         delete?: never;
         options?: never;
         head?: never;
@@ -666,7 +666,7 @@ export interface paths {
          * List tag implications
          * @description GET /tag-implications — All tag implications. Cached.
          */
-        get: operations["a0ce21a9789fd654d9f7b164491bc60b"];
+        get: operations["listTagImplications"];
         put?: never;
         /**
          * Create a tag implication
@@ -674,7 +674,7 @@ export interface paths {
          *     Body: { tag_id, implied_tag_id }. Rejects cycles and self-implication.
          *     Returns the created implication.
          */
-        post: operations["9ed70fe6fc2fe1fdc19be3a497665936"];
+        post: operations["createTagImplication"];
         delete?: never;
         options?: never;
         head?: never;
@@ -695,7 +695,7 @@ export interface paths {
          * Remove a tag implication
          * @description DELETE /tag-implications/{tag_id}/{implied_tag_id} — Remove an implication.
          */
-        delete: operations["381181baeba3505869a9c5d513610990"];
+        delete: operations["deleteTagImplication"];
         options?: never;
         head?: never;
         patch?: never;
@@ -715,7 +715,7 @@ export interface paths {
          * @description POST /media — Upload one or more files (multipart/form-data with files[]).
          *     Media type is auto-detected from each file's extension.
          */
-        post: operations["da47a0a080049a9a1698c19e03cae289"];
+        post: operations["uploadMedia"];
         delete?: never;
         options?: never;
         head?: never;
@@ -936,7 +936,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    d19b53098572bc1c035e34307fd6a7d3: {
+    login: {
         parameters: {
             query?: never;
             header?: never;
@@ -989,7 +989,7 @@ export interface operations {
             };
         };
     };
-    "22d9bcf4f926e3a9b39fcb32127a38ba": {
+    listDanbooruCategoryMappings: {
         parameters: {
             query?: never;
             header?: never;
@@ -1009,7 +1009,7 @@ export interface operations {
             };
         };
     };
-    e6f08412d1beec7a2bc9e36fdeadd2f8: {
+    saveDanbooruCategoryMapping: {
         parameters: {
             query?: never;
             header?: never;
@@ -1055,7 +1055,7 @@ export interface operations {
             };
         };
     };
-    "001c8226c2296eb22a0d32d80a4e7c50": {
+    deleteDanbooruCategoryMapping: {
         parameters: {
             query?: never;
             header?: never;
@@ -1084,7 +1084,7 @@ export interface operations {
             };
         };
     };
-    dc012fab6f7b6f142e9de0fd0b2819d0: {
+    listDanbooruTagMappings: {
         parameters: {
             query?: never;
             header?: never;
@@ -1104,7 +1104,7 @@ export interface operations {
             };
         };
     };
-    c74f706262d1d4bde1d22ca6ffa8f306: {
+    createDanbooruTagMapping: {
         parameters: {
             query?: never;
             header?: never;
@@ -1140,7 +1140,7 @@ export interface operations {
             };
         };
     };
-    a2c2f92cb7e1ace2f9bfad750dcf698a: {
+    updateDanbooruTagMapping: {
         parameters: {
             query?: never;
             header?: never;
@@ -1178,7 +1178,7 @@ export interface operations {
             };
         };
     };
-    "4d60bfb4f3c69d92f7f8337102474e9f": {
+    deleteDanbooruTagMapping: {
         parameters: {
             query?: never;
             header?: never;
@@ -1207,7 +1207,7 @@ export interface operations {
             };
         };
     };
-    cf87d7c7b3fda80a991907a425d0fc0f: {
+    getDuplicateReport: {
         parameters: {
             query?: never;
             header?: never;
@@ -1236,7 +1236,7 @@ export interface operations {
             };
         };
     };
-    "1723375dae6967be7242b04b58a65e47": {
+    runDuplicateScan: {
         parameters: {
             query?: never;
             header?: never;
@@ -1265,7 +1265,7 @@ export interface operations {
             };
         };
     };
-    "70b30de80982dfb5b34e060d84757c9f": {
+    dismissDuplicatePair: {
         parameters: {
             query?: never;
             header?: never;
@@ -1301,7 +1301,7 @@ export interface operations {
             };
         };
     };
-    e36edad483d19175abc37f3425d78d4f: {
+    listMedia: {
         parameters: {
             query?: never;
             header?: never;
@@ -1333,7 +1333,7 @@ export interface operations {
             };
         };
     };
-    e6ddd2db1d30f900c523e5d4f4c5929e: {
+    listUntaggedMedia: {
         parameters: {
             query?: never;
             header?: never;
@@ -1365,7 +1365,7 @@ export interface operations {
             };
         };
     };
-    "6c7638b89708ed00c34ab4c7359dee21": {
+    searchMediaByTags: {
         parameters: {
             query?: never;
             header?: never;
@@ -1399,7 +1399,7 @@ export interface operations {
             };
         };
     };
-    "93a3cbb87461ec463456431a291b42b7": {
+    getMedia: {
         parameters: {
             query?: never;
             header?: never;
@@ -1430,7 +1430,7 @@ export interface operations {
             };
         };
     };
-    bc2c9367eface3854e5a3f5dd85e4c60: {
+    deleteMedia: {
         parameters: {
             query?: never;
             header?: never;
@@ -1459,7 +1459,7 @@ export interface operations {
             };
         };
     };
-    c1b812df796aa1e537afca9600c6990a: {
+    getRandomMedia: {
         parameters: {
             query?: never;
             header?: never;
@@ -1488,7 +1488,7 @@ export interface operations {
             };
         };
     };
-    "1e179cec05cf0eef3555de51a0a686c6": {
+    countMedia: {
         parameters: {
             query?: never;
             header?: never;
@@ -1508,7 +1508,7 @@ export interface operations {
             };
         };
     };
-    b370f569a77c422bb41e6d7977479e4a: {
+    getMediaByIds: {
         parameters: {
             query?: never;
             header?: never;
@@ -1543,7 +1543,7 @@ export interface operations {
             };
         };
     };
-    "6aedfe7046057e8d9cc4373a58f46be3": {
+    bulkDeleteMedia: {
         parameters: {
             query?: never;
             header?: never;
@@ -1578,7 +1578,7 @@ export interface operations {
             };
         };
     };
-    ab04a8f3ded716c3f8147a45937b12ab: {
+    listMediaTags: {
         parameters: {
             query?: never;
             header?: never;
@@ -1609,7 +1609,7 @@ export interface operations {
             };
         };
     };
-    "986db528dbc801613c7e3a5e5028e29b": {
+    addMediaTags: {
         parameters: {
             query?: never;
             header?: never;
@@ -1646,7 +1646,7 @@ export interface operations {
             };
         };
     };
-    "5a455845a66f449bce743bbbf21aaec9": {
+    removeMediaTag: {
         parameters: {
             query?: never;
             header?: never;
@@ -1678,7 +1678,7 @@ export interface operations {
             };
         };
     };
-    "6740f36bf05702b4a32eb09cb780f124": {
+    importDanbooruTags: {
         parameters: {
             query?: never;
             header?: never;
@@ -1742,7 +1742,7 @@ export interface operations {
             };
         };
     };
-    b58bcc79d28366e5312ce30aada568ae: {
+    getVersion: {
         parameters: {
             query?: never;
             header?: never;
@@ -1762,7 +1762,7 @@ export interface operations {
             };
         };
     };
-    af9e6f6d2c7c09dec463f379e35acd1b: {
+    getOpenApiSpec: {
         parameters: {
             query?: never;
             header?: never;
@@ -1787,7 +1787,7 @@ export interface operations {
             };
         };
     };
-    "7ce25c6fca2a2bd67d758cee99044f42": {
+    getApiDocs: {
         parameters: {
             query?: never;
             header?: never;
@@ -1805,7 +1805,7 @@ export interface operations {
             };
         };
     };
-    "344bd2707a98746738eb6b0b3ed143ff": {
+    listTagCategories: {
         parameters: {
             query?: never;
             header?: never;
@@ -1825,7 +1825,7 @@ export interface operations {
             };
         };
     };
-    dc114b35e6a6392f6c75717bf3f23651: {
+    createTagCategory: {
         parameters: {
             query?: never;
             header?: never;
@@ -1863,7 +1863,7 @@ export interface operations {
             };
         };
     };
-    "2cda0d143e8dfc92355bb0452d037f19": {
+    updateTagCategory: {
         parameters: {
             query?: never;
             header?: never;
@@ -1903,7 +1903,7 @@ export interface operations {
             };
         };
     };
-    c1c34eafc2deb4bbe13b3114487847b6: {
+    deleteTagCategory: {
         parameters: {
             query?: never;
             header?: never;
@@ -1941,7 +1941,7 @@ export interface operations {
             };
         };
     };
-    "914076a044e72c93ac5e739f052b71e5": {
+    listTags: {
         parameters: {
             query?: never;
             header?: never;
@@ -1961,7 +1961,7 @@ export interface operations {
             };
         };
     };
-    "595b6c6e60d4db82867b9aac8fccd85c": {
+    createTag: {
         parameters: {
             query?: never;
             header?: never;
@@ -1998,7 +1998,7 @@ export interface operations {
             };
         };
     };
-    "2ea1bafb5afae11c3f755af5f21d4a9c": {
+    listTagsForDisplay: {
         parameters: {
             query?: never;
             header?: never;
@@ -2018,7 +2018,7 @@ export interface operations {
             };
         };
     };
-    "516d4cb67ae4252a9bc173311de5e68f": {
+    getTag: {
         parameters: {
             query?: never;
             header?: never;
@@ -2049,7 +2049,7 @@ export interface operations {
             };
         };
     };
-    "25adaf316f2f4f1b67d2a97fc0c51be6": {
+    updateTag: {
         parameters: {
             query?: never;
             header?: never;
@@ -2088,7 +2088,7 @@ export interface operations {
             };
         };
     };
-    f027b0d6d7e013be44cf6be55a027706: {
+    deleteTag: {
         parameters: {
             query?: never;
             header?: never;
@@ -2117,7 +2117,7 @@ export interface operations {
             };
         };
     };
-    "3fc0029729ae4febe19a3d71da0d5cd6": {
+    migrateAndDeleteTag: {
         parameters: {
             query?: never;
             header?: never;
@@ -2148,7 +2148,7 @@ export interface operations {
             };
         };
     };
-    cdb54be9af6ceae381d97625192996ca: {
+    migrateTag: {
         parameters: {
             query?: never;
             header?: never;
@@ -2185,7 +2185,7 @@ export interface operations {
             };
         };
     };
-    a0ce21a9789fd654d9f7b164491bc60b: {
+    listTagImplications: {
         parameters: {
             query?: never;
             header?: never;
@@ -2205,7 +2205,7 @@ export interface operations {
             };
         };
     };
-    "9ed70fe6fc2fe1fdc19be3a497665936": {
+    createTagImplication: {
         parameters: {
             query?: never;
             header?: never;
@@ -2250,7 +2250,7 @@ export interface operations {
             };
         };
     };
-    "381181baeba3505869a9c5d513610990": {
+    deleteTagImplication: {
         parameters: {
             query?: never;
             header?: never;
@@ -2280,7 +2280,7 @@ export interface operations {
             };
         };
     };
-    da47a0a080049a9a1698c19e03cae289: {
+    uploadMedia: {
         parameters: {
             query?: never;
             header?: never;

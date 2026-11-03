@@ -7,6 +7,7 @@ namespace App\Providers;
 use App\Exceptions\ApiException;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -16,6 +17,10 @@ class AppServiceProvider extends ServiceProvider
     {
         // config/cors.php is read before config/gallery.php, so it can't refer to it.
         config(['cors.allowed_origins' => config()->array('gallery.allowed_origins')]);
+
+        // Resources are the response body itself, as the contract has them, not
+        // wrapped in { data: … }.
+        JsonResource::withoutWrapping();
 
         // Every /api route: 120 requests a minute per IP. A 429 says when to retry,
         // in the body and in Retry-After.

@@ -16,7 +16,7 @@ class TagCategoryFactory extends Factory
     {
         return [
             'category_name' => ucfirst(fake()->unique()->word()),
-            'color' => fake()->randomElement(['neutral', 'rose', 'amber', 'emerald', 'sky', 'violet', 'teal', 'orange', 'lime']),
+            'color' => fake()->randomElement(TagCategory::COLORS),
             'description' => fake()->sentence(),
             'sort_order' => fake()->numberBetween(0, 10),
         ];

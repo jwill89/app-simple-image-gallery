@@ -57,6 +57,7 @@
             "@php artisan serve"
         ],
         "analyse": "phpstan analyse --memory-limit=1G",
+        "docs": "@php bin/openapi.php",
         "lint": "pint --test",
         "lint:fix": "pint",
         "rector": "rector process",

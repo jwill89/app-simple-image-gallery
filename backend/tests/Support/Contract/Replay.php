@@ -7,7 +7,9 @@ namespace Tests\Support\Contract;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
 use LogicException;
@@ -47,6 +49,9 @@ final class Replay
         'DUPLICATE_MAX_REGION_DIFF' => ['gallery.duplicates.max_region_diff', ''],
     ];
 
+    /** The recording server's upload_max_filesize (1M), so a larger generated file is refused as PHP refuses it. */
+    private const int UPLOAD_MAX_FILESIZE = 1024 * 1024;
+
     /** The fixture report's age, as the recorder set it: older than any report a case writes. */
     private const int FIXTURE_REPORT_MTIME = 1761782400;
 
@@ -55,6 +60,11 @@ final class Replay
 
     /** @var array<string, string> Values captured from earlier steps' responses. */
     private array $captured = [];
+
+    private DanbooruStub $danbooru;
+
+    /** The case's copy of the fixture media/ and dupes/ folders. */
+    private string $root;
 
     /**
      * @param array<string, mixed> $recording
@@ -96,6 +106,16 @@ final class Replay
     {
         $this->setUp();
 
+        try {
+            return $this->runSteps();
+        } finally {
+            File::deleteDirectory($this->root);
+        }
+    }
+
+    /** @return array{ran: int, of: int, waits_on: list<string>, problems: list<string>} */
+    private function runSteps(): array
+    {
         /** @var list<array<string, mixed>> $steps */
         $steps = $this->recording['steps'];
         $problems = [];
@@ -117,11 +137,15 @@ final class Replay
         return ['ran' => count($steps), 'of' => count($steps), 'waits_on' => [], 'problems' => $problems];
     }
 
-    /** Fixture rows and files, the recorded .env, the recorder's tokens, then the case's own setup. */
+    /** Fixture rows and files, the recorded .env, the recorder's tokens, Danbooru, then the case's own setup. */
     private function setUp(): void
     {
-        /** @var array{env?: array<string, string>, sql?: list<string>, files?: array<string, string|null>} $setup */
+        /** @var array{env?: array<string, string>, sql?: list<string>, files?: array<string, string|null>, danbooru?: string} $setup */
         $setup = $this->recording['setup'] ?? [];
+        $this->danbooru = DanbooruStub::install(up: ($setup['danbooru'] ?? 'up') !== 'down');
+        // The recording host had no ffmpeg or ffprobe: no thumbnails, and video
+        // metadata from getimagesize() alone.
+        Process::fake(['*' => Process::result(errorOutput: 'command not found', exitCode: 127)]);
 
         foreach (self::ENV as $name => [$key, $value]) {
             $value = $setup['env'][$name] ?? $value;
@@ -139,7 +163,7 @@ final class Replay
         $expired = $admin->tokens()->create(['name' => 'admin', 'token' => hash('sha256', self::EXPIRED_TOKEN), 'abilities' => ['*']]);
         $expired->forceFill(['created_at' => Carbon::createFromTimestamp(1700000000)])->save();
 
-        $root = sys_get_temp_dir() . '/gallery-replay-' . bin2hex(random_bytes(4));
+        $this->root = $root = sys_get_temp_dir() . '/gallery-replay-' . bin2hex(random_bytes(4));
         config(['gallery.media_path' => "{$root}/media", 'gallery.dupes_path' => "{$root}/dupes"]);
         File::copyDirectory(ContractFixture::path('media'), "{$root}/media");
         File::ensureDirectoryExists("{$root}/media/full");
@@ -147,7 +171,6 @@ final class Replay
         foreach (File::files("{$root}/dupes") as $report) {
             touch($report->getPathname(), self::FIXTURE_REPORT_MTIME);
         }
-        app()->terminating(static fn() => File::deleteDirectory($root));
 
         foreach ($setup['files'] ?? [] as $path => $content) {
             $this->applyFile($path, $content, $root);
@@ -205,11 +228,19 @@ final class Replay
             $problems[] = 'the repeated sends answered ' . json_encode($counts) . ', recorded ' . json_encode($recordedCounts);
         }
 
-        /** @var array<string, string> $capture */
-        $capture = $step['capture'] ?? [];
-        foreach ($capture as $name => $key) {
-            $value = $response->json($key);
-            $this->captured[$name] = is_string($value) ? $value : '';
+        // A later request's <captured:NAME> is the NAME field of the latest
+        // response that had one (the recordings use it for login's token).
+        $body = json_decode((string) $response->baseResponse->getContent(), true);
+        foreach (is_array($body) && !array_is_list($body) ? $body : [] as $name => $value) {
+            if (is_string($value)) {
+                $this->captured[$name] = $value;
+            }
+        }
+
+        // The Danbooru calls it made, credentials left out, as the stub logged them.
+        $calls = $this->danbooru->takeCalls();
+        if ($calls !== ($step['danbooru_calls'] ?? [])) {
+            $problems[] = 'Danbooru calls ' . json_encode($calls, JSON_UNESCAPED_SLASHES) . ', recorded ' . json_encode($step['danbooru_calls'] ?? [], JSON_UNESCAPED_SLASHES);
         }
 
         return [...$problems, ...self::compare($expected, $response->baseResponse, self::string($request, 'method') === 'OPTIONS')];
@@ -233,6 +264,7 @@ final class Replay
         }
 
         $parameters = [];
+        $files = [];
         $content = null;
         if (array_key_exists('json', $request)) {
             $content = json_encode($request['json'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
@@ -242,10 +274,50 @@ final class Replay
         } elseif (isset($request['body'])) {
             $content = self::string($request, 'body');
         } elseif (isset($request['multipart'])) {
-            throw new LogicException('Replaying multipart uploads arrives with the upload endpoint (Phase 4).');
+            /** @var list<array<string, int|string>> $parts */
+            $parts = $request['multipart'];
+            [$parameters, $files] = $this->multipart($parts);
         }
 
-        return call(self::string($request, 'method'), self::string($request, 'path'), $parameters, [], [], $server, $content);
+        return call(self::string($request, 'method'), self::string($request, 'path'), $parameters, [], $files, $server, $content);
+    }
+
+    /**
+     * A recorded multipart body as form fields and uploaded files. A file part
+     * names a fixture under uploads/ or a size to generate; each is sent from
+     * a copy, which the upload moves away. A generated file over the recording
+     * server's upload_max_filesize arrives as PHP hands such a file over: an
+     * UPLOAD_ERR_INI_SIZE error, with no content.
+     *
+     * @param list<array<string, int|string>> $parts
+     * @return array{0: array<string, string>, 1: array<string, list<UploadedFile>>}
+     */
+    private function multipart(array $parts): array
+    {
+        $fields = [];
+        $files = [];
+        foreach ($parts as $part) {
+            $name = (string) $part['name'];
+            if (!isset($part['filename'])) {
+                $fields[$name] = (string) $part['value'];
+
+                continue;
+            }
+
+            $copy = $this->root . '/uploads/' . bin2hex(random_bytes(4));
+            File::ensureDirectoryExists(dirname($copy));
+            $size = (int) ($part['generated_bytes'] ?? 0);
+            $error = $size > self::UPLOAD_MAX_FILESIZE ? UPLOAD_ERR_INI_SIZE : null;
+            if (isset($part['file'])) {
+                File::copy(ContractFixture::path((string) $part['file']), $copy);
+            } elseif ($error === null) {
+                File::put($copy, str_repeat("\0", $size));
+            }
+
+            $files[rtrim($name, '[]')][] = new UploadedFile($copy, (string) $part['filename'], (string) $part['type'], $error, true);
+        }
+
+        return [$fields, $files];
     }
 
     /**

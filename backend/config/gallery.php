@@ -28,9 +28,10 @@ return [
 
     // The application release (SemVer, as frontend/package.json, which CI tags
     // releases from) and the HTTP API contract version, which moves only when
-    // the API surface changes. Both are served by GET /api/version.
+    // the API surface changes and is set in the OpenAPI document's metadata.
+    // Both are served by GET /api/version.
     'version' => '4.0.0',
-    'api_version' => '4.0.0',
+    'api_version' => App\OpenApi\OpenApiSpec::API_VERSION,
 
     // Admin password for the protected endpoints. Login is refused while it is
     // empty, so no default password can ever grant access.

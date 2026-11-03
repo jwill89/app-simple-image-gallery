@@ -96,7 +96,7 @@ The API has 43 routes under `/api`. Every GET is public, and every write needs a
 | GET | `/media/count` | Public | 60 s | `MediaController@count` |
 | POST | `/media/by-ids` | Public |  | `MediaController@byIds` |
 | POST | `/media/bulk-delete` | Token |  | `MediaController@bulkDestroy` |
-| POST | `/media` | Token |  | `MediaUploadController@store` |
+| POST | `/media` | Token |  | `UploadController@store` |
 | GET | `/media/{media_id}` | Public |  | `MediaController@show` |
 | DELETE | `/media/{media_id}` | Token |  | `MediaController@destroy` |
 | GET | `/media/{media_id}/tags` | Public | 30 s | `MediaTagController@index` |
@@ -131,7 +131,7 @@ The API has 43 routes under `/api`. Every GET is public, and every write needs a
 
 Routing notes:
 
-- Add `->whereNumber()` to every id parameter so `/media/random` and `/media/count` can't be read as a `{media_id}`.
+- Id parameters take any segment, as Slim's did, so a malformed id gets the endpoint's own 400 rather than a 404. Register a route with a fixed segment (`/media/random`, `/media/count`) before the one with a parameter in its place (`/media/{media_id}`).
 - Test `{tag_list}` with commas, `-` exclusions, `+` and encoded characters, since Danbooru tag names can be unusual.
 - The front end never sends trailing slashes, so Slim's optional `[/]` needs no Laravel equivalent.
 
@@ -185,10 +185,10 @@ Controllers are untested today by design, so record what they return before touc
 
 - Go in this order: system, tag categories, tags, tag implications, Danbooru mappings, media reads, media tags, duplicates, then uploads and deletes. Uploads go last because they touch files, ffmpeg and Danbooru.
 - For each group: controller, Form Requests, API Resources that emit today's keys, swagger-php attributes, feature tests from the recordings, then `composer docs` and check the diff.
-- Make the include/exclude tag search a query scope, and compare its SQL to today's with the query log. It's the busiest query in the app.
+- Make the include/exclude tag search a query scope, and compare its SQL to today's with the query log. It's the busiest query in the app. (Done as `Media::taggedWith()`: on a copy of the live database it returns the same rows as the Slim query, and runs faster for searches with included tags and up to 2 ms slower for exclusions alone.)
 - Every write bumps the same cache groups it invalidates today.
 
-**Done when:** all 43 routes match their recordings and `openapi.json` has no diff.
+**Done when:** all 43 routes match their recordings and `openapi.json` has no diff apart from the readable operationIds (see Contract changes).
 
 ### Phase 5: Commands, jobs and the scheduler
 
@@ -286,6 +286,10 @@ Decided before Phase 3. The Laravel app answers these differently from the recor
 | The login limit is about 10 per minute (the global limiter's cleanup deletes older rows) | 10 per 5 minutes | What the old code intended. |
 | Renaming a tag onto an existing name is a 500 (UNIQUE constraint) | 400 `TagAlreadyExists` | What creating one already returns. |
 | Dismissing a pair with an unknown media id is a 500 (foreign key) | 404 `MediaNotFound` | A missing resource, not a server fault. |
+
+One change to the OpenAPI document, decided in Phase 4: each operation has a readable `operationId` (`listTags`, `uploadMedia`, …) where swagger-php had hashed the Slim controller's class and method. Moving the methods would have changed every hash anyway. Nothing else in `openapi.json` changed. The frontend's `api.generated.ts` changed only in its `operations` keys, which no app code reads.
+
+When a request has more than one problem, Laravel may report a different one first. A Form Request checks the body before the controller looks up the id in the path, and it checks fields in the order its rules list them. For example, a bad name sent to an unknown tag id is now a 400 for the name, where the Slim app answered 404. The recordings only exercise one problem at a time.
 
 Two smaller differences follow from using `HandleCors`, and the replay allows for both on every response: `Access-Control-Allow-Headers`, `-Methods` and `-Max-Age` are sent only on preflights, where browsers read them, and with exactly one allowed origin, every `/api` response names it in `Access-Control-Allow-Origin`. A response the Slim app sent without `Cache-Control` may also carry Symfony's default `no-cache, private`.
 

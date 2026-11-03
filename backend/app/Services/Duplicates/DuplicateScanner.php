@@ -92,7 +92,7 @@ final class DuplicateScanner
     private function scan(ScanSettings $settings): array
     {
         $startTime = microtime(true);
-        $dismissed = $this->dismissedPairs();
+        $dismissed = DismissedDuplicate::pairKeys();
 
         // Only the fields the scan needs, streamed rather than hydrated as models.
         $bitStrings = [];   // media_id => bit string
@@ -135,7 +135,7 @@ final class DuplicateScanner
         foreach ($candidates as [$id1, $id2]) {
             // Dismissed pairs are skipped, except on a tuning run, which keeps
             // them as known non-duplicates.
-            $isDismissed = isset($dismissed[self::pairKey($id1, $id2)]);
+            $isDismissed = isset($dismissed[DismissedDuplicate::pairKey($id1, $id2)]);
             if (($isDismissed && !$settings->tuning) || !isset($hashes[$id1], $hashes[$id2])) {
                 continue;
             }
@@ -393,26 +393,6 @@ final class DuplicateScanner
         }
 
         return $windowCount > 0 ? round($ssimSum / $windowCount, 4) : 0.0;
-    }
-
-    /**
-     * Every dismissed pair, keyed "smallerId:largerId".
-     *
-     * @return array<string, true>
-     */
-    private function dismissedPairs(): array
-    {
-        $dismissed = [];
-        foreach (DismissedDuplicate::query()->toBase()->get(['media_id_1', 'media_id_2']) as $row) {
-            $dismissed[self::pairKey((int) $row->media_id_1, (int) $row->media_id_2)] = true;
-        }
-
-        return $dismissed;
-    }
-
-    private static function pairKey(int $id1, int $id2): string
-    {
-        return min($id1, $id2) . ':' . max($id1, $id2);
     }
 
     /**

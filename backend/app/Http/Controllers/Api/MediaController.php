@@ -1,0 +1,361 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Api;
+
+use App\Exceptions\ApiException;
+use App\Http\Controllers\Controller;
+use App\Http\Resources\MediaResource;
+use App\Models\Media;
+use App\Models\Tag;
+use App\Support\CacheGroup;
+use App\Support\ResponseCache;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
+use OpenApi\Spec as OAS;
+use Throwable;
+
+/** Media items: the paged listings and tag search, single reads, and deletes. */
+final class MediaController extends Controller
+{
+    private const int DEFAULT_PER_PAGE = 40;
+
+    private const int MAX_PER_PAGE = 200;
+
+    /** The most items POST /media/by-ids returns. */
+    private const int MAX_BY_IDS = 200;
+
+    public function __construct(private readonly ResponseCache $cache) {}
+
+    /**
+     * GET /media/page/{page}[/{per_page}] — A page of media items.
+     * Returns { items, total_pages, current_page }. per_page is clamped to 1..200.
+     */
+    #[OAS\Operation\Get(
+        path: '/media/page/{page}/{per_page}',
+        operationId: 'listMedia',
+        summary: 'A page of media',
+        tags: ['Media'],
+        parameters: [
+            new OAS\Parameter(name: 'page', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'per_page', in: 'path', required: true, schema: new OAS\Schema(type: 'integer', maximum: 200, minimum: 1)),
+        ],
+        responses: [
+            new OAS\Response(response: 200, description: 'A page of media', content: new OAS\MediaType\Json(ref: '#/components/schemas/MediaPage')),
+            new OAS\Response(response: 400, description: 'InvalidPageNumber', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+        ],
+    )]
+    public function index(string $page, ?string $perPage = null): JsonResponse
+    {
+        $page = self::pageNumber($page);
+        $perPage = self::pageSize($perPage);
+
+        // An empty gallery has 0 pages here, where the other listings say 1.
+        return $this->cache->remember(CacheGroup::Media, "page:{$page}:{$perPage}", ResponseCache::TTL_SHORT, static fn(): array => self::mediaPage(Media::query(), $page, $perPage, atLeastOnePage: false));
+    }
+
+    /**
+     * GET /media/untagged/{page}[/{per_page}] — A page of media with no tags.
+     */
+    #[OAS\Operation\Get(
+        path: '/media/untagged/{page}/{per_page}',
+        operationId: 'listUntaggedMedia',
+        summary: 'A page of untagged media',
+        tags: ['Media'],
+        parameters: [
+            new OAS\Parameter(name: 'page', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'per_page', in: 'path', required: true, schema: new OAS\Schema(type: 'integer', maximum: 200, minimum: 1)),
+        ],
+        responses: [
+            new OAS\Response(response: 200, description: 'A page of untagged media', content: new OAS\MediaType\Json(ref: '#/components/schemas/MediaPage')),
+            new OAS\Response(response: 400, description: 'InvalidPageNumber', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+        ],
+    )]
+    public function untagged(string $page, ?string $perPage = null): JsonResponse
+    {
+        $page = self::pageNumber($page);
+        $perPage = self::pageSize($perPage);
+
+        return $this->cache->remember(CacheGroup::Media, "untagged:{$page}:{$perPage}", ResponseCache::TTL_SHORT, static fn(): array => self::mediaPage(Media::query()->untagged(), $page, $perPage));
+    }
+
+    /**
+     * GET /media/with-tags/{tag_list}/{page}[/{per_page}] — A page of media
+     * filtered by a comma-separated tag list; a leading '-' excludes a tag
+     * (e.g. "cat,-dog"). Returns { items, total_pages, current_page }.
+     */
+    #[OAS\Operation\Get(
+        path: '/media/with-tags/{tag_list}/{page}/{per_page}',
+        operationId: 'searchMediaByTags',
+        summary: 'A page of media filtered by tags',
+        tags: ['Media'],
+        parameters: [
+            new OAS\Parameter(name: 'tag_list', in: 'path', required: true, description: "Comma-separated tag names; a leading '-' excludes (e.g. cat,-dog).", schema: new OAS\Schema(type: 'string')),
+            new OAS\Parameter(name: 'page', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'per_page', in: 'path', required: true, schema: new OAS\Schema(type: 'integer', maximum: 200, minimum: 1)),
+        ],
+        responses: [
+            new OAS\Response(response: 200, description: 'A page of media', content: new OAS\MediaType\Json(ref: '#/components/schemas/MediaPage')),
+            new OAS\Response(response: 404, description: 'NoValidTagsSupplied', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+        ],
+    )]
+    public function search(string $tagList, string $page, ?string $perPage = null): JsonResponse
+    {
+        // Unlike the other listings, page 0 is answered (as the first page,
+        // with current_page 0), not refused.
+        $page = self::number($page);
+        $perPage = self::pageSize($perPage);
+
+        $include = [];
+        $exclude = [];
+        foreach (array_map(trim(...), explode(',', $tagList)) as $name) {
+            if (str_starts_with($name, '-')) {
+                $exclude[] = ltrim(substr($name, 1));
+            } else {
+                $include[] = $name;
+            }
+        }
+        // Names that aren't tags are dropped; only when none are left is it a 404.
+        $includeIds = Tag::idsNamed(array_values(array_filter($include, static fn(string $name): bool => $name !== '')));
+        $excludeIds = Tag::idsNamed(array_values(array_filter($exclude, static fn(string $name): bool => $name !== '')));
+        if ($includeIds === [] && $excludeIds === []) {
+            throw new ApiException('NoValidTagsSupplied', 404, 'None of the specified tag names matched existing tags.');
+        }
+
+        // Keyed by the list as written, so a search in other letter case is
+        // cached separately.
+        return $this->cache->remember(CacheGroup::Media, "tags:{$tagList}:{$page}:{$perPage}", ResponseCache::TTL_SHORT, static fn(): array => self::mediaPage(
+            Media::query()->taggedWith($includeIds, $excludeIds),
+            $page,
+            $perPage,
+        ));
+    }
+
+    /**
+     * GET /media/{media_id} — A single media item by ID.
+     */
+    #[OAS\Operation\Get(
+        path: '/media/{media_id}',
+        operationId: 'getMedia',
+        summary: 'A single media item',
+        tags: ['Media'],
+        parameters: [new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        responses: [
+            new OAS\Response(response: 200, description: 'The media item', content: new OAS\MediaType\Json(ref: '#/components/schemas/Media')),
+            new OAS\Response(response: 404, description: 'MediaNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+        ],
+    )]
+    public function show(string $mediaId): MediaResource
+    {
+        return new MediaResource($this->find($mediaId, 'The requested media item could not be found.'));
+    }
+
+    /**
+     * GET /media/random — A single random media item.
+     */
+    #[OAS\Operation\Get(
+        path: '/media/random',
+        operationId: 'getRandomMedia',
+        summary: 'A random media item',
+        tags: ['Media'],
+        responses: [
+            new OAS\Response(response: 200, description: 'A random media item', content: new OAS\MediaType\Json(ref: '#/components/schemas/Media')),
+            new OAS\Response(response: 404, description: 'MediaNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+        ],
+    )]
+    public function random(): MediaResource
+    {
+        return new MediaResource(Media::pickRandom() ?? throw new ApiException('MediaNotFound', 404, 'No media items are available.'));
+    }
+
+    /**
+     * GET /media/count — The total media count, as { count }.
+     */
+    #[OAS\Operation\Get(
+        path: '/media/count',
+        operationId: 'countMedia',
+        summary: 'Total media count',
+        tags: ['Media'],
+        responses: [
+            new OAS\Response(response: 200, description: 'The count', content: new OAS\MediaType\Json(ref: '#/components/schemas/Count')),
+        ],
+    )]
+    public function count(): JsonResponse
+    {
+        return $this->cache->remember(CacheGroup::Media, 'count', ResponseCache::TTL_MEDIUM, static fn(): array => ['count' => Media::query()->count()]);
+    }
+
+    /**
+     * POST /media/by-ids — Get multiple media items by an array of IDs.
+     * Body: { ids: int[] } (max 200). Missing IDs are silently skipped.
+     * A public batched read (uses POST only to carry a large id list).
+     */
+    #[OAS\Operation\Post(
+        path: '/media/by-ids',
+        operationId: 'getMediaByIds',
+        summary: 'Batch-fetch media by IDs',
+        tags: ['Media'],
+        requestBody: new OAS\RequestBody(
+            required: true,
+            content: new OAS\MediaType\Json(
+                required: ['ids'],
+                properties: [new OAS\Property(property: 'ids', schema: new OAS\Schema(type: 'array', items: new OAS\Schema\Items(type: 'integer')))],
+            ),
+        ),
+        responses: [
+            new OAS\Response(response: 200, description: 'Matching media items', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/Media'))),
+            new OAS\Response(response: 400, description: 'InvalidInput', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+        ],
+    )]
+    public function byIds(Request $request): AnonymousResourceCollection
+    {
+        $ids = $request->input('ids');
+        if (!is_array($ids) || $ids === []) {
+            throw new ApiException('InvalidInput', 400, 'A non-empty array of media IDs is required.');
+        }
+
+        // Numeric strings count; anything else reads as 0 and is skipped.
+        $ids = array_slice(array_values(array_filter(array_map(intval(...), $ids), static fn(int $id): bool => $id > 0)), 0, self::MAX_BY_IDS);
+        if ($ids === []) {
+            throw new ApiException('InvalidInput', 400, 'No valid media IDs were provided.');
+        }
+
+        // In listing order, not the order asked for.
+        return MediaResource::collection(Media::query()->whereKey($ids)->newestFirst()->get());
+    }
+
+    /**
+     * DELETE /media/{media_id} — Delete a media item (DB row, file, thumbnails).
+     */
+    #[OAS\Operation\Delete(
+        path: '/media/{media_id}',
+        operationId: 'deleteMedia',
+        summary: 'Delete a media item',
+        tags: ['Media'],
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        parameters: [new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        responses: [
+            new OAS\Response(response: 204, description: 'Deleted'),
+            new OAS\Response(response: 404, description: 'MediaNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+        ],
+    )]
+    public function destroy(string $mediaId): Response
+    {
+        $media = $this->find($mediaId, 'The media item to delete could not be found.');
+
+        try {
+            $media->delete();
+        } catch (Throwable $e) {
+            Log::error('Failed to delete media', ['media_id' => $media->media_id, 'error' => $e->getMessage()]);
+
+            throw new ApiException('DeleteFailed', 500, 'The media item could not be deleted. Please try again.');
+        }
+
+        $this->cache->bump(CacheGroup::Media, CacheGroup::Tags);
+        Log::info('Media deleted', ['media_id' => $media->media_id]);
+
+        return response()->noContent();
+    }
+
+    /**
+     * POST /media/bulk-delete — Delete one or more media items by ID.
+     * Body: { media_ids: int[] }. Returns the deleted and failed ID lists.
+     */
+    #[OAS\Operation\Post(
+        path: '/media/bulk-delete',
+        operationId: 'bulkDeleteMedia',
+        summary: 'Bulk-delete media items',
+        tags: ['Media'],
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        requestBody: new OAS\RequestBody(
+            required: true,
+            content: new OAS\MediaType\Json(
+                required: ['media_ids'],
+                properties: [new OAS\Property(property: 'media_ids', schema: new OAS\Schema(type: 'array', items: new OAS\Schema\Items(type: 'integer')))],
+            ),
+        ),
+        responses: [
+            new OAS\Response(response: 200, description: 'Deletion outcome', content: new OAS\MediaType\Json(ref: '#/components/schemas/BulkDeleteResult')),
+            new OAS\Response(response: 400, description: 'InvalidInput', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+        ],
+    )]
+    public function bulkDestroy(Request $request): JsonResponse
+    {
+        $ids = $request->input('media_ids');
+        if (!is_array($ids) || $ids === []) {
+            throw new ApiException('InvalidInput', 400, 'A list of media IDs to delete is required.');
+        }
+        Log::info('Bulk media delete requested', ['count' => count($ids)]);
+
+        // Each id is deleted on its own; one that can't be (unknown, not a
+        // positive number, or failing) is listed as failed, as a number.
+        $deleted = [];
+        $failed = [];
+        foreach (array_map(intval(...), $ids) as $id) {
+            try {
+                $media = $id > 0 ? Media::query()->find($id) : null;
+                if ($media?->delete() === true) {
+                    $deleted[] = $id;
+                } else {
+                    $failed[] = $id;
+                }
+            } catch (Throwable) {
+                $failed[] = $id;
+            }
+        }
+
+        if ($deleted !== []) {
+            $this->cache->bump(CacheGroup::Media, CacheGroup::Tags);
+        }
+
+        return new JsonResponse(['deleted' => $deleted, 'failed' => $failed, 'total_deleted' => count($deleted)]);
+    }
+
+    /**
+     * One page of the query's media, newest first (the MediaPage schema).
+     *
+     * @param Builder<Media> $query
+     * @return array{items: AnonymousResourceCollection, total_pages: int, current_page: int}
+     */
+    private static function mediaPage(Builder $query, int $page, int $perPage, bool $atLeastOnePage = true): array
+    {
+        $pages = (int) ceil($query->count() / $perPage);
+
+        return [
+            'items' => MediaResource::collection($query->newestFirst()->forPage($page, $perPage)->get()),
+            'total_pages' => $atLeastOnePage ? max(1, $pages) : $pages,
+            'current_page' => $page,
+        ];
+    }
+
+    /** A path segment as a number: one that isn't reads as 0. */
+    private static function number(string $segment): int
+    {
+        return ctype_digit($segment) ? (int) $segment : 0;
+    }
+
+    private static function pageNumber(string $segment): int
+    {
+        $page = self::number($segment);
+
+        return $page >= 1 ? $page : throw new ApiException('InvalidPageNumber', 400, 'Page number must be 1 or greater.');
+    }
+
+    /** Items per page: 40 when left out, otherwise kept to 1–200. */
+    private static function pageSize(?string $segment): int
+    {
+        return $segment === null ? self::DEFAULT_PER_PAGE : min(max(self::number($segment), 1), self::MAX_PER_PAGE);
+    }
+
+    private function find(string $mediaId, string $notFound): Media
+    {
+        $id = self::positiveId($mediaId) ?? throw new ApiException('InvalidMediaID', 400, 'The media ID must be a positive number.');
+
+        return Media::query()->find($id) ?? throw new ApiException('MediaNotFound', 404, $notFound);
+    }
+}

@@ -9,11 +9,27 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\File;
+use OpenApi\Spec as OAS;
 
 /** The running version, the OpenAPI document, and its interactive reference. */
 final class SystemController extends Controller
 {
-    /** GET /version: the application and API contract versions. */
+    /**
+     * GET /version — The running application and API contract versions.
+     */
+    #[OAS\Operation\Get(
+        path: '/version',
+        operationId: 'getVersion',
+        summary: 'Application and API version',
+        tags: ['System'],
+        responses: [
+            new OAS\Response(
+                response: 200,
+                description: 'Version info',
+                content: new OAS\MediaType\Json(ref: '#/components/schemas/VersionResponse'),
+            ),
+        ],
+    )]
     public function version(): JsonResponse
     {
         return new JsonResponse([
@@ -23,9 +39,21 @@ final class SystemController extends Controller
     }
 
     /**
-     * GET /openapi.json: the committed spec (regenerated with `composer docs`),
-     * so production doesn't need swagger-php installed.
+     * GET /openapi.json — The generated OpenAPI 3.1 document.
+     *
+     * Serves the spec committed to the repo (regenerated with `composer docs`),
+     * so production does not depend on swagger-php being installed.
      */
+    #[OAS\Operation\Get(
+        path: '/openapi.json',
+        operationId: 'getOpenApiSpec',
+        summary: 'The OpenAPI 3.1 specification',
+        tags: ['System'],
+        responses: [
+            new OAS\Response(response: 200, description: 'The OpenAPI document (JSON)'),
+            new OAS\Response(response: 404, description: 'Spec not generated'),
+        ],
+    )]
     public function openApi(): Response
     {
         $path = base_path('openapi.json');
@@ -39,7 +67,18 @@ final class SystemController extends Controller
         ]);
     }
 
-    /** GET /docs: the Scalar API reference, pointed at the spec. */
+    /**
+     * GET /docs — The interactive API reference (Scalar), pointed at the spec.
+     */
+    #[OAS\Operation\Get(
+        path: '/docs',
+        operationId: 'getApiDocs',
+        summary: 'Interactive API reference (Scalar)',
+        tags: ['System'],
+        responses: [
+            new OAS\Response(response: 200, description: 'HTML documentation page'),
+        ],
+    )]
     public function docs(): Response
     {
         $html = <<<'HTML'

@@ -62,6 +62,13 @@ jobs:
       - name: Static analysis (Larastan level 8 + strict and deprecation rules)
         run: composer analyse
 
+      # The frontend's generated types are built from this file, so it must be
+      # what the #[OAS\*] attributes produce.
+      - name: OpenAPI spec is current (composer docs)
+        run: |
+          composer docs
+          git diff --exit-code openapi.json
+
       - name: Test (Pest)
         run: composer test
 

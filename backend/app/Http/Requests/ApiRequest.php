@@ -37,6 +37,16 @@ abstract class ApiRequest extends FormRequest
         return true;
     }
 
+    /**
+     * Trim these fields where they are strings, for a prepareForValidation()
+     * whose fields are checked and stored trimmed. Requests aren't trimmed as
+     * a whole (bootstrap/app.php removes TrimStrings).
+     */
+    protected function trimFields(string ...$fields): void
+    {
+        $this->merge(array_map(trim(...), array_filter($this->only($fields), is_string(...))));
+    }
+
     protected function failedValidation(Validator $validator): never
     {
         $codes = $this->errorCodes();

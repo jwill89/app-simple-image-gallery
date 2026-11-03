@@ -29,6 +29,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // or a tag name arrives exactly as sent.
         $middleware->remove([TrimStrings::class, ConvertEmptyStringsToNull::class]);
 
+        // There is no login page to send a guest to: a request without a valid
+        // token is answered 401, whatever it accepts.
+        $middleware->redirectGuestsTo(null);
+
         $middleware->api(prepend: ['throttle:api']);
         // The rate limiter counts every request, signed in or not, so it runs
         // before authentication rather than after, Laravel's default.
