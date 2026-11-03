@@ -65,7 +65,7 @@ final class TagImplicationController extends Controller
         responses: [
             new OAS\Response(response: 201, description: 'The created implication', content: new OAS\MediaType\Json(ref: '#/components/schemas/TagImplication')),
             new OAS\Response(response: 400, description: 'CannotImplySelf / CycleDetected', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 404, description: 'TagDoesNotExist', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'TagNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ],
     )]
     public function store(Request $request): JsonResponse
@@ -82,16 +82,15 @@ final class TagImplicationController extends Controller
         $tag = Tag::query()->find($tagId);
         $implied = Tag::query()->find($impliedId);
         if ($tag === null || $implied === null) {
-            throw new ApiException('TagDoesNotExist', 404, 'One or both of the specified tags could not be found.');
+            throw new ApiException('TagNotFound', 404, 'One or both of the specified tags could not be found.');
         }
         if (in_array($tagId, Tag::withImplied([$impliedId]), true)) {
             throw new ApiException('CycleDetected', 400, 'This implication would create a circular dependency.');
         }
 
         // Adding one that exists already is not an error.
-        $tag->implies()->syncWithoutDetaching([$impliedId]);
+        $tag->imply($implied);
 
-        $this->cache->bump(CacheGroup::Tags);
         Log::info('Tag implication added', ['tag_id' => $tagId, 'implied_tag_id' => $impliedId]);
 
         return new JsonResponse([
@@ -117,22 +116,18 @@ final class TagImplicationController extends Controller
         ],
         responses: [
             new OAS\Response(response: 204, description: 'Removed'),
-            new OAS\Response(response: 400, description: 'InvalidTagID', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'TagNotFound / ImplicationNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ],
     )]
-    public function destroy(string $tagId, string $impliedTagId): Response
+    public function destroy(Tag $tag, Tag $implied): Response
     {
-        $tag = self::positiveId($tagId);
-        $implied = self::positiveId($impliedTagId);
-        if ($tag === null || $implied === null) {
-            throw new ApiException('InvalidTagID', 400, 'Both tag IDs must be positive numbers.');
+        if (!$tag->implies()->whereKey($implied->tag_id)->exists()) {
+            throw new ApiException('ImplicationNotFound', 404, "\"{$tag->tag_name}\" does not imply \"{$implied->tag_name}\".");
         }
 
-        // Removing one that doesn't exist is not an error either.
-        DB::table('tag_implications')->where('tag_id', $tag)->where('implied_tag_id', $implied)->delete();
+        $tag->unimply($implied);
 
-        $this->cache->bump(CacheGroup::Tags);
-        Log::info('Tag implication removed', ['tag_id' => $tag, 'implied_tag_id' => $implied]);
+        Log::info('Tag implication removed', ['tag_id' => $tag->tag_id, 'implied_tag_id' => $implied->tag_id]);
 
         return response()->noContent();
     }

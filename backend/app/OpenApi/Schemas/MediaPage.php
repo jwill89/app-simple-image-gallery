@@ -7,9 +7,10 @@ namespace App\OpenApi\Schemas;
 use OpenApi\Spec as OAS;
 
 /**
- * A paginated page of media items (GET /media). Doc-only schema.
+ * A numbered page of media items (GET /media/page/…, /media/untagged/…,
+ * /media/with-tags/…). Doc-only schema.
  */
-#[OAS\Schema(component: 'MediaPage', description: 'A paginated page of media items.')]
+#[OAS\Schema(component: 'MediaPage', description: 'A numbered page of media items.')]
 class MediaPage
 {
     /** @var array<int, mixed> */
@@ -19,4 +20,6 @@ class MediaPage
     public int $total_pages = 0;
     #[OAS\Property(schema: new OAS\Schema(type: 'integer'))]
     public int $current_page = 0;
+    #[OAS\Property(schema: new OAS\Schema(type: 'string', nullable: true, description: 'Continue after this page with GET /media?cursor=… (same listing); null when nothing follows.'))]
+    public ?string $next_cursor = null;
 }

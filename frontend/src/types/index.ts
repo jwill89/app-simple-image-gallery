@@ -30,12 +30,34 @@ export type CategoryMapping = Required<Schemas['CategoryMapping']>
 export type TagMapping = Required<Schemas['TagMapping']>
 
 // ── Composite responses ─────────────────────────────────────────────
-/** A page of media (GET /media). */
+/** A numbered page of media (GET /media/page/…, /media/untagged/…, /media/with-tags/…). */
 export interface MediaPage {
   items: Media[]
   total_pages: number
   current_page: number
+  /** Continue after this page with GET /media?cursor=…; null when nothing follows. */
+  next_cursor: string | null
 }
+
+/** The media after a cursor (GET /media?cursor=…). */
+export interface MediaFeed {
+  items: Media[]
+  next_cursor: string | null
+}
+
+/** A media item with its tags, in display order (GET /media/{id}?include=tags). */
+export type MediaWithTags = Media & { tags: Tag[] }
+
+/** A page of the tag-management list (GET /tags/display). */
+export interface TagListPage {
+  items: TagListItem[]
+  total: number
+  current_page: number
+  total_pages: number
+}
+
+/** Where a media item's queued Danbooru import stands (GET /media/tag-imports). */
+export type TagImportStatus = Required<Schemas['TagImportStatus']>
 
 export type Count = Required<Schemas['Count']>
 export type LoginResponse = Required<Schemas['LoginResponse']>
@@ -44,7 +66,6 @@ export type BulkDeleteResult = Required<Schemas['BulkDeleteResult']>
 /** Result of importing Danbooru tags for a media item. */
 export interface DanbooruFetchResult {
   tags: Tag[]
-  all_tags: Tag[]
   method: string
   tags_applied: number
   tags_created: number

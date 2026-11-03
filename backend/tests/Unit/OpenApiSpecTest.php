@@ -30,7 +30,8 @@ test('every operation has its own readable operationId', function (): void {
         }
     }
 
-    expect($ids)->toHaveCount(43)
+    // API 4's 43, and API 5's logout, cursor feed and tag-import status.
+    expect($ids)->toHaveCount(46)
         ->and(array_unique($ids))->toHaveCount(count($ids));
     foreach ($ids as $operation => $id) {
         expect($id)->toMatch('/^[a-z][a-zA-Z]+$/', "{$operation} has no readable operationId.");

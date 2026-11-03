@@ -16,9 +16,7 @@ class DanbooruFetchResult
     /** @var array<int, mixed> */
     #[OAS\Property(schema: new OAS\Schema(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/Tag'), description: "The media item's tags after import."))]
     public array $tags = [];
-    /** @var array<int, mixed> */
-    #[OAS\Property(schema: new OAS\Schema(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/Tag'), description: 'The full tag list (new tags may have been created).'))]
-    public array $all_tags = [];
+
     #[OAS\Property(schema: new OAS\Schema(type: 'string', description: 'Lookup method used (md5 / iqdb / post).'))]
     public string $method = '';
     #[OAS\Property(schema: new OAS\Schema(type: 'integer'))]

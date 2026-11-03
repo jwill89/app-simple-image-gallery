@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
-import { useApi, getErrorMessage, hasAuthToken } from '../composables/useApi'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useApi, getErrorMessage, getFieldError, hasAuthToken } from '../composables/useApi'
+import { useTagSearch } from '../composables/useTagSearch'
 import { useGalleryStore } from '../stores/gallery'
 import { useToastStore } from '../stores/toast'
 import { endpoints } from '../api/endpoints'
-import type { TagListItem } from '../types'
-import { getTextClassByName, getCategoryClassByName } from '../constants/categories'
+import type { Tag, TagListItem, TagListPage } from '../types'
+import {
+  getTextClassById,
+  getCategoryClassById,
+  getCategoryClassByName,
+  getCategoryNameById,
+} from '../constants/categories'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import EmptyState from '../components/EmptyState.vue'
 import PageHeader from '../components/PageHeader.vue'
@@ -14,13 +20,20 @@ import AppDialog from '../components/AppDialog.vue'
 import AppMenu from '../components/AppMenu.vue'
 import AppMenuItem from '../components/AppMenuItem.vue'
 
+/** Wait this long after a keystroke before asking the server. */
+const INPUT_DELAY_MS = 150
+
 const api = useApi()
 const store = useGalleryStore()
 const toastStore = useToastStore()
 
 const authenticated = ref(hasAuthToken())
 
-const allDisplayTags = ref<TagListItem[]>([])
+// One page of the list, searched, sorted and paged by the server: the gallery
+// has thousands of tags, too many to fetch whole and sort here.
+const pagedTags = ref<TagListItem[]>([])
+const totalTags = ref(0)
+const totalPages = ref(1)
 const loading = ref(false)
 const searchQuery = ref('')
 // Default to most-used first — more useful on a management view than the
@@ -35,7 +48,7 @@ const showFormModal = ref(false)
 const formMode = ref<'new' | 'edit'>('new')
 const formTagName = ref('')
 const formCategoryId = ref<number | string>('')
-const formEditId = ref<number | null>(null)
+const formEditTag = ref<TagListItem | null>(null)
 const formHelp = ref('')
 const formHelpClass = ref('')
 
@@ -58,61 +71,12 @@ const deleteHelp = ref('')
 const deleteHelpClass = ref('')
 const deleteLoading = ref(false)
 
-const migrateTargetOptions = computed(() => {
-  if (!migrateTargetSearch.value.trim()) return []
-  const q = migrateTargetSearch.value.toLowerCase()
-  return allDisplayTags.value
-    .filter(
-      (t) => t.tag_id !== migrateSourceTag.value?.tag_id && t.tag_name.toLowerCase().includes(q),
-    )
-    .slice(0, 10)
-})
-
-const deleteMigrateTargetOptions = computed(() => {
-  if (!deleteMigrateTargetSearch.value.trim()) return []
-  const q = deleteMigrateTargetSearch.value.toLowerCase()
-  return allDisplayTags.value
-    .filter(
-      (t) => t.tag_id !== deleteTargetTag.value?.tag_id && t.tag_name.toLowerCase().includes(q),
-    )
-    .slice(0, 10)
-})
-
-const filteredTags = computed(() => {
-  let filtered = allDisplayTags.value
-  if (searchQuery.value.trim()) {
-    const q = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(
-      (t) =>
-        t.tag_name.toLowerCase().includes(q) || (t.category_name ?? '').toLowerCase().includes(q),
-    )
-  }
-  const key = sortKey.value
-  filtered = [...filtered].sort((a, b) => {
-    const va = a[key]
-    const vb = b[key]
-    if (typeof va === 'string' && typeof vb === 'string') {
-      return sortAsc.value ? va.localeCompare(vb) : vb.localeCompare(va)
-    }
-    return sortAsc.value ? Number(va) - Number(vb) : Number(vb) - Number(va)
-  })
-  return filtered
-})
-
-const totalFilteredPages = computed(() =>
-  Math.max(1, Math.ceil(filteredTags.value.length / pageSize.value)),
+const migrateTargetOptions = useTagSearch(migrateTargetSearch, () =>
+  migrateSourceTag.value ? [migrateSourceTag.value.tag_id] : [],
 )
-const pagedTags = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  return filteredTags.value.slice(start, start + pageSize.value)
-})
-
-// Reset to page 1 when filtering causes current page to exceed total pages
-watch(totalFilteredPages, (newTotal) => {
-  if (currentPage.value > newTotal) {
-    currentPage.value = 1
-  }
-})
+const deleteMigrateTargetOptions = useTagSearch(deleteMigrateTargetSearch, () =>
+  deleteTargetTag.value ? [deleteTargetTag.value.tag_id] : [],
+)
 
 function toggleSort(key: typeof sortKey.value) {
   if (sortKey.value === key) {
@@ -134,20 +98,50 @@ function ariaSort(key: string): 'ascending' | 'descending' | 'none' {
 }
 
 const loadFailed = ref(false)
+let loadSeq = 0
 
 async function loadTags(showSpinner = true) {
   if (showSpinner) loading.value = true
   loadFailed.value = false
+  // Only the latest request's answer counts; an earlier one may arrive later.
+  const seq = ++loadSeq
   try {
-    allDisplayTags.value = (await api.get<TagListItem[]>(endpoints.tags.display)) ?? []
+    const page = await api.get<TagListPage>(
+      endpoints.tags.display({
+        page: currentPage.value,
+        perPage: pageSize.value,
+        search: searchQuery.value.trim(),
+        sort: sortKey.value,
+        direction: sortAsc.value ? 'asc' : 'desc',
+      }),
+    )
+    if (seq !== loadSeq) return
+    pagedTags.value = page?.items ?? []
+    totalTags.value = page?.total ?? 0
+    totalPages.value = page?.total_pages ?? 1
+    // Past the end (the last tag on the last page went): show the new last page.
+    if (currentPage.value > totalPages.value) currentPage.value = totalPages.value
   } catch (e) {
+    if (seq !== loadSeq) return
     toastStore.error(getErrorMessage(e, 'Failed to load tags'))
     loadFailed.value = true
-    allDisplayTags.value = []
+    pagedTags.value = []
   } finally {
-    loading.value = false
+    if (seq === loadSeq) loading.value = false
   }
 }
+
+watch([currentPage, pageSize, sortKey, sortAsc], () => void loadTags(false))
+
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+watch(searchQuery, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    // A new search starts from its first page (the page watcher then loads it).
+    if (currentPage.value !== 1) currentPage.value = 1
+    else void loadTags(false)
+  }, INPUT_DELAY_MS)
+})
 
 function openNewTagModal() {
   resetForm()
@@ -156,7 +150,7 @@ function openNewTagModal() {
 
 function editTag(tag: TagListItem) {
   formMode.value = 'edit'
-  formEditId.value = tag.tag_id
+  formEditTag.value = tag
   formTagName.value = tag.tag_name
   formCategoryId.value = tag.category_id
   formHelp.value = `Editing: ${tag.tag_name}`
@@ -166,7 +160,7 @@ function editTag(tag: TagListItem) {
 
 function resetForm() {
   formMode.value = 'new'
-  formEditId.value = null
+  formEditTag.value = null
   formTagName.value = ''
   formCategoryId.value = ''
   formHelp.value = ''
@@ -176,6 +170,16 @@ function resetForm() {
 function closeModal() {
   showFormModal.value = false
   resetForm()
+}
+
+/** An edit sends only what changed; a field left out stays as it is. */
+function changedFields(tag: TagListItem): { tag_name?: string; category_id?: number } {
+  const changes: { tag_name?: string; category_id?: number } = {}
+  if (formTagName.value !== tag.tag_name) changes.tag_name = formTagName.value
+  if (Number(formCategoryId.value) !== tag.category_id) {
+    changes.category_id = Number(formCategoryId.value)
+  }
+  return changes
 }
 
 async function submitForm() {
@@ -195,22 +199,13 @@ async function submitForm() {
   }
 
   try {
-    if (formMode.value === 'edit' && formEditId.value !== null) {
-      await api.put(endpoints.tags.byId(formEditId.value), {
-        tag_name: formTagName.value,
-        category_id: Number(formCategoryId.value),
-      })
-    } else {
-      // Check if tag already exists
-      const exists = allDisplayTags.value.some(
-        (t) => t.tag_name.toLowerCase() === formTagName.value.trim().toLowerCase(),
-      )
-      if (exists) {
-        formHelp.value = 'Tag already exists.'
-        formHelpClass.value = 'is-danger'
-        return
+    if (formMode.value === 'edit' && formEditTag.value !== null) {
+      const changes = changedFields(formEditTag.value)
+      if (Object.keys(changes).length > 0) {
+        await api.patch<Tag>(endpoints.tags.byId(formEditTag.value.tag_id), changes)
       }
-      await api.post(endpoints.tags.create, {
+    } else {
+      await api.post<Tag>(endpoints.tags.create, {
         tag_name: formTagName.value,
         category_id: Number(formCategoryId.value),
       })
@@ -218,37 +213,54 @@ async function submitForm() {
     closeModal()
     await loadTags(false)
     void store.refreshTags()
-  } catch {
-    formHelp.value = 'Error saving tag.'
+  } catch (e) {
+    // The server says which field it refused (a taken name, say) and why.
+    formHelp.value =
+      getFieldError(e, 'tag_name') ||
+      getFieldError(e, 'category_id') ||
+      getErrorMessage(e, 'Error saving tag.')
     formHelpClass.value = 'is-danger'
   }
 }
 
+let tagNameTimer: ReturnType<typeof setTimeout> | undefined
+let tagNameSeq = 0
+
 function onTagNameInput() {
   if (formMode.value === 'edit') return
-  // Debounce: clear any pending timer and start a new one
-  clearTimeout(tagNameDebounceTimer)
-  tagNameDebounceTimer = window.setTimeout(() => {
-    if (!formTagName.value.trim()) {
-      formHelp.value = ''
-      formHelpClass.value = ''
-      return
-    }
-    const exists = allDisplayTags.value.some(
-      (t) => t.tag_name.toLowerCase() === formTagName.value.trim().toLowerCase(),
-    )
-    if (exists) {
+  clearTimeout(tagNameTimer)
+  tagNameTimer = setTimeout(() => void checkTagName(), INPUT_DELAY_MS)
+}
+
+/** Whether the typed name is free, asked of the server (names compare without case). */
+async function checkTagName() {
+  const name = formTagName.value.trim()
+  const seq = ++tagNameSeq
+  if (!name) {
+    formHelp.value = ''
+    formHelpClass.value = ''
+    return
+  }
+  try {
+    const found = (await api.get<Tag[]>(endpoints.tags.byNames([name]))) ?? []
+    if (seq !== tagNameSeq || formMode.value === 'edit') return
+    if (found.length > 0) {
       formHelp.value = 'Tag already exists.'
       formHelpClass.value = 'is-danger'
     } else {
       formHelp.value = 'Tag is available.'
       formHelpClass.value = 'is-success'
     }
-  }, 150)
+  } catch {
+    // Saving says so if the name is taken; no hint is better than a wrong one.
+    if (seq === tagNameSeq) formHelp.value = ''
+  }
 }
 
-// Debounce timer handle
-let tagNameDebounceTimer = 0
+onBeforeUnmount(() => {
+  clearTimeout(searchTimer)
+  clearTimeout(tagNameTimer)
+})
 
 function openMigrateModal(tag: TagListItem) {
   migrateSourceTag.value = tag
@@ -264,7 +276,7 @@ function closeMigrateModal() {
   migrateSourceTag.value = null
 }
 
-function selectMigrateTarget(tag: TagListItem) {
+function selectMigrateTarget(tag: Tag) {
   migrateTargetId.value = tag.tag_id
   migrateTargetSearch.value = tag.tag_name
 }
@@ -284,8 +296,8 @@ async function submitMigrate() {
     closeMigrateModal()
     await loadTags(false)
     void store.refreshTags()
-  } catch {
-    migrateHelp.value = 'Error migrating tag.'
+  } catch (e) {
+    migrateHelp.value = getErrorMessage(e, 'Error migrating tag.')
     migrateHelpClass.value = 'is-danger'
   } finally {
     migrateLoading.value = false
@@ -307,7 +319,7 @@ function closeDeleteModal() {
   deleteTargetTag.value = null
 }
 
-function selectDeleteMigrateTarget(tag: TagListItem) {
+function selectDeleteMigrateTarget(tag: Tag) {
   deleteMigrateTargetId.value = tag.tag_id
   deleteMigrateTargetSearch.value = tag.tag_name
 }
@@ -332,8 +344,8 @@ async function submitDelete() {
     closeDeleteModal()
     await loadTags(false)
     void store.refreshTags()
-  } catch {
-    deleteHelp.value = 'Error deleting tag.'
+  } catch (e) {
+    deleteHelp.value = getErrorMessage(e, 'Error deleting tag.')
     deleteHelpClass.value = 'is-danger'
   } finally {
     deleteLoading.value = false
@@ -356,7 +368,7 @@ onMounted(() => {
         </button>
       </EmptyState>
       <template v-else>
-        <PageHeader title="Tags" :meta="`${filteredTags.length.toLocaleString()} tags`">
+        <PageHeader title="Tags" :meta="`${totalTags.toLocaleString()} tags`">
           <template v-if="authenticated" #actions>
             <button type="button" class="button is-primary" @click="openNewTagModal">
               <span class="icon"><i class="fa-solid fa-plus" /></span>
@@ -524,10 +536,10 @@ onMounted(() => {
         <!-- The same pager as the media grid, rather than a second one that
              could only step one page at a time. -->
         <PaginationBar
-          v-if="totalFilteredPages > 1"
+          v-if="totalPages > 1"
           class="mt-4"
           :current-page="currentPage"
-          :total-pages="totalFilteredPages"
+          :total-pages="totalPages"
           @navigate="currentPage = $event"
         />
       </template>
@@ -615,9 +627,9 @@ onMounted(() => {
               type="button"
               @click="selectMigrateTarget(t)"
             >
-              <span :class="getTextClassByName(t.category_name)">{{ t.tag_name }}</span>
-              <span class="tag is-small ml-2" :class="getCategoryClassByName(t.category_name)">{{
-                t.category_name
+              <span :class="getTextClassById(t.category_id)">{{ t.tag_name }}</span>
+              <span class="tag is-small ml-2" :class="getCategoryClassById(t.category_id)">{{
+                getCategoryNameById(t.category_id)
               }}</span>
             </button>
           </div>
@@ -676,9 +688,9 @@ onMounted(() => {
               type="button"
               @click="selectDeleteMigrateTarget(t)"
             >
-              <span :class="getTextClassByName(t.category_name)">{{ t.tag_name }}</span>
-              <span class="tag is-small ml-2" :class="getCategoryClassByName(t.category_name)">{{
-                t.category_name
+              <span :class="getTextClassById(t.category_id)">{{ t.tag_name }}</span>
+              <span class="tag is-small ml-2" :class="getCategoryClassById(t.category_id)">{{
+                getCategoryNameById(t.category_id)
               }}</span>
             </button>
           </div>

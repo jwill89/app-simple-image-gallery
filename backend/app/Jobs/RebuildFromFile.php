@@ -9,8 +9,6 @@ use App\Services\Fingerprinter;
 use App\Services\Media\MediaDerivative;
 use App\Services\Media\MediaMetadata;
 use App\Services\Media\Thumbnailer;
-use App\Support\CacheGroup;
-use App\Support\ResponseCache;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Attributes\DeleteWhenMissingModels;
@@ -38,7 +36,7 @@ final class RebuildFromFile implements ShouldQueue
 
     public function __construct(public readonly Media $media, public readonly MediaDerivative $derivative) {}
 
-    public function handle(Thumbnailer $thumbnailer, Fingerprinter $fingerprinter, MediaMetadata $metadata, ResponseCache $cache): void
+    public function handle(Thumbnailer $thumbnailer, Fingerprinter $fingerprinter, MediaMetadata $metadata): void
     {
         $path = $this->media->fullPath();
         $exists = File::isFile($path);
@@ -57,9 +55,6 @@ final class RebuildFromFile implements ShouldQueue
         $this->media->update($this->derivative === MediaDerivative::Fingerprints
             ? ['bits_fingerprint' => $exists ? $this->fingerprint($fingerprinter, $path) : '']
             : $metadata->read($path, $this->media->media_type));
-
-        // Unlike thumbnails, both are in the media items the API returns.
-        $cache->bump(CacheGroup::Media);
     }
 
     private function fingerprint(Fingerprinter $fingerprinter, string $path): string

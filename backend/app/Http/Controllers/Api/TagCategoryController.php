@@ -9,18 +9,17 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\TagCategoryRequest;
 use App\Http\Resources\TagCategoryResource;
 use App\Models\TagCategory;
-use App\Support\CacheGroup;
-use App\Support\ResponseCache;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use OpenApi\Spec as OAS;
 
-/** CRUD for tag categories (the `/tag-categories` resource). */
+/**
+ * CRUD for tag categories (the `/tag-categories` resource). Writes clear the
+ * cached tag lists through the TagCategory model.
+ */
 final class TagCategoryController extends Controller
 {
-    public function __construct(private readonly ResponseCache $cache) {}
-
     /**
      * GET /tag-categories — All tag categories.
      */
@@ -66,25 +65,24 @@ final class TagCategoryController extends Controller
     {
         $category = TagCategory::query()->create($request->category());
 
-        $this->cache->bump(CacheGroup::Tags);
         Log::info('Category created', ['category_id' => $category->category_id, 'name' => $category->category_name]);
 
         return new TagCategoryResource($category);
     }
 
     /**
-     * PUT /tag-categories/{category_id} — Update a tag category.
-     * Returns the updated category. Body: same fields as create.
+     * PUT|PATCH /tag-categories/{category_id} — Update a tag category: the
+     * fields sent, the rest as they are. Returns the updated category.
      */
-    #[OAS\Operation\Put(
+    #[OAS\Operation\Patch(
         path: '/tag-categories/{category_id}',
         operationId: 'updateTagCategory',
-        summary: 'Update a tag category',
+        summary: 'Update a tag category (the fields given)',
+        description: 'PUT is accepted too, and also leaves out fields as they are.',
         tags: ['Tag Categories'],
         security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
         parameters: [new OAS\Parameter(name: 'category_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(
-            required: ['category_name'],
             properties: [
                 new OAS\Property(property: 'category_name', schema: new OAS\Schema(type: 'string')),
                 new OAS\Property(property: 'color', schema: new OAS\Schema(type: 'string')),
@@ -94,15 +92,14 @@ final class TagCategoryController extends Controller
         )),
         responses: [
             new OAS\Response(response: 200, description: 'The updated category', content: new OAS\MediaType\Json(ref: '#/components/schemas/TagCategory')),
+            new OAS\Response(response: 400, description: 'NameTooLong / NameTaken / InvalidColor', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
             new OAS\Response(response: 404, description: 'CategoryNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ],
     )]
-    public function update(TagCategoryRequest $request, string $categoryId): TagCategoryResource
+    public function update(TagCategoryRequest $request, TagCategory $category): TagCategoryResource
     {
-        $category = $this->find($categoryId);
         $category->update($request->category());
 
-        $this->cache->bump(CacheGroup::Tags);
         Log::info('Category edited', ['category_id' => $category->category_id, 'name' => $category->category_name]);
 
         return new TagCategoryResource($category);
@@ -124,10 +121,8 @@ final class TagCategoryController extends Controller
             new OAS\Response(response: 404, description: 'CategoryNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ],
     )]
-    public function destroy(string $categoryId): Response
+    public function destroy(TagCategory $category): Response
     {
-        $category = $this->find($categoryId);
-
         $tagCount = $category->tags()->count();
         if ($tagCount > 0) {
             throw new ApiException(
@@ -140,16 +135,8 @@ final class TagCategoryController extends Controller
         // Its Danbooru category mapping goes with it (ON DELETE CASCADE).
         $category->delete();
 
-        $this->cache->bump(CacheGroup::Tags);
         Log::info('Category deleted', ['category_id' => $category->category_id]);
 
         return response()->noContent();
-    }
-
-    private function find(string $categoryId): TagCategory
-    {
-        $id = self::positiveId($categoryId) ?? throw new ApiException('InvalidInput', 400, 'A valid category ID is required.');
-
-        return TagCategory::query()->find($id) ?? throw new ApiException('CategoryNotFound', 404, 'The category does not exist.');
     }
 }

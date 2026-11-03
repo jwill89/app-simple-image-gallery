@@ -61,5 +61,5 @@ final class OpenApiSpec
      * `api_version`. It moves only when the API surface changes, never with
      * an application release.
      */
-    public const string API_VERSION = '4.0.0';
+    public const string API_VERSION = '5.0.0';
 }

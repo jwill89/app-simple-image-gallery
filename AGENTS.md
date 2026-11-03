@@ -126,13 +126,14 @@ SaaS. Key features:
 
 - **Models** are Eloquent, with the domain rules that belong to one table: `Media::typeOf()`
   and `isAnimatedGif()`, `Media::thumbnailPaths()`, the tag-search scopes, `Tag::normalizeName()`,
-  `Tag::withImplied()`, `Tag::moveMediaTo()`. Deleting a `Media` removes its files.
+  `Tag::withImplied()`, `Tag::moveMediaTo()`. Deleting a `Media` removes its files, and saving or
+  deleting a model clears the cached reads it affects (§9).
 - **Form Requests** validate a write's body. They extend `ApiRequest`, which fails with the
-  first broken rule as the contract's `{ error, message }` and the endpoint's own code and status
-  (usually 400), never Laravel's 422 with `{ message, errors }`.
-- **Controllers** do HTTP only: read the ids (`positiveId()` answers a malformed one with the
-  endpoint's 400), call models and services, and return a Resource or `JsonResponse` with the
-  right status. A failure is `throw new ApiException('PascalCaseCode', status, 'message')`.
+  first broken rule's code and status (the endpoint's own, usually 400) as `{ error, message }`,
+  plus `errors` listing every broken field, never Laravel's 422.
+- **Controllers** do HTTP only: take the models bound from the path (a missing one is already a
+  404, §5), call models and services, and return a Resource or `JsonResponse` with the right
+  status. A failure is `throw new ApiException('PascalCaseCode', status, 'message')`.
 - **Services** hold the work that isn't one model's: Danbooru, the duplicate scan, ingesting a
   file (fingerprint, metadata, thumbnails).
 - **Resources** are the response shapes, unwrapped (no `{ data: … }`).
@@ -325,19 +326,26 @@ REST-RPC conventions: reads → `200`, create → `201` (created resource), upda
 (updated resource), delete → `204`, RPC action/batch → `200`. Non-CRUD state changes are
 `POST …/{verb}`.
 
-- **System / Auth:** `GET /version`, `GET /openapi.json`, `GET /docs` (🔓); `POST /auth/login` (🔓).
+- **System / Auth:** `GET /version`, `GET /openapi.json`, `GET /docs` (🔓); `POST /auth/login` (🔓),
+  `DELETE /auth/token` (🔒 log out: revokes the token sent).
 - **Media (`/media`):** path-based listings (cached) — `GET /media/page/{page}[/{per_page}]`,
   `GET /media/untagged/{page}[/{per_page}]`, `GET /media/with-tags/{tag_list}/{page}[/{per_page}]`
-  (`tag_list` comma-sep, leading `-` excludes); `GET /media/{id}`, `GET /media/random`,
-  `GET /media/count`, `POST /media/by-ids` (🔓 batch read);
-  `POST /media` (🔒 multipart upload = create → 201), `POST /media/bulk-delete` (🔒),
+  (`tag_list` comma-sep, leading `-` excludes), each with the `next_cursor` to go on from;
+  `GET /media?cursor=…[&per_page&tags|untagged=1]` (the items after a cursor, for infinite scroll);
+  `GET /media/{id}[?include=tags]`, `GET /media/random`, `GET /media/count`,
+  `GET /media/tag-imports?ids=…` (how queued Danbooru lookups went), `POST /media/by-ids`
+  (🔓 batch read); `POST /media` (🔒 multipart upload = create → 201; thumbnails and, with
+  `fetch_tags`, Danbooru lookups are queued), `POST /media/bulk-delete` (🔒),
   `DELETE /media/{id}` (🔒 → 204). Media-scoped tags: `GET /media/{id}/tags` (🔓),
   **`PATCH /media/{id}/tags`** and **`DELETE /media/{id}/tags/{tag_id}`** (🔓 — anyone may tag, see §7),
   `POST /media/{id}/danbooru-tags` (🔒).
-- **Tags (`/tags`):** `GET /tags`, `GET /tags/display`, `GET /tags/{id}` (🔓);
-  `POST /tags` (→201), `PUT /tags/{id}`, `DELETE /tags/{id}`,
-  `DELETE /tags/{id}/migrate-to/{target_id}` (migrate then delete), `POST /tags/{id}/migrate` (🔒).
-- **Tag categories (`/tag-categories`):** `GET` (🔓); `POST` (→201), `PUT/DELETE /{id}` (🔒).
+- **Tags (`/tags`):** `GET /tags` (every tag; or `?search=…&limit&exclude` for the best matches,
+  exact then prefix then containing; or `?names=…` / `?ids=…` lookups), `GET /tags/display` (a
+  page: `page`, `per_page`, `search`, `sort`, `direction`, `ids`), `GET /tags/{id}` (🔓);
+  `POST /tags` (→201), `PATCH|PUT /tags/{id}`, `DELETE /tags/{id}`,
+  `DELETE /tags/{id}/migrate-to/{target_id}` (migrate then delete), `POST /tags/{id}/migrate`
+  (migrate, keeping the source tag) (🔒).
+- **Tag categories (`/tag-categories`):** `GET` (🔓); `POST` (→201), `PATCH|PUT/DELETE /{id}` (🔒).
 - **Tag implications (`/tag-implications`):** `GET` (🔓); `POST` (→201),
   `DELETE /{tag_id}/{implied_tag_id}` (🔒).
 - **Danbooru (`/danbooru`):** `GET` mappings (🔓); `POST/PUT/DELETE` on
@@ -347,17 +355,28 @@ REST-RPC conventions: reads → `200`, create → `201` (created resource), upda
 ### Response conventions
 
 - Reads return the resource or collection (a Resource, unwrapped); creates `201` + resource;
-  updates `200` + resource; deletes `204`.
+  updates `200` + resource; deletes `204`. An update changes only the fields it sends, by `PATCH`
+  or `PUT`.
+- **Path ids are bound to models** (`Route::pattern` + `Route::model` in `AppServiceProvider`, one
+  line per parameter name): only digits match a route, and a missing record is a 404 with its
+  resource's code (`MediaNotFound`, `TagNotFound`, `CategoryNotFound`, `MappingNotFound`), mapped
+  from the model in `ApiExceptionRenderer`. A new `{…_id}` parameter needs its line there.
 - Every error under `/api` is `{ "error": "PascalCaseCode", "message": "human readable" }` with its
   status. The app raises them as `throw new ApiException('CodeName', 4xx, 'message')`.
   `ApiExceptionRenderer` gives the framework's failures the same shape: an unknown path is
   `404 NotFound`, a wrong method `405 MethodNotAllowed` (with `Allow`), anything uncaught
   `500 ServerError`. Only 5xx errors are logged.
+- A failed validation is the first broken field's `error` and `message` (each endpoint's codes,
+  from its Form Request's `errorCodes()`), plus `errors`: every broken field's messages, by field.
+  `getFieldError(e, 'tag_name')` reads them on the frontend.
 - Danbooru failures: `429 DanbooruRateLimited`, `500 DanbooruAuthFailed` (the API refused the
   credentials) or `DanbooruNotConfigured`, and `503 DanbooruUnreachable`, `DanbooruUnavailable` or
   `DanbooruBlocked` (its firewall refused the server; the message says why, with Cloudflare's Ray ID).
   An upload with `fetch_tags` reports a failed lookup on the file as `tags_error`.
 - Cached GETs add `X-Cache: HIT|MISS`. Rate-limit info is in `X-RateLimit-Remaining` / `Retry-After`.
+- The public reads go through `cache.headers:no_cache;private;etag`: an `ETag`, and `304` for a
+  matching `If-None-Match`. A new public GET goes inside that group in `routes/api.php`; the docs,
+  the spec and `/media/random` stay outside it.
 - Every action and schema is annotated with `#[OAS\*]` (swagger-php spec attributes,
   `use OpenApi\Spec as OAS`); **regenerate `openapi.json` (`composer docs`) and the frontend
   types (`npm run gen:types`) after any contract change**. CI fails if they drift.
@@ -414,10 +433,15 @@ Keep these invariants when editing auth or routes:
 ## 8. Frontend conventions
 
 - **Vue 3 `<script setup lang="ts">` + Composition API only.** No Options API, no class components.
-- **State**: Pinia stores (`stores/`). `gallery` holds `allTags`, `categories`, `totalMedia`,
+- **State**: Pinia stores (`stores/`). `gallery` holds `knownTags`, `categories`, `totalMedia`,
   `blurThumbnails` (persisted to `localStorage`), and `lastViewedItemIds` (used for prev/next
   navigation on the media detail page). `favorites` is a `Set<number>` persisted to `localStorage`.
   `toast` drives `ToastContainer`.
+- **The app never loads every tag.** There are thousands. `knownTags` holds the tags seen so far
+  (by id), from searches and lookups: a picker searches the server (`store.searchTags`, or
+  `useTagSearch` for a plain input), and a chip or a breadcrumb looks its tag up with
+  `tagById`/`tagByName` after `loadTagsById`/`loadTagsByName`. The Tags page pages, searches and
+  sorts on the server (`/tags/display`).
 - **Feedback has exactly two homes, and a message belongs to one of them.** A *toast* (`toast`
   store → `ToastContainer`) reports the outcome of a finished action, globally and transiently. An
   *alert* (`AppAlert`) states a condition in the place it applies to and stays there while you act
@@ -439,7 +463,8 @@ Keep these invariants when editing auth or routes:
   viewport its mostly-empty rectangle would swallow clicks meant for the page behind it.
 - **API calls** go through `composables/useApi.ts` (`get/post/put/patch/del/upload`), using paths from
   `api/endpoints.ts`. It auto-attaches the bearer token, throws a structured `ApiError`
-  (`status`, `code`, `message`), clears the token on 401, and resolves `204`/empty bodies to
+  (`status`, `code`, `message`, and a validation's `fields`), clears the token on 401, and
+  resolves `204`/empty bodies to
   `undefined`. Don't call `fetch` directly in components.
 - **Types are generated** from the OpenAPI spec into `types/api.generated.ts` (`npm run gen:types`);
   import domain types from `types/index.ts` (friendly `Required<>` aliases), never the generated file.
@@ -468,7 +493,10 @@ Keep these invariants when editing auth or routes:
   `localStorage`, toggled from the navbar's view-mode select), *not* a URL param — `perPage=0` was
   the old sentinel and any `perPage < 1` is now coerced to 40. While scrolling, `GalleryView`
   mirrors your position into the URL via `router.replace`, and the reload watcher deliberately
-  ignores page-only changes so that sync doesn't re-fetch.
+  ignores page-only changes so that sync doesn't re-fetch. It starts from a numbered page and
+  goes on with `GET /media?cursor=` from each batch's `next_cursor`, so items added meanwhile
+  don't repeat ones above; scrolling up still loads numbered pages. The next batch is requested
+  as soon as the one before it arrives, and reaching the sentinel uses that request.
 - **Which navbar controls a route supports is declared on the route**, via `meta.showBlur` and
   `meta.showViewMode` (typed in `router/index.ts`). Add the flags when you add a route; don't
   reintroduce a chain of negations in `AppNavbar` — that's how the per-page select ended up live
@@ -503,11 +531,13 @@ Keep these invariants when editing auth or routes:
 - **Thumbnails**: derive from `file_name` by stripping the extension →
   `/media/thumbs/<base>.webp` (1x) and `/media/thumbs/<base>@2x.webp` (2x, used in `srcset`).
 - **Service worker** (`public/sw.js`): cache-first for thumbs/static assets, network-first for
-  media list APIs, network-only for full-size media. Registered **in production only**
+  the media listings (`isMediaList()`: the numbered pages and `GET /api/media`, capped at 200
+  entries), network-only for full-size media. Registered **in production only**
   (`import.meta.env.PROD` in `main.ts`) — a worker caching `/assets/*` in front of the Vite dev
   server makes local debugging depend on which copy it hands back. The app posts
-  `PREFETCH_THUMBNAILS` to warm the *next* page (paged) or the *next batch* (infinite scroll) via
-  `usePrefetch.ts`; keep both call sites in `GalleryView` in sync. Bump `CACHE_VERSION` in `sw.js`
+  `PREFETCH_THUMBNAILS` to warm the *next* page (paged, `prefetchAdjacentPage`) or the *next
+  batch* (infinite scroll, `prefetchNextBatch`) via `usePrefetch.ts`; keep both in `GalleryView`
+  in sync. Bump `CACHE_VERSION` in `sw.js`
   when changing caching behavior — a stale worker keeps controlling the page until every tab for
   the origin closes, so a hard refresh will not replace it.
 - **Infinite scroll's bottom sentinel needs a top-up loop.** `IntersectionObserver` only reports
@@ -533,11 +563,15 @@ Keep these invariants when editing auth or routes:
   `$this->cache->remember(CacheGroup::Media, $key, ResponseCache::TTL_SHORT, fn () => …)` and
   answers with `X-Cache: HIT|MISS`. TTLs: `TTL_SHORT=30s` (lists), `TTL_MEDIUM=60s`
   (totals/all-tags/implications).
-- **Invalidation is group-based.** After a write, call `$this->cache->bump(CacheGroup::Media,
-  CacheGroup::Tags)` for every group it affects. The file store has no cache tags, so each group's
-  version number is part of its keys and a bump moves it on. **If you add a cached GET, make sure
-  every write that affects it bumps its group** (jobs and commands too), or it serves stale data
-  for up to the TTL. Deploys don't clear the cache: entries expire within a minute anyway, and a
+- **Invalidation is group-based, and the models do it.** The file store has no cache tags, so
+  each group's version number is part of its keys and `ResponseCache::bump()` moves it on. Model
+  events bump: saving media bumps `Media`; deleting it, or changing its tags (`attachTags`,
+  `removeTag`, `Tag::moveMediaTo`, all through `Media::tagsChanged()`), bumps `Media` and `Tags`;
+  saving a tag or category bumps `Tags`, deleting a tag both; `Tag::imply`/`unimply` bump `Tags`.
+  So a write from a request, a job or a command clears what it changes, as long as it goes through
+  the models: a query-builder `update()`/`delete()` or a raw pivot write fires no event, and must
+  call `bump()` itself. **If you add a cached GET, check that every write that affects it bumps its
+  group**, or it serves stale data for up to the TTL. Deploys don't clear the cache: entries expire within a minute anyway, and a
   clear would also drop the rate limiter's counts and the queue's unique locks.
 - **SQLite** runs with WAL, foreign keys on, `synchronous=NORMAL` and a 5 s busy timeout
   (`config/database.php`). One queue worker keeps writers few.
@@ -574,11 +608,16 @@ Keep these invariants when editing auth or routes:
   the droplet. `SchemaTest` checks that a fresh `migrate` builds the production schema the Slim app
   left (`tests/Fixtures/schema.sql`), so a migration that changes a gallery table also changes what
   that test expects — deliberately, in the same change.
-- **The contract recordings are frozen.** `tests/Feature/Contract/ContractTest.php` replays all 191
-  of them (`tests/Fixtures/contract/`, format in its README). The recorder went with the Slim app,
-  so a recording is edited by hand only to correct it. A deliberate change to what the API answers
-  goes in `tests/Feature/Contract/divergences.php` with its reason, and in the plan's "Contract
-  changes" section.
+- **The contract recordings are frozen at API 4.** `tests/Feature/Contract/ContractTest.php`
+  replays all 191 of them (`tests/Fixtures/contract/`, format in its README), with
+  `/api/version` pinned to the app and API versions they were made at. The recorder went with
+  the Slim app, so a recording is edited by hand only to correct it. A deliberate change to what
+  the API answers goes in `tests/Feature/Contract/divergences.php` with its reason: an expected
+  response the replay checks instead, or, where API 5 replaced the behaviour, a `superseded`
+  entry naming the feature test that covers it now (the replay skips it; a test checks the file
+  exists). The replay ignores the fields API 5 added (`Replay::ADDED_FIELDS`: `errors`,
+  `next_cursor`) when a recording lacks them. Record it in the plan's "Contract changes" or
+  "API 5" section too.
 - **PHP's upload limits fail quietly, so the upload page works within them.** `backend/public/.htaccess`
   sets `upload_max_filesize 100M` / `post_max_size 105M`, and `php.ini` keeps PHP's default
   `max_file_uploads = 20`. Past 20 files PHP drops the rest of a request, and past `post_max_size`
@@ -671,8 +710,9 @@ Keep these invariants when editing auth or routes:
    `JsonResponse`) with the right status, raise failures as `ApiException`, and **annotate it with
    `#[OAS\Operation\Get/Post/…]`** and a readable `operationId` (+ any new response schema under
    `app/OpenApi/Schemas/`).
-4. If it's a cached GET, use `$this->cache->remember()`; if it's a write, `$this->cache->bump()`
-   the groups it changes.
+4. If it's a cached GET, use `$this->cache->remember()` (a public GET also goes in the
+   `cache.headers` group for its ETag). A write through the models clears the cache by their
+   events (§9); one that bypasses them calls `bump()` for the groups it changes.
 5. Add a feature test (Pest) that goes through HTTP; fake Danbooru, ffmpeg or the queue if it
    reaches them.
 6. Run `composer docs` (backend) and `npm run gen:types` (frontend); commit both regenerated files.
@@ -689,7 +729,7 @@ Add to `TagCategory::COLORS` (backend) **and** `VALID_COLORS` in `constants/cate
 
 **A new background task**
 A job class (`ShouldQueue`) dispatched where the work starts; if it runs on a timetable, one line
-in `routes/console.php`. If it writes what a cached read shows, bump that group.
+in `routes/console.php`. Writing through the models clears the cached reads it changes (§9).
 
 **A new setting**
 `config/gallery.php` (read raw, as the others are), `.env.example` with a comment, the
@@ -708,7 +748,7 @@ Create a view in `views/`, add a lazy route with `meta.title` in `router/index.t
 - [ ] The right status codes (`200`/`201`/`204`), and responses through Resources.
 - [ ] Endpoints/schemas are `#[OAS\*]`-annotated with an `operationId`; `composer docs` +
       `npm run gen:types` re-run and the regenerated `openapi.json` / `api.generated.ts` committed (CI enforces).
-- [ ] Writes bump the right cache group(s), in jobs and commands too.
+- [ ] Writes go through the models so their events clear the cache (or `bump()` by hand, §9).
 - [ ] New state-changing routes are in the `auth:sanctum` group (or public, consciously).
 - [ ] Schema changes land in a **new migration**.
 - [ ] Settings are read with `config()`, never `env()` outside `config/`.

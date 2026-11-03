@@ -1,10 +1,10 @@
 # Gallery backend (Laravel)
 
-The gallery's API and SPA shell, as a Laravel 13 app. It replaced a Slim app in 5.0.0 without
-changing the API contract ([docs/laravel-migration.md](../docs/laravel-migration.md) has how, and
-the few deliberate differences), and the tests replay the requests recorded from that app
-(`tests/Fixtures/contract/`) to keep it that way. Architecture and conventions are in
-[AGENTS.md](../AGENTS.md).
+The gallery's API and SPA shell, as a Laravel 13 app. It replaced a Slim app in 5.0.0, matching
+its API (version 4) first and then moving it to API 5 ([docs/laravel-migration.md](../docs/laravel-migration.md)
+has how, and every deliberate difference). The tests replay the requests recorded from the Slim
+app (`tests/Fixtures/contract/`), so nothing else drifts from what they recorded. Architecture
+and conventions are in [AGENTS.md](../AGENTS.md).
 
 ## Local setup
 

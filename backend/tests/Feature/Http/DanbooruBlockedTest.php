@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Process;
 use Tests\Support\ContractFixture;
 use Tests\Support\ContractFixtureSeeder;
 
+use function Pest\Laravel\getJson;
 use function Pest\Laravel\seed;
 use function Pest\Laravel\withHeaders;
 
@@ -116,7 +117,7 @@ test('a 403 from the API itself, in JSON, is still rejected credentials', functi
         ->assertJsonPath('error', 'DanbooruAuthFailed');
 });
 
-test('an upload while blocked still adds the file, and says why it has no tags', function (): void {
+test('an upload while blocked still adds the file, and its lookup reports why it has no tags', function (): void {
     danbooruAnswers(cloudflareBlockPage());
     $root = sys_get_temp_dir() . '/gallery-blocked-test-' . bin2hex(random_bytes(4));
     config(['gallery.media_path' => "{$root}/media"]);
@@ -126,6 +127,7 @@ test('an upload while blocked still adds the file, and says why it has no tags',
     Process::fake(['*' => Process::result(errorOutput: 'command not found', exitCode: 127)]);
 
     try {
+        // The queue runs inline here, so the queued lookup is done on return.
         $response = withHeaders(danbooruAdminHeaders())->post('/api/media', [
             'files' => [new UploadedFile("{$root}/tiny.png", 'tiny.png', 'image/png', null, true)],
             'fetch_tags' => '1',
@@ -134,8 +136,10 @@ test('an upload while blocked still adds the file, and says why it has no tags',
         $response->assertStatus(201)
             ->assertJsonPath('total_uploaded', 1)
             ->assertJsonPath('results.0.status', 'success')
-            ->assertJsonMissingPath('results.0.tags_found');
-        expect($response->json('results.0.tags_error'))->toContain('Cloudflare Ray ID ' . BLOCK_RAY);
+            ->assertJsonPath('results.0.tags_status', 'queued');
+        $status = getJson('/api/media/tag-imports?ids=' . $response->json('results.0.id'))->json('0');
+        expect($status['status'])->toBe('failed')
+            ->and($status['error'])->toContain('Cloudflare Ray ID ' . BLOCK_RAY);
     } finally {
         File::deleteDirectory($root);
     }

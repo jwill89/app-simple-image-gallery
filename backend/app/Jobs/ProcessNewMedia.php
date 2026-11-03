@@ -6,8 +6,6 @@ namespace App\Jobs;
 
 use App\Models\Media;
 use App\Services\Media\MediaIngest;
-use App\Support\CacheGroup;
-use App\Support\ResponseCache;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -40,7 +38,7 @@ final class ProcessNewMedia implements ShouldBeUnique, ShouldQueue
         return $this->fileName;
     }
 
-    public function handle(MediaIngest $ingest, ResponseCache $cache): void
+    public function handle(MediaIngest $ingest): void
     {
         $path = config()->string('gallery.media_path') . '/' . $this->fileName;
         if (!File::isFile($path)) {
@@ -74,7 +72,6 @@ final class ProcessNewMedia implements ShouldBeUnique, ShouldQueue
         File::ensureDirectoryExists(dirname($media->fullPath()));
         File::move($path, $media->fullPath());
 
-        $cache->bump(CacheGroup::Media);
         Log::info('Media ingested', ['media_id' => $media->media_id, 'file' => $this->fileName]);
 
         if ($this->importTags && $media->media_type === 'image') {

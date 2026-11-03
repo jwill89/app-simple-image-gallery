@@ -66,6 +66,19 @@ export function getCategoryClassById(categoryId: number): string {
   return colorToTagClass(cat?.color)
 }
 
+/** The name of the category with this ID, or '' when there is none. */
+export function getCategoryNameById(categoryId: number): string {
+  return findCategory((c) => c.category_id === categoryId)?.category_name ?? ''
+}
+
+/**
+ * Get the text class for a given category ID.
+ */
+export function getTextClassById(categoryId: number): string {
+  const cat = findCategory((c) => c.category_id === categoryId)
+  return colorToTextClass(cat?.color)
+}
+
 /**
  * Get the tag class for a given category name. A null/unknown name yields the
  * default class (category_name can be null on tags whose category was removed).
@@ -73,13 +86,4 @@ export function getCategoryClassById(categoryId: number): string {
 export function getCategoryClassByName(categoryName: string | null | undefined): string {
   const cat = findCategory((c) => c.category_name === categoryName)
   return colorToTagClass(cat?.color)
-}
-
-/**
- * Get the text class for a given category name. A null/unknown name yields the
- * default class.
- */
-export function getTextClassByName(categoryName: string | null | undefined): string {
-  const cat = findCategory((c) => c.category_name === categoryName)
-  return colorToTextClass(cat?.color)
 }

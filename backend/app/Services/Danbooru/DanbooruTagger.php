@@ -126,7 +126,7 @@ final class DanbooruTagger
                 }
                 $applied[] = $tagIds[$key];
             }
-            $media->tags()->syncWithoutDetaching($applied);
+            $media->attachTags($applied);
 
             return new DanbooruImport(found: true, method: $method, tagsApplied: count($applied), tagsCreated: $created);
         });

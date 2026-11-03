@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\CacheGroup;
+use App\Support\ResponseCache;
 use Database\Factories\TagCategoryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Table;
@@ -39,6 +41,16 @@ class TagCategory extends Model
     public function tags(): HasMany
     {
         return $this->hasMany(Tag::class, 'category_id', 'category_id');
+    }
+
+    protected static function booted(): void
+    {
+        // A category's name and order show in the tag lists.
+        $changed = static function (): void {
+            app(ResponseCache::class)->bump(CacheGroup::Tags);
+        };
+        static::saved($changed);
+        static::deleted($changed);
     }
 
     protected function casts(): array

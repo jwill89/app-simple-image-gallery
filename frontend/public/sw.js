@@ -4,7 +4,8 @@
  * Caching strategies:
  *   - Static assets (JS, CSS, fonts): Cache-first, versioned by cache name
  *   - Thumbnails (/media/thumbs/*):   Cache-first, LRU eviction at 2000 entries
- *   - API media lists (/api/media?…): Network-first, cache fallback for offline
+ *   - API media lists (/api/media/page|untagged|with-tags/…, /api/media?cursor=…):
+ *                                     Network-first, cache fallback for offline
  *   - Full-size media:                Network-only (too large to cache)
  *
  * Adjacent page pre-caching:
@@ -12,16 +13,26 @@
  *   the SW fetches those thumbnails in the background and caches them.
  */
 
-// Bumped for the UI rebuild: prefetch now also runs for infinite-scroll batches,
-// and the shipped asset set changed wholesale. Bumping renames every cache, so
-// `activate` purges the old ones instead of serving a mix of two builds.
-const CACHE_VERSION = 'v3'
+// Bumped for API 5: the media listings are matched by their real paths (the
+// old rule only knew the long-gone `/api/media?page=…` form, so no listing was
+// ever cached), and infinite scroll now reads cursor batches. Bumping renames
+// every cache, so `activate` purges the old ones instead of serving a mix.
+const CACHE_VERSION = 'v4'
 const STATIC_CACHE = `gallery-static-${CACHE_VERSION}`
 const THUMB_CACHE = `gallery-thumbs-${CACHE_VERSION}`
 const API_CACHE = `gallery-api-${CACHE_VERSION}`
 
 const MAX_THUMB_ENTRIES = 2000
 const MAX_STATIC_ENTRIES = 100
+// Every page and cursor is its own URL, so the listing cache is capped too.
+const MAX_API_ENTRIES = 200
+
+/** The media listings: numbered pages and the cursor feed (GET /api/media). */
+const MEDIA_LIST_PREFIXES = ['/api/media/page/', '/api/media/untagged/', '/api/media/with-tags/']
+
+function isMediaList(pathname) {
+  return pathname === '/api/media' || MEDIA_LIST_PREFIXES.some((p) => pathname.startsWith(p))
+}
 
 // ─── Install ────────────────────────────────────────────────────────
 
@@ -73,8 +84,8 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // API gallery listings (GET /api/media?…): network-first with cache fallback
-  if (url.pathname === '/api/media') {
+  // API gallery listings: network-first with cache fallback
+  if (isMediaList(url.pathname)) {
     event.respondWith(networkFirst(event.request, API_CACHE))
     return
   }
@@ -137,6 +148,7 @@ async function networkFirst(request, cacheName) {
     if (response.ok) {
       const cache = await caches.open(cacheName)
       cache.put(request, response.clone())
+      trimCache(cacheName, MAX_API_ENTRIES)
     }
     return response
   } catch (err) {

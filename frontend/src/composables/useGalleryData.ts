@@ -9,6 +9,8 @@ export function useGalleryData() {
   const toastStore = useToastStore()
   const items = ref<Media[]>([])
   const totalPages = ref(0)
+  /** Where GET /media continues after this page; null when nothing follows. */
+  const nextCursor = ref<string | null>(null)
   const loading = ref(false)
   const loadFailed = ref(false)
 
@@ -28,15 +30,17 @@ export function useGalleryData() {
 
       items.value = data?.items ?? []
       totalPages.value = data?.total_pages ?? 1
+      nextCursor.value = data?.next_cursor ?? null
     } catch (e) {
       toastStore.error(getErrorMessage(e, 'Failed to load gallery'))
       loadFailed.value = true
       items.value = []
       totalPages.value = 0
+      nextCursor.value = null
     } finally {
       loading.value = false
     }
   }
 
-  return { items, totalPages, loading, loadFailed, fetchPage }
+  return { items, totalPages, nextCursor, loading, loadFailed, fetchPage }
 }

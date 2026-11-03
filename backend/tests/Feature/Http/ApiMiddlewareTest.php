@@ -162,8 +162,10 @@ test('an ApiRequest fails with its first broken rule\'s code, status and message
     $token = adminToken();
     $post = static fn(array $body) => withHeaders(['Origin' => ALLOWED, 'Authorization' => "Bearer {$token}"])->postJson('/api/test/validated', $body);
 
-    $post([])->assertStatus(400)->assertExactJson(['error' => 'InvalidName', 'message' => 'Name is required.']);
-    $post(['name' => 'too long'])->assertStatus(422)->assertExactJson(['error' => 'NameTooLong', 'message' => 'Name must be 5 characters or fewer.']);
+    $post([])->assertStatus(400)->assertExactJson(['error' => 'InvalidName', 'message' => 'Name is required.', 'errors' => ['name' => ['Name is required.']]]);
+    $post(['name' => 'too long'])->assertStatus(422)->assertExactJson(['error' => 'NameTooLong', 'message' => 'Name must be 5 characters or fewer.', 'errors' => ['name' => ['Name must be 5 characters or fewer.']]]);
+    // Every broken field is listed; the code and message are the first one's.
+    $post(['name' => 'too long', 'count' => 'x'])->assertStatus(422)->assertJsonPath('error', 'NameTooLong')->assertJsonCount(2, 'errors');
     $post(['name' => 'ok', 'count' => 'x'])->assertStatus(400)->assertJsonPath('error', 'InvalidInput');
     $post(['name' => 'ok', 'count' => 3])->assertOk()->assertExactJson(['name' => 'ok', 'count' => 3]);
 });

@@ -5,10 +5,16 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Exceptions\ApiException;
+use App\Models\DanbooruCategoryMapping;
+use App\Models\DanbooruTagMapping;
+use App\Models\Media;
+use App\Models\Tag;
+use App\Models\TagCategory;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -23,6 +29,23 @@ class AppServiceProvider extends ServiceProvider
         // Resources are the response body itself, as the contract has them, not
         // wrapped in { data: … }.
         JsonResource::withoutWrapping();
+
+        // An id in a path is digits, and names a record that exists: anything
+        // else is a 404 (ApiExceptionRenderer names the missing resource).
+        $models = [
+            'media_id' => Media::class,
+            'tag_id' => Tag::class,
+            'target_tag_id' => Tag::class,
+            'implied_tag_id' => Tag::class,
+            'category_id' => TagCategory::class,
+            'danbooru_category_id' => DanbooruCategoryMapping::class,
+            // A Danbooru tag mapping's; the only route with a bare {id}.
+            'id' => DanbooruTagMapping::class,
+        ];
+        foreach ($models as $parameter => $model) {
+            Route::pattern($parameter, '[0-9]+');
+            Route::model($parameter, $model);
+        }
 
         // Every /api route: 120 requests a minute per IP. A 429 says when to retry,
         // in the body and in Retry-After.

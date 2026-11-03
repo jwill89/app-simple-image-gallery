@@ -6,21 +6,19 @@ namespace App\Http\Requests;
 
 use App\Exceptions\ApiException;
 use Illuminate\Contracts\Validation\Validator;
-use Illuminate\Foundation\Http\Attributes\StopOnFirstFailure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 
 /**
  * A form request that fails the way the API contract does: the first failed
- * rule, in the order rules() lists them, becomes `{ error, message }` with that
- * endpoint's code and status (usually 400), never Laravel's 422 with
- * `{ message, errors }`. The message is the rule's, so messages() sets the
- * wording the contract uses.
+ * rule, in the order rules() lists them, gives `{ error, message }` that
+ * endpoint's code and status (usually 400), never Laravel's 422. Every field is
+ * checked, and `errors` lists each broken field's messages, so a form can mark
+ * them all. The messages are the rules', so messages() sets the wording.
  *
  * Authorization is the routes' business (auth:sanctum), so every request is
  * authorized here.
  */
-#[StopOnFirstFailure]
 abstract class ApiRequest extends FormRequest
 {
     /**
@@ -49,15 +47,17 @@ abstract class ApiRequest extends FormRequest
 
     protected function failedValidation(Validator $validator): never
     {
+        // Every broken field's messages, so a form can mark each one.
+        $extra = ['errors' => $validator->errors()->toArray()];
         $codes = $this->errorCodes();
 
         foreach ($validator->failed() as $field => $rules) {
             $rule = Str::snake((string) array_key_first($rules));
             [$code, $status] = $codes["{$field}.{$rule}"] ?? $codes[$field] ?? ['InvalidInput', 400];
 
-            throw new ApiException($code, $status, $validator->errors()->first($field));
+            throw new ApiException($code, $status, $validator->errors()->first($field), [], $extra);
         }
 
-        throw new ApiException('InvalidInput', 400, $validator->errors()->first());
+        throw new ApiException('InvalidInput', 400, $validator->errors()->first(), [], $extra);
     }
 }

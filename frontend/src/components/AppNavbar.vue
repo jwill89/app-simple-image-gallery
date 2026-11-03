@@ -154,6 +154,9 @@ function navigateLogin() {
 }
 
 function logout() {
+  // Revoke the token on the server too, so a copy of it stops working. Signed
+  // out here either way: a failed revoke still expires within the day.
+  api.del(endpoints.auth.logout).catch(() => undefined)
   clearAuthToken()
   authenticated.value = false
   burgerActive.value = false

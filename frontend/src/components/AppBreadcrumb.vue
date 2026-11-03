@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useGalleryStore } from '../stores/gallery'
 
@@ -27,6 +27,15 @@ function formatTagLabel(tagsParam: string): { label: string; title?: string } {
 
 const route = useRoute()
 const store = useGalleryStore()
+
+// The implications page names its tag: look it up if it hasn't been seen.
+watch(
+  () => route.params.tagId,
+  (tagId) => {
+    if (route.name === 'tag-implications') void store.loadTagsById([Number(tagId)])
+  },
+  { immediate: true },
+)
 
 const crumbs = computed<Crumb[]>(() => {
   const name = route.name as string
@@ -70,7 +79,7 @@ const crumbs = computed<Crumb[]>(() => {
   } else if (name === 'tag-implications') {
     list.push({ label: 'Tags', icon: 'fa-solid fa-tags', to: { name: 'tags' } })
     const tagId = Number(route.params.tagId)
-    const tag = store.allTags.find((t) => t.tag_id === tagId)
+    const tag = store.tagById(tagId)
     list.push({ label: tag?.tag_name ?? `Tag #${tagId}`, icon: 'fa-solid fa-link' })
   } else if (name === 'favorites') {
     list.push({ label: 'Favorites', icon: 'fa-solid fa-heart' })

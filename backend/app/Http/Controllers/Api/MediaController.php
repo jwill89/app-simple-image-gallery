@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\MediaResource;
+use App\Http\Resources\TagResource;
 use App\Models\Media;
 use App\Models\Tag;
 use App\Support\CacheGroup;
@@ -16,6 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Pagination\Cursor;
 use Illuminate\Support\Facades\Log;
 use OpenApi\Spec as OAS;
 use Throwable;
@@ -111,21 +113,7 @@ final class MediaController extends Controller
         $page = self::number($page);
         $perPage = self::pageSize($perPage);
 
-        $include = [];
-        $exclude = [];
-        foreach (array_map(trim(...), explode(',', $tagList)) as $name) {
-            if (str_starts_with($name, '-')) {
-                $exclude[] = ltrim(substr($name, 1));
-            } else {
-                $include[] = $name;
-            }
-        }
-        // Names that aren't tags are dropped; only when none are left is it a 404.
-        $includeIds = Tag::idsNamed(array_values(array_filter($include, static fn(string $name): bool => $name !== '')));
-        $excludeIds = Tag::idsNamed(array_values(array_filter($exclude, static fn(string $name): bool => $name !== '')));
-        if ($includeIds === [] && $excludeIds === []) {
-            throw new ApiException('NoValidTagsSupplied', 404, 'None of the specified tag names matched existing tags.');
-        }
+        [$includeIds, $excludeIds] = self::tagSearch($tagList);
 
         // Keyed by the list as written, so a search in other letter case is
         // cached separately.
@@ -144,15 +132,73 @@ final class MediaController extends Controller
         operationId: 'getMedia',
         summary: 'A single media item',
         tags: ['Media'],
-        parameters: [new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        parameters: [
+            new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'include', in: 'query', required: false, description: '"tags" adds the item\'s tags, in display order, as `tags`.', schema: new OAS\Schema(type: 'string', enum: ['tags'])),
+        ],
         responses: [
-            new OAS\Response(response: 200, description: 'The media item', content: new OAS\MediaType\Json(ref: '#/components/schemas/Media')),
+            new OAS\Response(response: 200, description: 'The media item (with its tags when include=tags)', content: new OAS\MediaType\Json(ref: '#/components/schemas/MediaWithTags')),
             new OAS\Response(response: 404, description: 'MediaNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ],
     )]
-    public function show(string $mediaId): MediaResource
+    public function show(Request $request, Media $media): MediaResource|JsonResponse
     {
-        return new MediaResource($this->find($mediaId, 'The requested media item could not be found.'));
+        if ($request->query('include') !== 'tags') {
+            return new MediaResource($media);
+        }
+
+        // Built here: a resource with additional fields is wrapped in { data }.
+        return new JsonResponse([
+            ...new MediaResource($media)->resolve($request),
+            'tags' => TagResource::collection($media->sortedTags())->resolve($request),
+        ]);
+    }
+
+    /**
+     * GET /media?cursor=…&per_page=…&tags=…|untagged=1 — The items after a
+     * cursor (from a page's or a feed's next_cursor), newest first, in the
+     * whole gallery, a tag search (as /media/with-tags) or the untagged items.
+     * Unlike page numbers, a cursor isn't thrown off by items added or removed
+     * meanwhile, which is what infinite scroll needs.
+     */
+    #[OAS\Operation\Get(
+        path: '/media',
+        operationId: 'listMediaAfterCursor',
+        summary: 'Media after a cursor',
+        tags: ['Media'],
+        parameters: [
+            new OAS\Parameter(name: 'cursor', in: 'query', required: false, description: 'A next_cursor; without one, the listing\'s start.', schema: new OAS\Schema(type: 'string')),
+            new OAS\Parameter(name: 'per_page', in: 'query', required: false, schema: new OAS\Schema(type: 'integer', default: 40, maximum: 200, minimum: 1)),
+            new OAS\Parameter(name: 'tags', in: 'query', required: false, description: "Comma-separated tag names; a leading '-' excludes (as /media/with-tags).", schema: new OAS\Schema(type: 'string')),
+            new OAS\Parameter(name: 'untagged', in: 'query', required: false, description: 'Only items with no tags.', schema: new OAS\Schema(type: 'boolean')),
+        ],
+        responses: [
+            new OAS\Response(response: 200, description: 'The next items', content: new OAS\MediaType\Json(ref: '#/components/schemas/MediaFeed')),
+            new OAS\Response(response: 400, description: 'InvalidCursor', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'NoValidTagsSupplied', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+        ],
+    )]
+    public function feed(Request $request): JsonResponse
+    {
+        $cursor = null;
+        if ($request->filled('cursor')) {
+            $cursor = Cursor::fromEncoded($request->string('cursor')->toString())
+                ?? throw new ApiException('InvalidCursor', 400, 'The cursor is not one this listing gave out.');
+        }
+        $perPage = self::pageSize($request->filled('per_page') ? $request->string('per_page')->toString() : null);
+
+        $query = Media::query();
+        if ($request->boolean('untagged')) {
+            $query->untagged();
+        } elseif ($request->filled('tags')) {
+            $query->taggedWith(...self::tagSearch($request->string('tags')->toString()));
+        }
+        $page = $query->newestFirst()->cursorPaginate($perPage, ['*'], 'cursor', $cursor);
+
+        return new JsonResponse([
+            'items' => MediaResource::collection($page->items()),
+            'next_cursor' => $page->nextCursor()?->encode(),
+        ]);
     }
 
     /**
@@ -244,10 +290,8 @@ final class MediaController extends Controller
             new OAS\Response(response: 404, description: 'MediaNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ],
     )]
-    public function destroy(string $mediaId): Response
+    public function destroy(Media $media): Response
     {
-        $media = $this->find($mediaId, 'The media item to delete could not be found.');
-
         try {
             $media->delete();
         } catch (Throwable $e) {
@@ -256,7 +300,6 @@ final class MediaController extends Controller
             throw new ApiException('DeleteFailed', 500, 'The media item could not be deleted. Please try again.');
         }
 
-        $this->cache->bump(CacheGroup::Media, CacheGroup::Tags);
         Log::info('Media deleted', ['media_id' => $media->media_id]);
 
         return response()->noContent();
@@ -309,28 +352,57 @@ final class MediaController extends Controller
             }
         }
 
-        if ($deleted !== []) {
-            $this->cache->bump(CacheGroup::Media, CacheGroup::Tags);
-        }
 
         return new JsonResponse(['deleted' => $deleted, 'failed' => $failed, 'total_deleted' => count($deleted)]);
     }
 
     /**
-     * One page of the query's media, newest first (the MediaPage schema).
+     * One page of the query's media, newest first (the MediaPage schema), with
+     * the cursor to continue from with GET /media while more follow.
      *
      * @param Builder<Media> $query
-     * @return array{items: AnonymousResourceCollection, total_pages: int, current_page: int}
+     * @return array{items: AnonymousResourceCollection, total_pages: int, current_page: int, next_cursor: ?string}
      */
     private static function mediaPage(Builder $query, int $page, int $perPage, bool $atLeastOnePage = true): array
     {
         $pages = (int) ceil($query->count() / $perPage);
+        $items = $query->newestFirst()->forPage($page, $perPage)->get();
+        $last = $items->last();
 
         return [
-            'items' => MediaResource::collection($query->newestFirst()->forPage($page, $perPage)->get()),
+            'items' => MediaResource::collection($items),
             'total_pages' => $atLeastOnePage ? max(1, $pages) : $pages,
             'current_page' => $page,
+            'next_cursor' => $last !== null && $items->count() === $perPage && max($page, 1) < $pages
+                ? new Cursor(['file_time' => $last->file_time, 'media_id' => $last->media_id])->encode()
+                : null,
         ];
+    }
+
+    /**
+     * A search's tag list ("cat,-dog") as the ids to include and exclude.
+     * Names that aren't tags are dropped; only when none are left is it a 404.
+     *
+     * @return array{0: list<int>, 1: list<int>}
+     */
+    private static function tagSearch(string $tagList): array
+    {
+        $include = [];
+        $exclude = [];
+        foreach (array_map(trim(...), explode(',', $tagList)) as $name) {
+            if (str_starts_with($name, '-')) {
+                $exclude[] = ltrim(substr($name, 1));
+            } else {
+                $include[] = $name;
+            }
+        }
+        $includeIds = Tag::idsNamed(array_values(array_filter($include, static fn(string $name): bool => $name !== '')));
+        $excludeIds = Tag::idsNamed(array_values(array_filter($exclude, static fn(string $name): bool => $name !== '')));
+        if ($includeIds === [] && $excludeIds === []) {
+            throw new ApiException('NoValidTagsSupplied', 404, 'None of the specified tag names matched existing tags.');
+        }
+
+        return [$includeIds, $excludeIds];
     }
 
     /** A path segment as a number: one that isn't reads as 0. */
@@ -352,10 +424,4 @@ final class MediaController extends Controller
         return $segment === null ? self::DEFAULT_PER_PAGE : min(max(self::number($segment), 1), self::MAX_PER_PAGE);
     }
 
-    private function find(string $mediaId, string $notFound): Media
-    {
-        $id = self::positiveId($mediaId) ?? throw new ApiException('InvalidMediaID', 400, 'The media ID must be a positive number.');
-
-        return Media::query()->find($id) ?? throw new ApiException('MediaNotFound', 404, $notFound);
-    }
 }

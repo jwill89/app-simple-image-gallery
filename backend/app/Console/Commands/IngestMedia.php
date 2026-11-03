@@ -7,8 +7,6 @@ namespace App\Console\Commands;
 use App\Jobs\ProcessNewMedia;
 use App\Models\Media;
 use App\Services\Danbooru\DanbooruTagger;
-use App\Support\CacheGroup;
-use App\Support\ResponseCache;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -25,7 +23,7 @@ use Illuminate\Support\Facades\File;
         {--import-tags : Also import Danbooru tags for each new image}')]
 final class IngestMedia extends Command
 {
-    public function handle(ResponseCache $cache): int
+    public function handle(): int
     {
         $importTags = (bool) $this->option('import-tags');
         if ($importTags && !DanbooruTagger::isConfigured()) {
@@ -52,11 +50,9 @@ final class IngestMedia extends Command
             return self::FAILURE;
         }
 
+        // Each delete clears the cached lists (the Media model), and takes the files.
         foreach ($gone as $media) {
             $media->delete();
-        }
-        if ($gone->isNotEmpty()) {
-            $cache->bump(CacheGroup::Media, CacheGroup::Tags);
         }
 
         $queued = 0;

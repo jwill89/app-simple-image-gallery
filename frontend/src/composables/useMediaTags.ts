@@ -3,7 +3,7 @@ import { useApi, getErrorMessage } from './useApi'
 import { useToastStore } from '../stores/toast'
 import { useGalleryStore } from '../stores/gallery'
 import { endpoints } from '../api/endpoints'
-import type { Tag, MediaItem } from '../types'
+import type { Tag, MediaItem, MediaWithTags } from '../types'
 
 export function useMediaTags() {
   const api = useApi()
@@ -19,12 +19,17 @@ export function useMediaTags() {
     loadFailed.value = false
 
     try {
-      const [item, itemTags] = await Promise.all([
-        api.get<MediaItem>(endpoints.media.byId(mediaId)),
-        api.get<Tag[]>(endpoints.media.tags(mediaId)),
-      ])
-      mediaItem.value = item ?? null
-      tags.value = itemTags ?? []
+      // The item and its tags in one request.
+      const item = await api.get<MediaWithTags>(endpoints.media.byIdWithTags(mediaId))
+      if (item) {
+        const { tags: itemTags, ...media } = item
+        mediaItem.value = media
+        tags.value = itemTags
+        store.rememberTags(itemTags)
+      } else {
+        mediaItem.value = null
+        tags.value = []
+      }
     } catch (e) {
       toastStore.error(getErrorMessage(e, 'Failed to load media'))
       loadFailed.value = true
@@ -37,7 +42,8 @@ export function useMediaTags() {
     try {
       const updatedTags = await api.patch<Tag[]>(endpoints.media.tags(mediaId), { tag_ids: tagIds })
       tags.value = updatedTags ?? []
-      await store.refreshTags()
+      // What it implies came along: remembered, so chips can name them.
+      store.rememberTags(tags.value)
     } catch (e) {
       toastStore.error(getErrorMessage(e, 'Failed to add tags'))
     }

@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\DanbooruTagMappingRequest;
 use App\Http\Resources\TagMappingResource;
 use App\Models\DanbooruTagMapping;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
@@ -89,19 +87,15 @@ final class DanbooruTagMappingController extends Controller
         responses: [
             new OAS\Response(response: 200, description: 'The updated mapping', content: new OAS\MediaType\Json(ref: '#/components/schemas/TagMapping')),
             new OAS\Response(response: 400, description: 'InvalidInput / DuplicateMapping', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'MappingNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ],
     )]
-    public function update(DanbooruTagMappingRequest $request, string $id): JsonResponse
+    public function update(DanbooruTagMappingRequest $request, DanbooruTagMapping $mapping): TagMappingResource
     {
-        $mappingId = self::mappingId($id);
-        $fields = $request->mapping();
+        $mapping->update($request->mapping());
+        Log::info('Danbooru tag mapping updated', ['id' => $mapping->id, 'danbooru_tag' => $mapping->danbooru_tag]);
 
-        // An id with no mapping saves nothing but is answered the same way, as
-        // the contract recorded.
-        DanbooruTagMapping::query()->whereKey($mappingId)->update($fields);
-        Log::info('Danbooru tag mapping updated', ['id' => $mappingId, 'danbooru_tag' => $fields['danbooru_tag']]);
-
-        return new JsonResponse(['id' => $mappingId, ...$fields]);
+        return new TagMappingResource($mapping);
     }
 
     /**
@@ -116,22 +110,14 @@ final class DanbooruTagMappingController extends Controller
         parameters: [new OAS\Parameter(name: 'id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Deleted'),
-            new OAS\Response(response: 400, description: 'InvalidInput', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'MappingNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ],
     )]
-    public function destroy(string $id): Response
+    public function destroy(DanbooruTagMapping $mapping): Response
     {
-        $mappingId = self::mappingId($id);
-
-        // One that doesn't exist is not an error.
-        DanbooruTagMapping::query()->whereKey($mappingId)->delete();
-        Log::info('Danbooru tag mapping deleted', ['id' => $mappingId]);
+        $mapping->delete();
+        Log::info('Danbooru tag mapping deleted', ['id' => $mapping->id]);
 
         return response()->noContent();
-    }
-
-    private static function mappingId(string $id): int
-    {
-        return self::positiveId($id) ?? throw new ApiException('InvalidInput', 400, 'A valid mapping ID is required.');
     }
 }

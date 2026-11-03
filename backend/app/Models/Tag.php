@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\CacheGroup;
+use App\Support\ResponseCache;
 use Database\Factories\TagFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Attributes\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -127,6 +131,48 @@ class Tag extends Model
                 DB::table('media_tags')->selectRaw('media_id, ?', [$target->tag_id])->where('tag_id', $this->tag_id),
             );
             $this->media()->detach();
+        });
+        Media::tagsChanged();
+    }
+
+    /** Make this tag imply $implied (once: one that exists already is no error). */
+    public function imply(self $implied): void
+    {
+        $this->implies()->syncWithoutDetaching([$implied->tag_id]);
+        app(ResponseCache::class)->bump(CacheGroup::Tags);
+    }
+
+    /** Stop this tag implying $implied. Whether it did is the caller's check. */
+    public function unimply(self $implied): void
+    {
+        $this->implies()->detach($implied->tag_id);
+        app(ResponseCache::class)->bump(CacheGroup::Tags);
+    }
+
+    /**
+     * Tags whose name contains $term, best match first: the name itself, then
+     * names starting with it, then the rest, each alphabetically.
+     *
+     * @param Builder<self> $query
+     */
+    #[Scope]
+    protected function matching(Builder $query, string $term): void
+    {
+        $like = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term);
+        $query->whereRaw("tags.tag_name LIKE ? ESCAPE '\\'", ["%{$like}%"])
+            ->orderByRaw("CASE WHEN tags.tag_name = ? THEN 0 WHEN tags.tag_name LIKE ? ESCAPE '\\' THEN 1 ELSE 2 END", [$term, "{$like}%"])
+            ->orderBy('tags.tag_name');
+    }
+
+    protected static function booted(): void
+    {
+        // A tag's name and category show in the tag lists. Deleting one also
+        // takes its links (ON DELETE CASCADE), which the media listings show.
+        static::saved(static function (): void {
+            app(ResponseCache::class)->bump(CacheGroup::Tags);
+        });
+        static::deleted(static function (): void {
+            app(ResponseCache::class)->bump(CacheGroup::Tags, CacheGroup::Media);
         });
     }
 

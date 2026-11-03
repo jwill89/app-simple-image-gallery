@@ -14,12 +14,16 @@ use RuntimeException;
  */
 final class ApiException extends RuntimeException
 {
-    /** @param array<string, string> $headers */
+    /**
+     * @param array<string, string> $headers
+     * @param array<string, mixed> $extra Fields beside error and message, as a failed validation's errors.
+     */
     public function __construct(
         public readonly string $errorCode,
         public readonly int $status,
         string $message,
         public readonly array $headers = [],
+        public readonly array $extra = [],
     ) {
         parent::__construct($message);
     }
@@ -38,6 +42,6 @@ final class ApiException extends RuntimeException
 
     public function render(): JsonResponse
     {
-        return self::response($this->errorCode, $this->status, $this->getMessage(), $this->headers);
+        return self::response($this->errorCode, $this->status, $this->getMessage(), $this->headers, $this->extra);
     }
 }

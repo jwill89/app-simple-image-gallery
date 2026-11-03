@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\CacheGroup;
+use App\Support\ResponseCache;
 use Database\Factories\MediaFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -98,7 +100,26 @@ class Media extends Model
      */
     public function addTags(array $tagIds): void
     {
-        $this->tags()->syncWithoutDetaching(Tag::withImplied($tagIds));
+        $this->attachTags(Tag::withImplied($tagIds));
+    }
+
+    /**
+     * Apply exactly these tags, not what they imply (a Danbooru import's).
+     * Tags it has already stay.
+     *
+     * @param list<int> $tagIds
+     */
+    public function attachTags(array $tagIds): void
+    {
+        $this->tags()->syncWithoutDetaching($tagIds);
+        self::tagsChanged();
+    }
+
+    /** Take one tag off. What it implies stays, and one it hasn't got is no error. */
+    public function removeTag(Tag $tag): void
+    {
+        $this->tags()->detach($tag->tag_id);
+        self::tagsChanged();
     }
 
     /** The full-size file, served at /media/full/<file_name>. */
@@ -186,11 +207,26 @@ class Media extends Model
         return $frames > 1;
     }
 
+    /**
+     * A tag link changed, which the media listings (tag search) and the tag
+     * lists (usage counts) both show. Links aren't models, so they say so here.
+     */
+    public static function tagsChanged(): void
+    {
+        app(ResponseCache::class)->bump(CacheGroup::Media, CacheGroup::Tags);
+    }
+
     protected static function booted(): void
     {
+        // Every write shows in the cached listings, so it clears them itself:
+        // no caller has to remember to.
+        static::saved(static function (): void {
+            app(ResponseCache::class)->bump(CacheGroup::Media);
+        });
         // Its tag links go with the row (ON DELETE CASCADE); its files go here.
         static::deleted(static function (self $media): void {
             File::delete([$media->fullPath(), ...$media->thumbnailPaths()]);
+            self::tagsChanged();
         });
     }
 

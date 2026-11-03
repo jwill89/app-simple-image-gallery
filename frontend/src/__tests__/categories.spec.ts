@@ -6,7 +6,8 @@ import {
   colorToTextClass,
   getCategoryClassById,
   getCategoryClassByName,
-  getTextClassByName,
+  getCategoryNameById,
+  getTextClassById,
 } from '../constants/categories'
 import { useGalleryStore, type TagCategory } from '../stores/gallery'
 
@@ -52,13 +53,14 @@ describe('categories helpers', () => {
     expect(VALID_COLORS).toContain('emerald')
   })
 
-  it('looks up a category class by id and name from the store', () => {
+  it('looks up a category class, text class and name from the store', () => {
     const store = useGalleryStore()
     store.categories = [category({ category_id: 1, category_name: 'Character', color: 'teal' })]
 
     expect(getCategoryClassById(1)).toBe('tag--teal')
     expect(getCategoryClassByName('Character')).toBe('tag--teal')
-    expect(getTextClassByName('Character')).toBe('tag-text--teal')
+    expect(getTextClassById(1)).toBe('tag-text--teal')
+    expect(getCategoryNameById(1)).toBe('Character')
   })
 
   it('returns neutral defaults for unknown categories', () => {
@@ -66,6 +68,7 @@ describe('categories helpers', () => {
 
     expect(getCategoryClassById(999)).toBe('tag--neutral')
     expect(getCategoryClassByName('Nope')).toBe('tag--neutral')
-    expect(getTextClassByName('Nope')).toBe('tag-text--neutral')
+    expect(getTextClassById(999)).toBe('tag-text--neutral')
+    expect(getCategoryNameById(999)).toBe('')
   })
 })

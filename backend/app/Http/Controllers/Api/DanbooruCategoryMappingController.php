@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\DanbooruCategoryMappingRequest;
 use App\Http\Resources\CategoryMappingResource;
@@ -90,19 +89,14 @@ final class DanbooruCategoryMappingController extends Controller
         parameters: [new OAS\Parameter(name: 'danbooru_category_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Deleted'),
-            new OAS\Response(response: 400, description: 'InvalidInput', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'MappingNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ],
     )]
-    public function destroy(string $danbooruCategoryId): Response
+    public function destroy(DanbooruCategoryMapping $mapping): Response
     {
-        // Danbooru's ids start at 0, so a non-negative id: no positiveId().
-        if (!ctype_digit($danbooruCategoryId)) {
-            throw new ApiException('InvalidInput', 400, 'Danbooru category ID must be a non-negative integer.');
-        }
-
-        // One that isn't mapped is not an error.
-        DanbooruCategoryMapping::query()->whereKey((int) $danbooruCategoryId)->delete();
-        Log::info('Danbooru category mapping deleted', ['danbooru_category_id' => (int) $danbooruCategoryId]);
+        // Danbooru's category ids start at 0, which the binding takes as any other.
+        $mapping->delete();
+        Log::info('Danbooru category mapping deleted', ['danbooru_category_id' => $mapping->danbooru_category_id]);
 
         return response()->noContent();
     }

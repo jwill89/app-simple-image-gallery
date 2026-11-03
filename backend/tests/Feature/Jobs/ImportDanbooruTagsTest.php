@@ -7,6 +7,7 @@ use App\Models\Media;
 use App\Services\Danbooru\DanbooruTagger;
 use App\Support\CacheGroup;
 use App\Support\ResponseCache;
+use App\Support\TagImports;
 use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
@@ -30,7 +31,7 @@ test('an import applies the post\'s tags as the endpoint does, and invalidates m
     $cache = app(ResponseCache::class);
     $cache->remember(CacheGroup::Tags, 'probe', 60, static fn(): array => []);
 
-    new ImportDanbooruTags(Media::query()->findOrFail(1))->handle(app(DanbooruTagger::class), $cache);
+    new ImportDanbooruTags(Media::query()->findOrFail(1))->handle(app(DanbooruTagger::class), app(TagImports::class));
 
     expect(Media::query()->findOrFail(1)->sortedTags()->pluck('tag_name')->all())
         ->toBe(['animal', 'blue sky', 'cat', 'new thing', 'outdoors', 'artist one', 'brand new hero', 'hero', 'some series'])
@@ -43,7 +44,7 @@ test('imports are rate-limited, and one Danbooru answers 429 waits a minute and 
     expect($job->middleware())->toEqual([new RateLimited('danbooru')])
         ->and($job->retryUntil()->getTimestamp())->toBeGreaterThan(now()->addHours(23)->getTimestamp());
 
-    $job->handle(app(DanbooruTagger::class), app(ResponseCache::class));
+    $job->handle(app(DanbooruTagger::class), app(TagImports::class));
 
     $job->assertReleased(delay: 60);
 });

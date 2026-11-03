@@ -25,6 +25,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Log out (revoke this token)
+         * @description DELETE /auth/token — Log out: the token this request carries stops
+         *     working at once, rather than when it expires.
+         */
+        delete: operations["logout"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/danbooru/category-mappings": {
         parameters: {
             query?: never;
@@ -270,6 +291,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Media after a cursor
+         * @description GET /media?cursor=…&per_page=…&tags=…|untagged=1 — The items after a
+         *     cursor (from a page's or a feed's next_cursor), newest first, in the
+         *     whole gallery, a tag search (as /media/with-tags) or the untagged items.
+         *     Unlike page numbers, a cursor isn't thrown off by items added or removed
+         *     meanwhile, which is what infinite scroll needs.
+         */
+        get: operations["listMediaAfterCursor"];
+        put?: never;
+        /**
+         * Upload media (create)
+         * @description POST /media — Upload one or more files (multipart/form-data with files[]).
+         *     Media type is auto-detected from each file's extension.
+         */
+        post: operations["uploadMedia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/media/random": {
         parameters: {
             query?: never;
@@ -422,6 +472,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/media/tag-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Where media items' queued Danbooru imports stand
+         * @description GET /media/tag-imports?ids=1,2,3 — Where each item's queued Danbooru
+         *     import stands (an upload's, or the commands'), for up to 200 items.
+         */
+        get: operations["listTagImportStatuses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/version": {
         parameters: {
             query?: never;
@@ -518,12 +589,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * Update a tag category
-         * @description PUT /tag-categories/{category_id} — Update a tag category.
-         *     Returns the updated category. Body: same fields as create.
-         */
-        put: operations["updateTagCategory"];
+        put?: never;
         post?: never;
         /**
          * Delete a tag category
@@ -532,7 +598,11 @@ export interface paths {
         delete: operations["deleteTagCategory"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update a tag category (the fields given)
+         * @description PUT is accepted too, and also leaves out fields as they are.
+         */
+        patch: operations["updateTagCategory"];
         trace?: never;
     };
     "/tags": {
@@ -543,8 +613,11 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List all tags
-         * @description GET /tags — All tags (id, name, category). Cached.
+         * Find tags, or list them all
+         * @description GET /tags — Tags (id, name, category). With ?search= the best matches
+         *     for a name (exact, then prefix, then containing; ?limit= of them, 20 by
+         *     default, ?exclude= ids left out); with ?names= or ?ids= those tags;
+         *     with none, every tag (cached).
          */
         get: operations["listTags"];
         put?: never;
@@ -568,9 +641,11 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List tags with category and usage counts
-         * @description GET /tags/display — All tags with category and usage/implication counts,
-         *     for the tags-management page. Cached.
+         * A page of tags with category and usage counts
+         * @description GET /tags/display — A page of tags with their category and usage and
+         *     implication counts, for the tag-management pages. ?search= matches tag
+         *     or category names; ?sort= tag_name, category_name or media_count (the
+         *     default), ?direction= asc or desc; ?ids= picks tags. Cached.
          */
         get: operations["listTagsForDisplay"];
         put?: never;
@@ -593,23 +668,22 @@ export interface paths {
          * @description GET /tags/{tag_id} — A single tag by ID.
          */
         get: operations["getTag"];
-        /**
-         * Update a tag
-         * @description PUT /tags/{tag_id} — Rename and/or recategorize a tag.
-         *     Body: { tag_name, category_id? (default 1) }. Returns the updated tag.
-         */
-        put: operations["updateTag"];
+        put?: never;
         post?: never;
         /**
          * Delete a tag
          * @description DELETE /tags/{tag_id} — Delete a tag.
-         *     DELETE /tags/{tag_id}/migrate-to/{target_tag_id} — migrate this tag's media
+         *     DELETE /tags/{tag_id}/migrate-to/{target_tag_id} — move this tag's media
          *     to the target first, then delete this tag.
          */
         delete: operations["deleteTag"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update a tag (the fields given)
+         * @description PUT is accepted too, and also leaves out fields as they are.
+         */
+        patch: operations["updateTag"];
         trace?: never;
     };
     "/tags/{tag_id}/migrate-to/{target_tag_id}": {
@@ -623,9 +697,9 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Migrate a tag's media to another tag, then delete it
+         * Move a tag's media to another tag, then delete it
          * @description DELETE /tags/{tag_id} — Delete a tag.
-         *     DELETE /tags/{tag_id}/migrate-to/{target_tag_id} — migrate this tag's media
+         *     DELETE /tags/{tag_id}/migrate-to/{target_tag_id} — move this tag's media
          *     to the target first, then delete this tag.
          */
         delete: operations["migrateAndDeleteTag"];
@@ -644,9 +718,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Migrate a tag into another
-         * @description POST /tags/{tag_id}/migrate — Move all media from this tag to the target,
-         *     then delete this tag. Body: { target_tag_id }.
+         * Move a tag's media to another tag, keeping it
+         * @description POST /tags/{tag_id}/migrate — Move all this tag's media to the target,
+         *     keeping this tag (now on no media). Body: { target_tag_id }. To move and
+         *     delete in one step, DELETE /tags/{tag_id}/migrate-to/{target_tag_id}.
          */
         post: operations["migrateTag"];
         delete?: never;
@@ -701,27 +776,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/media": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Upload media (create)
-         * @description POST /media — Upload one or more files (multipart/form-data with files[]).
-         *     Media type is auto-detected from each file's extension.
-         */
-        post: operations["uploadMedia"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -749,8 +803,6 @@ export interface components {
         DanbooruFetchResult: {
             /** @description The media item's tags after import. */
             tags?: components["schemas"]["Tag"][];
-            /** @description The full tag list (new tags may have been created). */
-            all_tags?: components["schemas"]["Tag"][];
             /** @description Lookup method used (md5 / iqdb / post). */
             method?: string;
             tags_applied?: number;
@@ -803,11 +855,23 @@ export interface components {
             /** @description Bearer token, valid for 24 hours. */
             token?: string;
         };
-        /** @description A paginated page of media items. */
+        /** @description Media items after a cursor. */
+        MediaFeed: {
+            items?: components["schemas"]["Media"][];
+            /** @description Pass as ?cursor= for the items after these; null when nothing follows. */
+            next_cursor?: string | null;
+        };
+        /** @description A numbered page of media items. */
         MediaPage: {
             items?: components["schemas"]["Media"][];
             total_pages?: number;
             current_page?: number;
+            /** @description Continue after this page with GET /media?cursor=… (same listing); null when nothing follows. */
+            next_cursor?: string | null;
+        };
+        /** @description A media item; with include=tags, also its tags in display order. */
+        MediaWithTags: components["schemas"]["Media"] & {
+            tags?: components["schemas"]["Tag"][];
         };
         /** @description Outcome of a tag migration. */
         MigrateResult: {
@@ -837,6 +901,19 @@ export interface components {
             implied_tag_id?: number;
             implied_tag_name?: string;
         };
+        /** @description A media item's queued Danbooru import. */
+        TagImportStatus: {
+            media_id?: number;
+            /**
+             * @description none: no import was queued for it in the last day.
+             * @enum {string}
+             */
+            status?: "queued" | "applied" | "not_found" | "failed" | "none";
+            /** @description Tags applied (applied only). */
+            tags_applied?: number;
+            /** @description Why it failed (failed only): blocked, refused, unreachable, …. */
+            error?: string | null;
+        };
         /** @description A tag with category name and usage counts. */
         TagListItem: {
             tag_id?: number;
@@ -847,6 +924,14 @@ export interface components {
             media_count?: number;
             /** @description Number of implications originating from this tag. */
             implication_count?: number;
+        };
+        /** @description A page of tags with category and usage counts. */
+        TagListPage: {
+            items?: components["schemas"]["TagListItem"][];
+            /** @description Tags matching the search, on every page. */
+            total?: number;
+            current_page?: number;
+            total_pages?: number;
         };
         /** @description A Danbooru-to-gallery tag name mapping. */
         TagMapping: {
@@ -867,13 +952,12 @@ export interface components {
             hash?: string;
             /** @description Failure reason (on error). */
             message?: string;
-            /** @description Whether Danbooru tags were found. */
-            tags_found?: boolean;
-            /** @description Number of tags applied from Danbooru. */
-            tags_applied?: number;
-            /** @description Danbooru lookup method used (md5/iqdb). */
-            tags_method?: string;
-            /** @description Why the Danbooru lookup failed, in place of tags_found, when Danbooru refused, blocked or did not answer (the file is still uploaded). */
+            /**
+             * @description With fetch_tags: the Danbooru lookup is queued; GET /media/tag-imports says how it went.
+             * @enum {string}
+             */
+            tags_status?: "queued";
+            /** @description With fetch_tags: why no Danbooru lookup was queued (Danbooru is not set up on the server). The file is still uploaded. */
             tags_error?: string;
         };
         /** @description Aggregate upload result. */
@@ -882,8 +966,6 @@ export interface components {
             total_uploaded?: number;
             total_duplicates?: number;
             total_failed?: number;
-            /** @description Total Danbooru tags applied (only when fetch_tags was set). */
-            total_tags_applied?: number;
         };
         /** @description Application and API version. */
         VersionResponse: {
@@ -991,6 +1073,33 @@ export interface operations {
             };
         };
     };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listDanbooruCategoryMappings: {
         parameters: {
             query?: never;
@@ -1075,8 +1184,8 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description InvalidInput */
-            400: {
+            /** @description MappingNotFound */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1178,6 +1287,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description MappingNotFound */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     deleteDanbooruTagMapping: {
@@ -1198,8 +1316,8 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description InvalidInput */
-            400: {
+            /** @description MappingNotFound */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1403,7 +1521,10 @@ export interface operations {
     };
     getMedia: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description "tags" adds the item's tags, in display order, as `tags`. */
+                include?: "tags";
+            };
             header?: never;
             path: {
                 media_id: number;
@@ -1412,13 +1533,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The media item */
+            /** @description The media item (with its tags when include=tags) */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Media"];
+                    "application/json": components["schemas"]["MediaWithTags"];
                 };
             };
             /** @description MediaNotFound */
@@ -1452,6 +1573,89 @@ export interface operations {
             };
             /** @description MediaNotFound */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMediaAfterCursor: {
+        parameters: {
+            query?: {
+                /** @description A next_cursor; without one, the listing's start. */
+                cursor?: string;
+                per_page?: number;
+                /** @description Comma-separated tag names; a leading '-' excludes (as /media/with-tags). */
+                tags?: string;
+                /** @description Only items with no tags. */
+                untagged?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The next items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaFeed"];
+                };
+            };
+            /** @description InvalidCursor */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NoValidTagsSupplied */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    uploadMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    "files[]"?: string[];
+                    /** @description Fetch Danbooru tags for uploaded images. */
+                    fetch_tags?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Upload result */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadSummary"];
+                };
+            };
+            /** @description NoFilesUploaded */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1600,7 +1804,7 @@ export interface operations {
                     "application/json": components["schemas"]["Tag"][];
                 };
             };
-            /** @description MediaDoesNotExist */
+            /** @description MediaNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1637,7 +1841,16 @@ export interface operations {
                     "application/json": components["schemas"]["Tag"][];
                 };
             };
-            /** @description MediaDoesNotExist / TagDoesNotExist */
+            /** @description InvalidTagList */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description MediaNotFound / TagNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1669,7 +1882,7 @@ export interface operations {
                     "application/json": components["schemas"]["Tag"][];
                 };
             };
-            /** @description MediaDoesNotExist / CouldNotFindTag */
+            /** @description MediaNotFound / TagNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1706,7 +1919,7 @@ export interface operations {
                     "application/json": components["schemas"]["DanbooruFetchResult"];
                 };
             };
-            /** @description MediaDoesNotExist / NotFoundOnDanbooru */
+            /** @description MediaNotFound / NotFoundOnDanbooru */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1735,6 +1948,38 @@ export interface operations {
             };
             /** @description DanbooruUnreachable / DanbooruUnavailable / DanbooruBlocked */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTagImportStatuses: {
+        parameters: {
+            query: {
+                /** @description Comma-separated media ids (up to 200). */
+                ids: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Each item's import, in the order asked */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagImportStatus"][];
+                };
+            };
+            /** @description InvalidInput */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1865,46 +2110,6 @@ export interface operations {
             };
         };
     };
-    updateTagCategory: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                category_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    category_name: string;
-                    color?: string;
-                    description?: string;
-                    sort_order?: number;
-                };
-            };
-        };
-        responses: {
-            /** @description The updated category */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TagCategory"];
-                };
-            };
-            /** @description CategoryNotFound */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
     deleteTagCategory: {
         parameters: {
             query?: never;
@@ -1943,16 +2148,76 @@ export interface operations {
             };
         };
     };
-    listTags: {
+    updateTagCategory: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                category_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    category_name?: string;
+                    color?: string;
+                    description?: string;
+                    sort_order?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The updated category */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagCategory"];
+                };
+            };
+            /** @description NameTooLong / NameTaken / InvalidColor */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CategoryNotFound */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTags: {
+        parameters: {
+            query?: {
+                /** @description Name to match; empty lists the first tags by name. */
+                search?: string;
+                /** @description How many matches (1-100, default 20). */
+                limit?: number;
+                /** @description Comma-separated tag ids to leave out of a search. */
+                exclude?: string;
+                /** @description Comma-separated tag names (any case) to look up. */
+                names?: string;
+                /** @description Comma-separated tag ids to look up. */
+                ids?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description All tags */
+            /** @description The tags */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1989,7 +2254,7 @@ export interface operations {
                     "application/json": components["schemas"]["Tag"];
                 };
             };
-            /** @description InvalidTagName / TagAlreadyExists */
+            /** @description InvalidTagName / TagNameTooLong / TagAlreadyExists / InvalidCategoryID */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -2002,20 +2267,29 @@ export interface operations {
     };
     listTagsForDisplay: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                per_page?: number;
+                /** @description Matches tag or category names. */
+                search?: string;
+                sort?: "tag_name" | "category_name" | "media_count";
+                direction?: "asc" | "desc";
+                /** @description Comma-separated tag ids to show. */
+                ids?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Tags with counts */
+            /** @description A page of tags with counts */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TagListItem"][];
+                    "application/json": components["schemas"]["TagListPage"];
                 };
             };
         };
@@ -2040,46 +2314,7 @@ export interface operations {
                     "application/json": components["schemas"]["Tag"];
                 };
             };
-            /** @description TagDoesNotExist */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    updateTag: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tag_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    tag_name: string;
-                    /** @default 1 */
-                    category_id?: number;
-                };
-            };
-        };
-        responses: {
-            /** @description The updated tag */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Tag"];
-                };
-            };
-            /** @description TagDoesNotExist */
+            /** @description TagNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2108,7 +2343,54 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description TagDoesNotExist */
+            /** @description TagNotFound */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tag_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    tag_name?: string;
+                    category_id?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The updated tag */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tag"];
+                };
+            };
+            /** @description InvalidTagName / TagNameTooLong / TagAlreadyExists / InvalidCategoryID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description TagNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2125,21 +2407,30 @@ export interface operations {
             header?: never;
             path: {
                 tag_id: number;
-                /** @description Migrate media to this tag before deleting. */
+                /** @description Move media to this tag before deleting. */
                 target_tag_id: number;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Migrated and deleted */
+            /** @description Moved and deleted */
             204: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description TagDoesNotExist / MigrationTargetDoesNotExist */
+            /** @description CannotMigrateToSelf */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description TagNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2176,7 +2467,16 @@ export interface operations {
                     "application/json": components["schemas"]["MigrateResult"];
                 };
             };
-            /** @description TagDoesNotExist */
+            /** @description InvalidTagID / CannotMigrateToSelf */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description TagNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2241,7 +2541,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description TagDoesNotExist */
+            /** @description TagNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2271,45 +2571,8 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description InvalidTagID */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    uploadMedia: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": {
-                    "files[]"?: string[];
-                    /** @description Fetch Danbooru tags for uploaded images. */
-                    fetch_tags?: boolean;
-                };
-            };
-        };
-        responses: {
-            /** @description Upload result */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UploadSummary"];
-                };
-            };
-            /** @description NoFilesUploaded */
-            400: {
+            /** @description TagNotFound / ImplicationNotFound */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

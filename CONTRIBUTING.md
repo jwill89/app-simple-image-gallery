@@ -128,9 +128,11 @@ composer test            # the whole suite, including the contract replay
   through HTTP where you can, and fake what leaves the app: `Http::fake()` for Danbooru,
   `Process::fake()` for ffmpeg/ffprobe, `Queue::fake()` when only the dispatch matters.
 - **The contract replay** (`tests/Feature/Contract/`) sends the 191 requests recorded from the
-  Slim app (`tests/Fixtures/contract/`) and checks each answer. The recordings are frozen: a
-  change to what the API answers on purpose goes in `tests/Feature/Contract/divergences.php` with
-  its reason, never into a recording.
+  Slim app at API 4 (`tests/Fixtures/contract/`) and checks each answer. The recordings are
+  frozen: a change to what the API answers on purpose goes in
+  `tests/Feature/Contract/divergences.php` with its reason, never into a recording. Where the new
+  behaviour replaces a recorded one, the entry is `superseded` and names the feature test that
+  covers it instead.
 - **`SchemaTest`** checks that a fresh `migrate` builds the production schema
   (`tests/Fixtures/schema.sql`). A migration that changes a gallery table updates what it expects
   in the same change.

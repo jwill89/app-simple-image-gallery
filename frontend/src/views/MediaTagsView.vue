@@ -338,7 +338,7 @@ async function fetchDanbooruTags() {
     if (!data) throw new Error('No response from Danbooru import')
 
     tags.value = data.tags
-    store.allTags = data.all_tags
+    store.rememberTags(data.tags)
     const created = data.tags_created > 0 ? ` ${data.tags_created} newly created.` : ''
     toastStore.success(
       `Applied ${data.tags_applied} tag(s) via ${data.method}.${created}`,

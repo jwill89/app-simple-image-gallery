@@ -9,8 +9,10 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use Laravel\Sanctum\PersonalAccessToken;
 use OpenApi\Spec as OAS;
 
 /**
@@ -94,5 +96,31 @@ final class AuthController extends Controller
         Log::info('Admin login successful', ['ip' => $request->ip()]);
 
         return new JsonResponse(['token' => $token]);
+    }
+
+    /**
+     * DELETE /auth/token — Log out: the token this request carries stops
+     * working at once, rather than when it expires.
+     */
+    #[OAS\Operation\Delete(
+        path: '/auth/token',
+        operationId: 'logout',
+        summary: 'Log out (revoke this token)',
+        tags: ['Auth'],
+        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        responses: [
+            new OAS\Response(response: 204, description: 'Revoked'),
+            new OAS\Response(response: 401, description: 'Unauthorized', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+        ],
+    )]
+    public function logout(Request $request): Response
+    {
+        $token = $request->user()?->currentAccessToken();
+        if ($token instanceof PersonalAccessToken) {
+            $token->delete();
+        }
+        Log::info('Admin logged out', ['ip' => $request->ip()]);
+
+        return response()->noContent();
     }
 }

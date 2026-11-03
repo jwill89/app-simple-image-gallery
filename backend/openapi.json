@@ -3,7 +3,7 @@
     "info": {
         "title": "Gallery API",
         "description": "Internal HTTP API for the self-hosted media gallery — a **hybrid REST-RPC**\ninterface served under the `/api` base path. All responses are JSON.\n\n**Conventions**\n- Reads return `200` with the resource or collection.\n- Creates return `201` with the created resource.\n- Updates (`PUT`/`PATCH`) return `200` with the updated resource.\n- Deletes return `204` with no body.\n- Non-CRUD actions (login, migrate, scan, bulk operations) are `POST`\n  verbs that return `200` with a small result object.\n- Errors return `{ \"error\": \"<MachineCode>\", \"message\": \"<human text>\" }`\n  with a `4xx`/`5xx` status. `error` is a stable PascalCase code safe to\n  branch on; `message` is for display and may change.\n\n**Auth** — a Bearer token (`Authorization: Bearer <token>`) obtained from\n`POST /auth/login` (valid 24h). All `GET`s are public; state-changing\nmethods require a token, except a small public allowlist (media tagging\nand the batched `POST /media/by-ids` read).",
-        "version": "4.0.0"
+        "version": "5.0.0"
     },
     "servers": [
         {
@@ -80,6 +80,36 @@
                         }
                     }
                 }
+            }
+        },
+        "/auth/token": {
+            "delete": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Log out (revoke this token)",
+                "description": "DELETE /auth/token — Log out: the token this request carries stops\nworking at once, rather than when it expires.",
+                "operationId": "logout",
+                "responses": {
+                    "204": {
+                        "description": "Revoked"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             }
         },
         "/danbooru/category-mappings": {
@@ -200,8 +230,8 @@
                     "204": {
                         "description": "Deleted"
                     },
-                    "400": {
-                        "description": "InvalidInput",
+                    "404": {
+                        "description": "MappingNotFound",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -360,6 +390,16 @@
                                 }
                             }
                         }
+                    },
+                    "404": {
+                        "description": "MappingNotFound",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -389,8 +429,8 @@
                     "204": {
                         "description": "Deleted"
                     },
-                    "400": {
-                        "description": "InvalidInput",
+                    "404": {
+                        "description": "MappingNotFound",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -716,15 +756,27 @@
                         "schema": {
                             "type": "integer"
                         }
+                    },
+                    {
+                        "name": "include",
+                        "in": "query",
+                        "description": "\"tags\" adds the item's tags, in display order, as `tags`.",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "tags"
+                            ]
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "The media item",
+                        "description": "The media item (with its tags when include=tags)",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Media"
+                                    "$ref": "#/components/schemas/MediaWithTags"
                                 }
                             }
                         }
@@ -764,6 +816,146 @@
                     },
                     "404": {
                         "description": "MediaNotFound",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/media": {
+            "get": {
+                "tags": [
+                    "Media"
+                ],
+                "summary": "Media after a cursor",
+                "description": "GET /media?cursor=…&per_page=…&tags=…|untagged=1 — The items after a\ncursor (from a page's or a feed's next_cursor), newest first, in the\nwhole gallery, a tag search (as /media/with-tags) or the untagged items.\nUnlike page numbers, a cursor isn't thrown off by items added or removed\nmeanwhile, which is what infinite scroll needs.",
+                "operationId": "listMediaAfterCursor",
+                "parameters": [
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "description": "A next_cursor; without one, the listing's start.",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 200,
+                            "default": 40
+                        }
+                    },
+                    {
+                        "name": "tags",
+                        "in": "query",
+                        "description": "Comma-separated tag names; a leading '-' excludes (as /media/with-tags).",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "untagged",
+                        "in": "query",
+                        "description": "Only items with no tags.",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The next items",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MediaFeed"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "InvalidCursor",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "NoValidTagsSupplied",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Media"
+                ],
+                "summary": "Upload media (create)",
+                "description": "POST /media — Upload one or more files (multipart/form-data with files[]).\nMedia type is auto-detected from each file's extension.",
+                "operationId": "uploadMedia",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "files[]": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "format": "binary"
+                                        }
+                                    },
+                                    "fetch_tags": {
+                                        "type": "boolean",
+                                        "description": "Fetch Danbooru tags for uploaded images."
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Upload result",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UploadSummary"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "NoFilesUploaded",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -981,7 +1173,7 @@
                         }
                     },
                     "404": {
-                        "description": "MediaDoesNotExist",
+                        "description": "MediaNotFound",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1044,8 +1236,18 @@
                             }
                         }
                     },
+                    "400": {
+                        "description": "InvalidTagList",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
                     "404": {
-                        "description": "MediaDoesNotExist / TagDoesNotExist",
+                        "description": "MediaNotFound / TagNotFound",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1098,7 +1300,7 @@
                         }
                     },
                     "404": {
-                        "description": "MediaDoesNotExist / CouldNotFindTag",
+                        "description": "MediaNotFound / TagNotFound",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1158,7 +1360,7 @@
                         }
                     },
                     "404": {
-                        "description": "MediaDoesNotExist / NotFoundOnDanbooru",
+                        "description": "MediaNotFound / NotFoundOnDanbooru",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1203,6 +1405,52 @@
                         "bearerAuth": []
                     }
                 ]
+            }
+        },
+        "/media/tag-imports": {
+            "get": {
+                "tags": [
+                    "Media"
+                ],
+                "summary": "Where media items' queued Danbooru imports stand",
+                "description": "GET /media/tag-imports?ids=1,2,3 — Where each item's queued Danbooru\nimport stands (an upload's, or the commands'), for up to 200 items.",
+                "operationId": "listTagImportStatuses",
+                "parameters": [
+                    {
+                        "name": "ids",
+                        "in": "query",
+                        "description": "Comma-separated media ids (up to 200).",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Each item's import, in the order asked",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/TagImportStatus"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "InvalidInput",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/version": {
@@ -1348,12 +1596,12 @@
             }
         },
         "/tag-categories/{category_id}": {
-            "put": {
+            "patch": {
                 "tags": [
                     "Tag Categories"
                 ],
-                "summary": "Update a tag category",
-                "description": "PUT /tag-categories/{category_id} — Update a tag category.\nReturns the updated category. Body: same fields as create.",
+                "summary": "Update a tag category (the fields given)",
+                "description": "PUT is accepted too, and also leaves out fields as they are.",
                 "operationId": "updateTagCategory",
                 "parameters": [
                     {
@@ -1383,10 +1631,7 @@
                                     "sort_order": {
                                         "type": "integer"
                                     }
-                                },
-                                "required": [
-                                    "category_name"
-                                ]
+                                }
                             }
                         }
                     },
@@ -1399,6 +1644,16 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/TagCategory"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "NameTooLong / NameTaken / InvalidColor",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
                                 }
                             }
                         }
@@ -1474,12 +1729,61 @@
                 "tags": [
                     "Tags"
                 ],
-                "summary": "List all tags",
-                "description": "GET /tags — All tags (id, name, category). Cached.",
+                "summary": "Find tags, or list them all",
+                "description": "GET /tags — Tags (id, name, category). With ?search= the best matches\nfor a name (exact, then prefix, then containing; ?limit= of them, 20 by\ndefault, ?exclude= ids left out); with ?names= or ?ids= those tags;\nwith none, every tag (cached).",
                 "operationId": "listTags",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Name to match; empty lists the first tags by name.",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "How many matches (1-100, default 20).",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "exclude",
+                        "in": "query",
+                        "description": "Comma-separated tag ids to leave out of a search.",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "names",
+                        "in": "query",
+                        "description": "Comma-separated tag names (any case) to look up.",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "ids",
+                        "in": "query",
+                        "description": "Comma-separated tag ids to look up.",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "All tags",
+                        "description": "The tags",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1534,7 +1838,7 @@
                         }
                     },
                     "400": {
-                        "description": "InvalidTagName / TagAlreadyExists",
+                        "description": "InvalidTagName / TagNameTooLong / TagAlreadyExists / InvalidCategoryID",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1556,19 +1860,84 @@
                 "tags": [
                     "Tags"
                 ],
-                "summary": "List tags with category and usage counts",
-                "description": "GET /tags/display — All tags with category and usage/implication counts,\nfor the tags-management page. Cached.",
+                "summary": "A page of tags with category and usage counts",
+                "description": "GET /tags/display — A page of tags with their category and usage and\nimplication counts, for the tag-management pages. ?search= matches tag\nor category names; ?sort= tag_name, category_name or media_count (the\ndefault), ?direction= asc or desc; ?ids= picks tags. Cached.",
                 "operationId": "listTagsForDisplay",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100,
+                            "default": 25
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Matches tag or category names.",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "tag_name",
+                                "category_name",
+                                "media_count"
+                            ],
+                            "default": "media_count"
+                        }
+                    },
+                    {
+                        "name": "direction",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ],
+                            "default": "desc"
+                        }
+                    },
+                    {
+                        "name": "ids",
+                        "in": "query",
+                        "description": "Comma-separated tag ids to show.",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "Tags with counts",
+                        "description": "A page of tags with counts",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/TagListItem"
-                                    }
+                                    "$ref": "#/components/schemas/TagListPage"
                                 }
                             }
                         }
@@ -1606,7 +1975,7 @@
                         }
                     },
                     "404": {
-                        "description": "TagDoesNotExist",
+                        "description": "TagNotFound",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1617,12 +1986,12 @@
                     }
                 }
             },
-            "put": {
+            "patch": {
                 "tags": [
                     "Tags"
                 ],
-                "summary": "Update a tag",
-                "description": "PUT /tags/{tag_id} — Rename and/or recategorize a tag.\nBody: { tag_name, category_id? (default 1) }. Returns the updated tag.",
+                "summary": "Update a tag (the fields given)",
+                "description": "PUT is accepted too, and also leaves out fields as they are.",
                 "operationId": "updateTag",
                 "parameters": [
                     {
@@ -1644,13 +2013,9 @@
                                         "type": "string"
                                     },
                                     "category_id": {
-                                        "type": "integer",
-                                        "default": 1
+                                        "type": "integer"
                                     }
-                                },
-                                "required": [
-                                    "tag_name"
-                                ]
+                                }
                             }
                         }
                     },
@@ -1667,8 +2032,18 @@
                             }
                         }
                     },
+                    "400": {
+                        "description": "InvalidTagName / TagNameTooLong / TagAlreadyExists / InvalidCategoryID",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
                     "404": {
-                        "description": "TagDoesNotExist",
+                        "description": "TagNotFound",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1689,7 +2064,7 @@
                     "Tags"
                 ],
                 "summary": "Delete a tag",
-                "description": "DELETE /tags/{tag_id} — Delete a tag.\nDELETE /tags/{tag_id}/migrate-to/{target_tag_id} — migrate this tag's media\nto the target first, then delete this tag.",
+                "description": "DELETE /tags/{tag_id} — Delete a tag.\nDELETE /tags/{tag_id}/migrate-to/{target_tag_id} — move this tag's media\nto the target first, then delete this tag.",
                 "operationId": "deleteTag",
                 "parameters": [
                     {
@@ -1706,7 +2081,7 @@
                         "description": "Deleted"
                     },
                     "404": {
-                        "description": "TagDoesNotExist",
+                        "description": "TagNotFound",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1728,8 +2103,8 @@
                 "tags": [
                     "Tags"
                 ],
-                "summary": "Migrate a tag's media to another tag, then delete it",
-                "description": "DELETE /tags/{tag_id} — Delete a tag.\nDELETE /tags/{tag_id}/migrate-to/{target_tag_id} — migrate this tag's media\nto the target first, then delete this tag.",
+                "summary": "Move a tag's media to another tag, then delete it",
+                "description": "DELETE /tags/{tag_id} — Delete a tag.\nDELETE /tags/{tag_id}/migrate-to/{target_tag_id} — move this tag's media\nto the target first, then delete this tag.",
                 "operationId": "migrateAndDeleteTag",
                 "parameters": [
                     {
@@ -1743,7 +2118,7 @@
                     {
                         "name": "target_tag_id",
                         "in": "path",
-                        "description": "Migrate media to this tag before deleting.",
+                        "description": "Move media to this tag before deleting.",
                         "required": true,
                         "schema": {
                             "type": "integer"
@@ -1752,10 +2127,20 @@
                 ],
                 "responses": {
                     "204": {
-                        "description": "Migrated and deleted"
+                        "description": "Moved and deleted"
+                    },
+                    "400": {
+                        "description": "CannotMigrateToSelf",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
                     },
                     "404": {
-                        "description": "TagDoesNotExist / MigrationTargetDoesNotExist",
+                        "description": "TagNotFound",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1777,8 +2162,8 @@
                 "tags": [
                     "Tags"
                 ],
-                "summary": "Migrate a tag into another",
-                "description": "POST /tags/{tag_id}/migrate — Move all media from this tag to the target,\nthen delete this tag. Body: { target_tag_id }.",
+                "summary": "Move a tag's media to another tag, keeping it",
+                "description": "POST /tags/{tag_id}/migrate — Move all this tag's media to the target,\nkeeping this tag (now on no media). Body: { target_tag_id }. To move and\ndelete in one step, DELETE /tags/{tag_id}/migrate-to/{target_tag_id}.",
                 "operationId": "migrateTag",
                 "parameters": [
                     {
@@ -1819,8 +2204,18 @@
                             }
                         }
                     },
+                    "400": {
+                        "description": "InvalidTagID / CannotMigrateToSelf",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
                     "404": {
-                        "description": "TagDoesNotExist",
+                        "description": "TagNotFound",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1912,7 +2307,7 @@
                         }
                     },
                     "404": {
-                        "description": "TagDoesNotExist",
+                        "description": "TagNotFound",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1959,68 +2354,8 @@
                     "204": {
                         "description": "Removed"
                     },
-                    "400": {
-                        "description": "InvalidTagID",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/media": {
-            "post": {
-                "tags": [
-                    "Media"
-                ],
-                "summary": "Upload media (create)",
-                "description": "POST /media — Upload one or more files (multipart/form-data with files[]).\nMedia type is auto-detected from each file's extension.",
-                "operationId": "uploadMedia",
-                "requestBody": {
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "files[]": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "string",
-                                            "format": "binary"
-                                        }
-                                    },
-                                    "fetch_tags": {
-                                        "type": "boolean",
-                                        "description": "Fetch Danbooru tags for uploaded images."
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "201": {
-                        "description": "Upload result",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/UploadSummary"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "NoFilesUploaded",
+                    "404": {
+                        "description": "TagNotFound / ImplicationNotFound",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2100,13 +2435,6 @@
                     "tags": {
                         "type": "array",
                         "description": "The media item's tags after import.",
-                        "items": {
-                            "$ref": "#/components/schemas/Tag"
-                        }
-                    },
-                    "all_tags": {
-                        "type": "array",
-                        "description": "The full tag list (new tags may have been created).",
                         "items": {
                             "$ref": "#/components/schemas/Tag"
                         }
@@ -2242,9 +2570,28 @@
                     }
                 }
             },
+            "MediaFeed": {
+                "type": "object",
+                "description": "Media items after a cursor.",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Media"
+                        }
+                    },
+                    "next_cursor": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Pass as ?cursor= for the items after these; null when nothing follows."
+                    }
+                }
+            },
             "MediaPage": {
                 "type": "object",
-                "description": "A paginated page of media items.",
+                "description": "A numbered page of media items.",
                 "properties": {
                     "items": {
                         "type": "array",
@@ -2257,8 +2604,34 @@
                     },
                     "current_page": {
                         "type": "integer"
+                    },
+                    "next_cursor": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Continue after this page with GET /media?cursor=… (same listing); null when nothing follows."
                     }
                 }
+            },
+            "MediaWithTags": {
+                "description": "A media item; with include=tags, also its tags in display order.",
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/Media"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "tags": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/Tag"
+                                }
+                            }
+                        }
+                    }
+                ]
             },
             "MigrateResult": {
                 "type": "object",
@@ -2321,6 +2694,37 @@
                     }
                 }
             },
+            "TagImportStatus": {
+                "type": "object",
+                "description": "A media item's queued Danbooru import.",
+                "properties": {
+                    "media_id": {
+                        "type": "integer"
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "none: no import was queued for it in the last day.",
+                        "enum": [
+                            "queued",
+                            "applied",
+                            "not_found",
+                            "failed",
+                            "none"
+                        ]
+                    },
+                    "tags_applied": {
+                        "type": "integer",
+                        "description": "Tags applied (applied only)."
+                    },
+                    "error": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Why it failed (failed only): blocked, refused, unreachable, …."
+                    }
+                }
+            },
             "TagListItem": {
                 "type": "object",
                 "description": "A tag with category name and usage counts.",
@@ -2347,6 +2751,28 @@
                     "implication_count": {
                         "type": "integer",
                         "description": "Number of implications originating from this tag."
+                    }
+                }
+            },
+            "TagListPage": {
+                "type": "object",
+                "description": "A page of tags with category and usage counts.",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TagListItem"
+                        }
+                    },
+                    "total": {
+                        "type": "integer",
+                        "description": "Tags matching the search, on every page."
+                    },
+                    "current_page": {
+                        "type": "integer"
+                    },
+                    "total_pages": {
+                        "type": "integer"
                     }
                 }
             },
@@ -2396,21 +2822,16 @@
                         "type": "string",
                         "description": "Failure reason (on error)."
                     },
-                    "tags_found": {
-                        "type": "boolean",
-                        "description": "Whether Danbooru tags were found."
-                    },
-                    "tags_applied": {
-                        "type": "integer",
-                        "description": "Number of tags applied from Danbooru."
-                    },
-                    "tags_method": {
+                    "tags_status": {
                         "type": "string",
-                        "description": "Danbooru lookup method used (md5/iqdb)."
+                        "description": "With fetch_tags: the Danbooru lookup is queued; GET /media/tag-imports says how it went.",
+                        "enum": [
+                            "queued"
+                        ]
                     },
                     "tags_error": {
                         "type": "string",
-                        "description": "Why the Danbooru lookup failed, in place of tags_found, when Danbooru refused, blocked or did not answer (the file is still uploaded)."
+                        "description": "With fetch_tags: why no Danbooru lookup was queued (Danbooru is not set up on the server). The file is still uploaded."
                     }
                 }
             },
@@ -2432,10 +2853,6 @@
                     },
                     "total_failed": {
                         "type": "integer"
-                    },
-                    "total_tags_applied": {
-                        "type": "integer",
-                        "description": "Total Danbooru tags applied (only when fetch_tags was set)."
                     }
                 }
             },

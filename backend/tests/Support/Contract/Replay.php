@@ -58,8 +58,22 @@ final class Replay
      */
     private const string RECORDED_VERSION = '4.0.0';
 
+    /**
+     * The API version the recordings were made against. API 5 changed some
+     * answers (each named in divergences.php as superseded) and moved
+     * config('gallery.api_version'); the rest still answer as recorded.
+     */
+    private const string RECORDED_API_VERSION = '4.0.0';
+
     /** The fixture report's age, as the recorder set it: older than any report a case writes. */
     private const int FIXTURE_REPORT_MTIME = 1761782400;
+
+    /**
+     * Top-level fields API 5 added to answers, which API 4's recordings can't
+     * have: a validation failure's `errors` (every broken field) and a media
+     * page's `next_cursor`.
+     */
+    private const array ADDED_FIELDS = ['errors', 'next_cursor'];
 
     /** Access-Control headers a browser reads only on a preflight; Laravel sends them only there. */
     private const array PREFLIGHT_ONLY_HEADERS = ['access-control-allow-headers', 'access-control-allow-methods', 'access-control-max-age'];
@@ -183,6 +197,7 @@ final class Replay
         $this->root = $root = sys_get_temp_dir() . '/gallery-replay-' . bin2hex(random_bytes(4));
         config([
             'gallery.version' => self::RECORDED_VERSION,
+            'gallery.api_version' => self::RECORDED_API_VERSION,
             'gallery.media_path' => "{$root}/media",
             'gallery.dupes_path' => "{$root}/dupes",
             // The built index.html the SPA shell was recorded with.
@@ -384,6 +399,14 @@ final class Replay
 
         if (array_key_exists('json', $expected)) {
             $decoded = json_decode($body, true);
+            // Fields API 5 added to answers API 4 recorded (divergences.php explains each).
+            if (is_array($decoded) && is_array($expected['json'])) {
+                foreach (self::ADDED_FIELDS as $field) {
+                    if (!array_key_exists($field, $expected['json'])) {
+                        unset($decoded[$field]);
+                    }
+                }
+            }
             $mismatch = Matcher::json($expected['json'], $decoded);
             if ($mismatch !== null) {
                 $problems[] = "body {$mismatch}";

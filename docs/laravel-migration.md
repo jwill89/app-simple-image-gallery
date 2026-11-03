@@ -268,7 +268,8 @@ Progress:
 
   `backups/ROLLBACK.txt` has the steps back, and `backups/rollback-vhosts/` has vhost files ready to point at `slim-rollback/`. The original vhost copies, now `apache-before-cutover/`, serve the folder root, which is the Laravel app now, so they must not be restored as they are.
 - **Deploys narrowed their permissions.** They chown only the code, `vendor/` and `storage/` to `www-data`, never the data, `backups/` or `slim-rollback/`. The tarball, built on Windows, gave the code world-writable modes (`777`/`666`), which the old deploy kept too; the code is now `755`/`644`.
-- **The docs describe Laravel, and the version is 5.0.0** (2026-11-03). README, AGENTS.md, CONTRIBUTING.md and `backend/README.md` were rewritten for the Laravel app and the droplet as it now runs, and CHANGELOG has the 5.0.0 entry. It's a major version because running the gallery changed: the server layout, a queue worker, a cron entry and new settings. The API version stays `4.0.0`. The contract replay pins `/api/version`'s app version to the one the recordings were made at, so a release doesn't touch them.
+- **The docs describe Laravel, and the version is 5.0.0** (2026-11-03). README, AGENTS.md, CONTRIBUTING.md and `backend/README.md` were rewritten for the Laravel app and the droplet as it now runs, and CHANGELOG has the 5.0.0 entry. It's a major version because running the gallery changed: the server layout, a queue worker, a cron entry and new settings. The contract replay pins `/api/version`'s app version to the one the recordings were made at, so a release doesn't touch them.
+- **API 5** (2026-11-03), folded into the 5.0.0 release: with the migration done, the API was changed to use what Laravel offers. What changed and why is under API 5 below. The API version is `5.0.0`; the replay pins `api_version` to `4.0.0`, as it pins the app version, since the recordings were made against API 4.
 - Still to do, after a week live (from about 2026-11-10): delete `slim-rollback/` from the droplet (with `backups/rollback-vhosts/`, and the rollback steps in `backups/ROLLBACK.txt`), and add a migration that drops `auth_tokens`, `rate_limits` and `phinx_migrations`. That finishes Phase 8.
 
 ## Deployment
@@ -345,6 +346,26 @@ Decided before Phase 3. The Laravel app answers these differently from the recor
 One change to the OpenAPI document, decided in Phase 4: each operation has a readable `operationId` (`listTags`, `uploadMedia`, …) where swagger-php had hashed the Slim controller's class and method. Moving the methods would have changed every hash anyway. Nothing else in `openapi.json` changed. The frontend's `api.generated.ts` changed only in its `operations` keys, which no app code reads.
 
 When a request has more than one problem, Laravel may report a different one first. A Form Request checks the body before the controller looks up the id in the path, and it checks fields in the order its rules list them. For example, a bad name sent to an unknown tag id is now a 400 for the name, where the Slim app answered 404. The recordings only exercise one problem at a time.
+
+### API 5
+
+Made after the cutover (2026-11-03), once nothing had to match the Slim app any more. The recordings are frozen at API 4, so a recorded case whose answer API 5 changes is marked superseded in `divergences.php`, with the reason and the test that now covers it (the replay skips it, and a test checks the named file exists). The replay also ignores two fields API 5 adds to answers it otherwise leaves alone: `errors` on a validation failure and `next_cursor` on a page.
+
+| API 4 | API 5 | Why |
+| --- | --- | --- |
+| No HTTP caching; the server cache's `X-Cache` only | The public reads send an `ETag` with `Cache-Control: no-cache, private` and answer `304` while unchanged (`cache.headers` middleware) | A revisit costs a status line instead of a body, and the service worker's revalidation gets cheap. |
+| The app fetched every tag at start and filtered them in the browser; `/tags/display` was every tag | `GET /tags?search=…&limit=…&exclude=…` (exact, prefix, then containing), `?names=` and `?ids=` lookups; `/tags/display` is a page with `search`, `sort`, `direction` and `ids` | Thousands of tags. The store keeps the tags it has seen, by id. |
+| An upload made thumbnails and asked Danbooru before answering | Both are queued; a file says `tags_status: "queued"` and `GET /media/tag-imports?ids=` reports the outcome (kept in the cache for a day) | A large batch with tags could outlast PHP's time limit, and one slow Danbooru reply held up every file. |
+| Logging out only forgot the token in the browser | `DELETE /auth/token` revokes it | A copied token stopped working only when it expired. |
+| A media page needed `/media/{id}` and `/media/{id}/tags` | `?include=tags` gives both in one | One round trip per detail page. |
+| 400 for a non-numeric id, 200 or 204 for a missing one, several codes | Route model binding: digits only, and a missing record is a 404 with its resource's code | A missing thing should be a 404 that says what was missing. |
+| `PUT` reset omitted fields to their defaults | `PUT` and `PATCH` change only what they send | An edit shouldn't need the whole record. |
+| A validation failure named the first broken field | Also `errors`: every broken field's messages | A form can mark each field. |
+| Infinite scroll asked for page numbers | `GET /media?cursor=…`, and each page's `next_cursor` | Page numbers shift when items are added, so a batch could repeat items already shown. |
+| Each controller and job bumped the cache groups it remembered to | Model events clear them | A write from anywhere clears what it changes. |
+| `POST /media/{id}/danbooru-tags` returned `all_tags` | Gone | Every tag in the gallery on each import, for a store that no longer holds them all. |
+
+Kept as it was: `POST /tags/{id}/migrate` keeps the source tag, which its docs now say (they said it deleted it).
 
 Added after the cutover (2026-11-03), when Danbooru's Cloudflare firewall began blocking the droplet. Both apps reported that block as `500 DanbooruAuthFailed`, telling you to check credentials that were never even checked. A 403 whose body isn't JSON (the firewall's block page; the API itself refuses in JSON) is now `503 DanbooruBlocked`. Its message says so and quotes Cloudflare's Ray ID for Danbooru's admins. An upload with `fetch_tags` now gives each file whose lookup failed a `tags_error` with that reason, where it used to say `tags_found: false`, as if Danbooru simply had no post for it. The recordings are unchanged: their stub only ever refuses in JSON. The cause turned out to be the User-Agent: Danbooru asks API clients to name the account in it (`GalleryTagImporter/1.0; user #123`), and its firewall blocks requests that don't. The account's numeric ID is now the `DANBOORU_USER_ID` setting, and a block with it unset says to set it.
 

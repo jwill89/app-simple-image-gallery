@@ -16,12 +16,13 @@ tagging.
 
 ## [5.0.0] - 2026-11-03
 
-The backend moved from Slim 4 to **Laravel 13**. The API contract is unchanged
-(still `4.0.0`), so the frontend talks to it as before; what changed is how the
-gallery runs: a new server layout, a queue worker and a scheduler. The move also
-turned up two old problems, with large uploads and with Danbooru, fixed here.
-How the migration was done, and its few deliberate differences in what the API
-answers, are in [docs/laravel-migration.md](docs/laravel-migration.md).
+The backend moved from Slim 4 to **Laravel 13**, which changes how the gallery
+runs: a new server layout, a queue worker and a scheduler. With the move done,
+the API was reworked to use what Laravel offers, so the HTTP contract moves to
+**`5.0.0`**: HTTP caching, tag search, queued uploads, real 404s, partial edits
+and cursor paging. The move also turned up two old problems, with large uploads
+and with Danbooru, fixed here. How the migration was done, and its deliberate
+differences from API 4, are in [docs/laravel-migration.md](docs/laravel-migration.md).
 
 ### Breaking (for running the gallery)
 
@@ -43,6 +44,27 @@ answers, are in [docs/laravel-migration.md](docs/laravel-migration.md).
   `DANBOORU_USER_ID`.
 - **Everyone logs in once more.** Login tokens moved to Sanctum.
 
+### Breaking (for API clients — the contract is `5.0.0`)
+
+- **`GET /tags/display` is a page**, `{ items, total, current_page, total_pages }`,
+  taking `page`, `per_page` (default 25), `search` (tag or category name),
+  `sort` (`tag_name`, `category_name`, `media_count`), `direction` and `ids`.
+  It was every tag at once.
+- **Uploads queue their slow work.** `POST /media` answers once the files are
+  stored; thumbnails and Danbooru lookups run on the queue. With `fetch_tags`,
+  each stored file says `tags_status: "queued"`, or why not as `tags_error`;
+  `GET /media/tag-imports?ids=…` reports how each lookup went. The per-file
+  `tags_found`, `tags_applied` and `tags_method`, and `total_tags_applied`,
+  are gone.
+- **A path id names a record or the request is a 404**, with the resource's
+  code: `MediaNotFound`, `TagNotFound`, `CategoryNotFound`, `MappingNotFound`,
+  `ImplicationNotFound`. A non-numeric id matches no route (`404 NotFound`).
+  API 4 answered 400 for a malformed id and 200 or 204 for a missing one.
+- **A `PUT` changes only the fields it sends.** API 4 reset the others to their
+  defaults.
+- `POST /media/{id}/danbooru-tags` no longer returns `all_tags` (every tag in
+  the gallery).
+
 ### Added
 
 - **Uploads of any number of files.** The upload page sends them in batches of
@@ -60,6 +82,23 @@ answers, are in [docs/laravel-migration.md](docs/laravel-migration.md).
   credentials. An upload's per-file `tags_error` carries the reason.
 - **The nightly ingest actually runs** on a schedule; `cron.php` was never
   scheduled.
+- **HTTP caching.** The public reads send an `ETag` with
+  `Cache-Control: no-cache, private`, and answer `304 Not Modified` while
+  nothing has changed.
+- **Tag search:** `GET /tags?search=…` gives the best matches (the name
+  itself, then names starting with it, then names containing it), with `limit`
+  and `exclude`; `?names=…` and `?ids=…` look tags up. The app searches as you
+  type instead of downloading every tag when it starts.
+- **Cursor paging:** `GET /media?cursor=…` continues a listing (`tags=…` or
+  `untagged=1` keep its filter), and every numbered page gives the
+  `next_cursor` to continue from. Infinite scroll uses it, so items added while
+  you scroll no longer repeat ones already shown.
+- **`PATCH /tags/{id}` and `PATCH /tag-categories/{id}`** for partial edits
+  (`PUT` does the same).
+- **`GET /media/{id}?include=tags`**: an item with its tags in one request.
+- **`DELETE /auth/token`** revokes the token sent, and logging out calls it.
+- A failed validation lists every broken field under `errors`, beside the
+  first one's `error` and `message`, and the tag form shows the field's message.
 
 ### Changed
 
@@ -67,8 +106,7 @@ answers, are in [docs/laravel-migration.md](docs/laravel-migration.md).
   Sanctum, the database queue and scheduler, and Pest tests. The 191 requests
   recorded from the Slim app are replayed against it on every test run.
 - **Ingest** handles one file at a time: a bad file fails alone instead of
-  rolling back the whole batch. Ingests, imports and rebuilds clear the cached
-  lists they change. The ingest refuses to remove anything when it finds none
+  rolling back the whole batch. The ingest refuses to remove anything when it finds none
   of the gallery's files, which is what a wrong media path looks like.
 - **Errors** are always `{ error, message }`: an unknown `/api` path is
   `404 NotFound` (Slim answered an HTML 405), a wrong method
@@ -80,6 +118,11 @@ answers, are in [docs/laravel-migration.md](docs/laravel-migration.md).
 - Each OpenAPI operation has a readable `operationId` (`listMedia`,
   `uploadMedia`, …).
 - Only server errors (5xx) are logged.
+- **The cached lists are cleared by the models**: saving or deleting media,
+  tags or categories clears what it affects, from whichever request, job or
+  command made the change.
+- The Tags page searches, sorts and pages on the server, and the upload page
+  reports each queued Danbooru lookup as it finishes.
 - Deploys install no dev packages on the server, cache the config and routes,
   and leave the code readable but not writable by other users.
 
@@ -87,6 +130,10 @@ answers, are in [docs/laravel-migration.md](docs/laravel-migration.md).
 
 - After an upload, the files kept for a retry showed other files' statuses.
 - The upload page advertised 500 MB per file; the server accepts 100 MB.
+- The service worker never cached a media listing: its rule matched only the
+  `/api/media?page=…` form the API stopped using in 3.0.0.
+- The API docs said `POST /tags/{id}/migrate` deletes the source tag; it keeps
+  it (`DELETE /tags/{id}/migrate-to/{target_id}` deletes).
 
 ### Security
 

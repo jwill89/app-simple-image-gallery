@@ -7,8 +7,7 @@ namespace App\Jobs;
 use App\Models\Media;
 use App\Services\Danbooru\DanbooruFailure;
 use App\Services\Danbooru\DanbooruTagger;
-use App\Support\CacheGroup;
-use App\Support\ResponseCache;
+use App\Support\TagImports;
 use DateTimeInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -16,6 +15,7 @@ use Illuminate\Queue\Attributes\DeleteWhenMissingModels;
 use Illuminate\Queue\Attributes\MaxExceptions;
 use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Imports one media item's tags from Danbooru, as POST
@@ -46,7 +46,7 @@ final class ImportDanbooruTags implements ShouldQueue
         return now()->addDay();
     }
 
-    public function handle(DanbooruTagger $tagger, ResponseCache $cache): void
+    public function handle(DanbooruTagger $tagger, TagImports $imports): void
     {
         $import = $tagger->importForMedia($this->media);
 
@@ -56,18 +56,26 @@ final class ImportDanbooruTags implements ShouldQueue
             return;
         }
 
+        // For GET /media/tag-imports, which an upload's page asks.
+        $imports->finished($this->media, $import);
+
         if (!$import->found) {
-            Log::info('Danbooru import found no post', ['media_id' => $this->media->media_id, 'reason' => $import->failure->name ?? 'not found']);
+            Log::info('Danbooru import found no post', ['media_id' => $this->media->media_id, 'reason' => $import->failure->name ?? 'not found', 'ray' => $import->ray]);
 
             return;
         }
 
-        $cache->bump(CacheGroup::Media, CacheGroup::Tags);
         Log::info('Danbooru tags imported', [
             'media_id' => $this->media->media_id,
             'method' => $import->method,
             'tags_applied' => $import->tagsApplied,
             'tags_created' => $import->tagsCreated,
         ]);
+    }
+
+    /** Given up on (three exceptions, or a day of retries): say so to whoever asks. */
+    public function failed(?Throwable $e): void
+    {
+        app(TagImports::class)->failed($this->media, 'The tag import failed on the server: ' . ($e?->getMessage() ?? 'it ran out of retries.'));
     }
 }

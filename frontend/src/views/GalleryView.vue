@@ -15,7 +15,7 @@ import { useGalleryData } from '../composables/useGalleryData'
 import { useGalleryStore } from '../stores/gallery'
 import { useApi } from '../composables/useApi'
 import { endpoints } from '../api/endpoints'
-import type { MediaItem, MediaPage } from '../types'
+import type { MediaItem, MediaPage, MediaFeed } from '../types'
 import GalleryCard from '../components/GalleryCard.vue'
 import PaginationBar from '../components/PaginationBar.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
@@ -43,7 +43,7 @@ function listUrl(page: number, perPage: number, tags?: string): string {
 const router = useRouter()
 const store = useGalleryStore()
 const api = useApi()
-const { items, totalPages, loading, loadFailed, fetchPage } = useGalleryData()
+const { items, totalPages, nextCursor, loading, loadFailed, fetchPage } = useGalleryData()
 
 const INFINITE_BATCH_SIZE = 40
 // How far beyond the viewport the bottom sentinel still counts as "reached".
@@ -56,7 +56,6 @@ const CONTENT_TOP = 60
 // Infinite scroll is a global preference (toggle in the navbar), not a URL param.
 const isInfiniteScroll = computed(() => store.infiniteScroll)
 const accumulatedItems = ref<MediaItem[]>([])
-const currentBatchPage = ref(1)
 const loadingMore = ref(false)
 const allLoaded = ref(false)
 const scrollSentinel = useTemplateRef<HTMLElement>('scrollSentinel')
@@ -79,6 +78,11 @@ let restoreOnActivate = false
 // When entering infinite scroll partway down, the first previous-page load parks
 // the entry page at the top (rather than anchoring), so the URL/view stay on it.
 let bootstrapTopLoad = false
+// Infinite scroll continues from the last batch's cursor rather than by page
+// number, so items added while you scroll don't repeat the ones above. The next
+// batch is asked for as soon as the one before it arrives: its thumbnails warm
+// while you scroll, and reaching the sentinel then waits on no round trip.
+let nextBatch: { url: string; data: Promise<MediaFeed | undefined> } | null = null
 
 const displayItems = computed(() => (isInfiniteScroll.value ? accumulatedItems.value : items.value))
 
@@ -127,6 +131,48 @@ function startPageFromPaged() {
   return Math.floor(((props.page - 1) * props.perPage) / INFINITE_BATCH_SIZE) + 1
 }
 
+/** The infinite list's next batch: the items after `cursor`, in this listing. */
+function feedUrl(cursor: string): string {
+  return endpoints.media.feed({
+    cursor,
+    perPage: INFINITE_BATCH_SIZE,
+    ...(props.tags === 'untagged' ? { untagged: true } : { tags: props.tags }),
+  })
+}
+
+/** On a metered or slow connection, warming what comes next isn't worth the data. */
+function onSlowConnection(): boolean {
+  const conn = (
+    navigator as unknown as { connection?: { saveData?: boolean; effectiveType?: string } }
+  ).connection
+  return conn?.saveData === true || /(^|-)2g$/.test(conn?.effectiveType ?? '')
+}
+
+/** Ask for the batch after `cursor` now, and warm its thumbnails. */
+function prefetchNextBatch(cursor: string) {
+  if (onSlowConnection()) return
+  const url = feedUrl(cursor)
+  const data = api.get<MediaFeed>(url)
+  nextBatch = { url, data }
+  data.then(
+    (feed) => {
+      if (feed?.items.length) prefetchThumbnails(feed.items)
+    },
+    () => {
+      // Best-effort: reaching the sentinel asks again.
+      if (nextBatch?.url === url) nextBatch = null
+    },
+  )
+}
+
+/** The batch after `cursor`: the prefetched one if it was asked for already. */
+function fetchBatch(cursor: string): Promise<MediaFeed | undefined> {
+  const url = feedUrl(cursor)
+  const pending = nextBatch?.url === url ? nextBatch.data : undefined
+  nextBatch = null
+  return pending ?? api.get<MediaFeed>(url)
+}
+
 function updateStoreItemIds() {
   store.lastViewedItemIds = displayItems.value.map((i) => i.media_id)
 }
@@ -135,19 +181,18 @@ async function loadPage() {
   if (isInfiniteScroll.value) {
     const start = batchStartPage.value
     accumulatedItems.value = []
-    currentBatchPage.value = start
     allLoaded.value = false
     loadingMore.value = false
+    nextBatch = null
     await fetchPage(start, INFINITE_BATCH_SIZE, props.tags)
     accumulatedItems.value = [...items.value]
-    if (start >= totalPages.value) {
+    if (nextCursor.value === null) {
       allLoaded.value = true
     } else {
-      currentBatchPage.value = start + 1
       // Warm the batch you're about to scroll into. Paged mode has always done
       // this; infinite scroll never did, so every batch arrived cold — which is
       // exactly where it's most noticeable, since the grid keeps moving.
-      void prefetchAdjacentPage(currentBatchPage.value, INFINITE_BATCH_SIZE, props.tags)
+      prefetchNextBatch(nextCursor.value)
     }
   } else {
     await fetchPage(props.page, props.perPage, props.tags)
@@ -158,14 +203,7 @@ async function loadPage() {
 }
 
 async function prefetchAdjacentPage(page: number, perPage: number, tags?: string) {
-  if (page < 1 || page > totalPages.value) return
-
-  // Skip the extra round-trip on metered/slow connections — prefetching the
-  // next page (to warm its thumbnails) isn't worth the data there.
-  const conn = (
-    navigator as unknown as { connection?: { saveData?: boolean; effectiveType?: string } }
-  ).connection
-  if (conn?.saveData || /(^|-)2g$/.test(conn?.effectiveType ?? '')) return
+  if (page < 1 || page > totalPages.value || onSlowConnection()) return
 
   try {
     const data = await api.get<MediaPage>(listUrl(page, perPage, tags))
@@ -190,20 +228,19 @@ async function loadNextBatch() {
     // viewport, where 40 items across 6 columns left the document only ~500px
     // taller than the window.
     do {
-      const data = await api.get<MediaPage>(
-        listUrl(currentBatchPage.value, INFINITE_BATCH_SIZE, props.tags),
-      )
+      const cursor = nextCursor.value
+      if (cursor === null) break
+      const data = await fetchBatch(cursor)
       const newItems = data?.items ?? []
       accumulatedItems.value = [...accumulatedItems.value, ...newItems]
-      const maxPages = data?.total_pages ?? 1
-      if (currentBatchPage.value >= maxPages || newItems.length === 0) {
+      nextCursor.value = data?.next_cursor ?? null
+      if (nextCursor.value === null || newItems.length === 0) {
         allLoaded.value = true
       } else {
-        currentBatchPage.value++
         // Stay one batch ahead of the scroll, the same way paging stays one page
         // ahead of Next. The SW LRU-caps thumbnails at 2000 entries, so this
         // can't grow without bound.
-        void prefetchAdjacentPage(currentBatchPage.value, INFINITE_BATCH_SIZE, props.tags)
+        prefetchNextBatch(nextCursor.value)
       }
       updateStoreItemIds()
       // Let the new rows lay out before re-measuring where the sentinel landed.

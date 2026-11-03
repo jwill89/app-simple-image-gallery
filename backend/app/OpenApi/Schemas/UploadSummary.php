@@ -21,6 +21,4 @@ class UploadSummary
     public int $total_duplicates = 0;
     #[OAS\Property(schema: new OAS\Schema(type: 'integer'))]
     public int $total_failed = 0;
-    #[OAS\Property(schema: new OAS\Schema(type: 'integer', description: 'Total Danbooru tags applied (only when fetch_tags was set).'))]
-    public int $total_tags_applied = 0;
 }

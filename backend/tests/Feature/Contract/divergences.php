@@ -41,7 +41,7 @@ $preflight = [
     'text' => '',
 ];
 
-return [
+$divergences = [
     'errors/unmatched-path' => [
         'reason' => 'An unmatched path is 404 NotFound as { error, message }, not Slim\'s 405 page from its OPTIONS catch-all.',
         'steps' => [
@@ -91,4 +91,56 @@ return [
             ],
         ],
     ],
+];
+
+/*
+ * API 5 (2026-11) changed these cases on purpose, too much for step-by-step
+ * divergences, so they are set aside: the tests named say what API 5 answers.
+ * A field API 5 only added (a validation failure's `errors`, a media page's
+ * `next_cursor`) is a rule in Replay instead, as are the ones above.
+ */
+$superseded = static fn(string $reason): array => ['superseded' => $reason];
+$missingRecord = $superseded('A path id is digits and names a record that exists, or the request is a 404 with the resource\'s code (MediaNotFound, TagNotFound, CategoryNotFound, MappingNotFound, ImplicationNotFound), where API 4 answered 400 for a malformed id, 200 or 204 for a missing one, and used several codes. tests/Feature/Http/Api5Test.php.');
+$danbooru = $superseded('The Danbooru import no longer returns `all_tags` (every tag in the gallery). tests/Feature/Http/Api5Test.php.');
+$upload = $superseded('An upload queues its thumbnails and Danbooru lookup: a file says tags_status "queued" (or why not, as tags_error), GET /media/tag-imports reports the outcome, and total_tags_applied is gone. tests/Feature/Http/UploadQueueTest.php.');
+$partial = $superseded('A PUT or PATCH changes only the fields it sends; API 4 reset the rest to their defaults. tests/Feature/Http/Api5Test.php.');
+
+return [
+    ...$divergences,
+    'danbooru/category-mapping-delete' => $missingRecord,
+    'danbooru/tag-mapping-delete' => $missingRecord,
+    'danbooru/tag-mapping-update-absent' => $missingRecord,
+    'danbooru/tag-mapping-update-invalid' => $missingRecord,
+    'media/bulk-delete' => $missingRecord,
+    'media/danbooru-media-not-found' => $missingRecord,
+    'media/delete' => $missingRecord,
+    'media/delete-invalid-id' => $missingRecord,
+    'media/delete-not-found' => $missingRecord,
+    'media/show-invalid-id' => $missingRecord,
+    'media/show-not-found' => $missingRecord,
+    'media/tags-add-invalid' => $missingRecord,
+    'media/tags-add-media-not-found' => $missingRecord,
+    'media/tags-not-found' => $missingRecord,
+    'media/tags-remove-invalid-id' => $missingRecord,
+    'media/tags-remove-not-found' => $missingRecord,
+    'tag-categories/delete-not-found' => $missingRecord,
+    'tag-categories/update-invalid' => $missingRecord,
+    'tag-implications/create-invalid' => $missingRecord,
+    'tag-implications/delete-absent' => $missingRecord,
+    'tags/delete' => $missingRecord,
+    'tags/delete-migrate' => $missingRecord,
+    'tags/delete-migrate-invalid' => $missingRecord,
+    'tags/delete-migrate-to-zero' => $missingRecord,
+    'tags/delete-not-found' => $missingRecord,
+    'tags/migrate-invalid' => $missingRecord,
+    'tags/show-not-found' => $missingRecord,
+    'tags/update-not-found' => $missingRecord,
+    'media/danbooru-iqdb' => $danbooru,
+    'media/danbooru-md5' => $danbooru,
+    'media/danbooru-post-id' => $danbooru,
+    'media/upload-fetch-tags' => $upload,
+    'media/upload-fetch-tags-not-configured' => $upload,
+    'tag-categories/update-partial' => $partial,
+    'tags/update-default-category' => $partial,
+    'tags/display' => $superseded('GET /tags/display is a page of tags (items, total, current_page, total_pages) with search, sort and ids, not every tag. tests/Feature/Http/TagSearchTest.php.'),
 ];

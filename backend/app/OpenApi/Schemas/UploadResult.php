@@ -25,12 +25,8 @@ class UploadResult
     public string $hash = '';
     #[OAS\Property(schema: new OAS\Schema(type: 'string', description: 'Failure reason (on error).'))]
     public string $message = '';
-    #[OAS\Property(schema: new OAS\Schema(type: 'boolean', description: 'Whether Danbooru tags were found.'))]
-    public bool $tags_found = false;
-    #[OAS\Property(schema: new OAS\Schema(type: 'integer', description: 'Number of tags applied from Danbooru.'))]
-    public int $tags_applied = 0;
-    #[OAS\Property(schema: new OAS\Schema(type: 'string', description: 'Danbooru lookup method used (md5/iqdb).'))]
-    public string $tags_method = '';
-    #[OAS\Property(schema: new OAS\Schema(type: 'string', description: 'Why the Danbooru lookup failed, in place of tags_found, when Danbooru refused, blocked or did not answer (the file is still uploaded).'))]
+    #[OAS\Property(schema: new OAS\Schema(type: 'string', enum: ['queued'], description: 'With fetch_tags: the Danbooru lookup is queued; GET /media/tag-imports says how it went.'))]
+    public string $tags_status = '';
+    #[OAS\Property(schema: new OAS\Schema(type: 'string', description: 'With fetch_tags: why no Danbooru lookup was queued (Danbooru is not set up on the server). The file is still uploaded.'))]
     public string $tags_error = '';
 }

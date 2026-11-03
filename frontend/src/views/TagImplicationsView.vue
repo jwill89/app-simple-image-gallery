@@ -8,9 +8,14 @@ import {
   hasAuthToken,
 } from '../composables/useApi'
 import { useToastStore } from '../stores/toast'
+import { useTagSearch } from '../composables/useTagSearch'
 import { endpoints } from '../api/endpoints'
-import type { TagListItem, TagImplication } from '../types'
-import { getTextClassByName, getCategoryClassByName } from '../constants/categories'
+import type { Tag, TagListItem, TagListPage, TagImplication } from '../types'
+import {
+  getTextClassById,
+  getCategoryClassById,
+  getCategoryNameById,
+} from '../constants/categories'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import EmptyState from '../components/EmptyState.vue'
 import AppDialog from '../components/AppDialog.vue'
@@ -42,9 +47,6 @@ const impliedByOthers = computed(() =>
   allImplications.value.filter((i) => i.implied_tag_id === props.tagId),
 )
 
-// All tags for the search dropdowns
-const allTags = ref<TagListItem[]>([])
-
 // Add implication modal state
 const showModal = ref(false)
 const impliedSearch = ref('')
@@ -54,26 +56,20 @@ const implHelpClass = ref('')
 const implLoading = ref(false)
 const removeTarget = ref<{ tagId: number; impliedTagId: number; label: string } | null>(null)
 
-const impliedOptions = computed(() => {
-  if (!impliedSearch.value.trim()) return []
-  const q = impliedSearch.value.toLowerCase()
-  return allTags.value
-    .filter((t) => t.tag_id !== props.tagId && t.tag_name.toLowerCase().includes(q))
-    .slice(0, 10)
-})
+// The server's best matches for what's typed, leaving out this tag itself.
+const impliedOptions = useTagSearch(impliedSearch, () => [props.tagId])
 
 async function loadData() {
   loading.value = true
   loadFailed.value = false
   try {
-    const [tags, implications] = await Promise.all([
-      api.get<TagListItem[]>(endpoints.tags.display),
+    const [page, implications] = await Promise.all([
+      api.get<TagListPage>(endpoints.tags.display({ ids: [props.tagId] })),
       api.get<TagImplication[]>(endpoints.tagImplications.list),
     ])
 
-    allTags.value = tags ?? []
     allImplications.value = implications ?? []
-    tagInfo.value = allTags.value.find((t) => t.tag_id === props.tagId) ?? null
+    tagInfo.value = page?.items[0] ?? null
   } catch (e) {
     toastStore.error(getErrorMessage(e, 'Failed to load tag data'))
     loadFailed.value = true
@@ -94,7 +90,7 @@ function closeModal() {
   showModal.value = false
 }
 
-function selectImplied(tag: TagListItem) {
+function selectImplied(tag: Tag) {
   impliedTagId.value = tag.tag_id
   impliedSearch.value = tag.tag_name
 }
@@ -303,9 +299,9 @@ onMounted(loadData)
               type="button"
               @click="selectImplied(t)"
             >
-              <span :class="getTextClassByName(t.category_name)">{{ t.tag_name }}</span>
-              <span class="tag is-small ml-2" :class="getCategoryClassByName(t.category_name)">
-                {{ t.category_name }}
+              <span :class="getTextClassById(t.category_id)">{{ t.tag_name }}</span>
+              <span class="tag is-small ml-2" :class="getCategoryClassById(t.category_id)">
+                {{ getCategoryNameById(t.category_id) }}
               </span>
             </button>
           </div>

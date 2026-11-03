@@ -8,12 +8,20 @@ export class ApiError extends Error {
   status: number
   /** Machine-readable error code from the API (e.g. 'MediaNotFound') */
   code: string
+  /** A failed validation's messages, by the field they are about (e.g. `tag_name`). */
+  fields: Partial<Record<string, string[]>>
 
-  constructor(status: number, code: string, message: string) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    fields: Partial<Record<string, string[]>> = {},
+  ) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.code = code
+    this.fields = fields
   }
 }
 
@@ -36,6 +44,14 @@ export function getErrorCode(err: unknown): string {
 }
 
 /**
+ * What a thrown ApiError says about one field of the request, or '' when it
+ * says nothing (or the value isn't an ApiError).
+ */
+export function getFieldError(err: unknown, field: string): string {
+  return err instanceof ApiError ? (err.fields[field]?.[0] ?? '') : ''
+}
+
+/**
  * Parse a failed API response into an ApiError.
  * Attempts to read the JSON body for a human-readable `message` field;
  * falls back to a generic description based on the HTTP status code.
@@ -43,11 +59,13 @@ export function getErrorCode(err: unknown): string {
 async function parseApiError(response: Response, _url: string): Promise<ApiError> {
   let code = 'UnknownError'
   let message = ''
+  let fields: Partial<Record<string, string[]>> = {}
 
   try {
     const body = await response.json()
     if (body?.error) code = body.error
     if (body?.message) message = body.message
+    if (body?.errors && typeof body.errors === 'object') fields = body.errors
   } catch {
     // Response body wasn't valid JSON — fall through to defaults
   }
@@ -77,7 +95,7 @@ async function parseApiError(response: Response, _url: string): Promise<ApiError
     }
   }
 
-  return new ApiError(response.status, code, message)
+  return new ApiError(response.status, code, message, fields)
 }
 
 /**
