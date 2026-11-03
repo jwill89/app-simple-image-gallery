@@ -2,13 +2,22 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\SpaController;
+use Illuminate\Support\Facades\Route;
+
 /*
 |--------------------------------------------------------------------------
 | Web routes
 |--------------------------------------------------------------------------
 |
-| The SPA shell (backend-old/index.php: the built index.html with OG tags and
-| the FontAwesome kit) becomes a fallback route here in Phase 6 of
-| docs/laravel-migration.md. Until then there are none.
+| Apache serves the built assets and media files under public/ itself, so
+| everything that reaches the app outside /api is a page of the SPA: the
+| shell answers it, and the SPA routes it in the browser. An /api path no API
+| route matches is left alone, so it stays a JSON 404 or 405.
+|
+| The web middleware group is empty (bootstrap/app.php): the shell needs no
+| session, cookie or CSRF token.
 |
 */
+
+Route::fallback(SpaController::class)->where('fallbackPlaceholder', '(?!api(?:/|$)).*');

@@ -34,6 +34,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(null);
 
         $middleware->api(prepend: ['throttle:api']);
+        // The only web route is the SPA shell, which keeps no session and sets
+        // no cookies; the API authenticates with bearer tokens.
+        $middleware->group('web', []);
         // The rate limiter counts every request, signed in or not, so it runs
         // before authentication rather than after, Laravel's default.
         $middleware->priority([

@@ -67,6 +67,7 @@ it('reads every variable in the Slim backend\'s .env.example', function (): void
         'duplicates' => ['max_distance' => '8', 'max_region_diff' => 'off'],
         'media_path' => '/data/media',
         'dupes_path' => '/data/dupes',
+        'spa_index' => resource_path('spa/index.html'),
     ]);
 });
 

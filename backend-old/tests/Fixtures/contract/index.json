@@ -270,6 +270,19 @@
         ],
         "OPTIONS /{any}": [
             "cors/preflight"
+        ],
+        "GET /{spa}": [
+            "spa/default",
+            "spa/gallery",
+            "spa/media",
+            "spa/media-other",
+            "spa/media-file-name",
+            "spa/with-tags",
+            "spa/escaped",
+            "spa/tags",
+            "spa/favorites",
+            "spa/fontawesome",
+            "spa/index-missing"
         ]
     },
     "cases": [
@@ -1729,6 +1742,95 @@
                 405,
                 405,
                 405
+            ]
+        },
+        {
+            "id": "spa/default",
+            "route": "GET /{spa}",
+            "statuses": [
+                200,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "spa/gallery",
+            "route": "GET /{spa}",
+            "statuses": [
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "spa/media",
+            "route": "GET /{spa}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "spa/media-other",
+            "route": "GET /{spa}",
+            "statuses": [
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "spa/media-file-name",
+            "route": "GET /{spa}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "spa/with-tags",
+            "route": "GET /{spa}",
+            "statuses": [
+                200,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "spa/escaped",
+            "route": "GET /{spa}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "spa/tags",
+            "route": "GET /{spa}",
+            "statuses": [
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "spa/favorites",
+            "route": "GET /{spa}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "spa/fontawesome",
+            "route": "GET /{spa}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "spa/index-missing",
+            "route": "GET /{spa}",
+            "statuses": [
+                500
             ]
         }
     ]

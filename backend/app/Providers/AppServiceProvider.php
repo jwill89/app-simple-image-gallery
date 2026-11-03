@@ -15,8 +15,10 @@ class AppServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
-        // config/cors.php is read before config/gallery.php, so it can't refer to it.
+        // config/cors.php and config/filesystems.php are read before
+        // config/gallery.php, so they can't refer to it.
         config(['cors.allowed_origins' => config()->array('gallery.allowed_origins')]);
+        config(['filesystems.links' => [public_path('media') => config()->string('gallery.media_path')]]);
 
         // Resources are the response body itself, as the contract has them, not
         // wrapped in { data: … }.

@@ -16,6 +16,11 @@ Then set `DB_DATABASE` in `.env` to an absolute path to a copy of the gallery da
 never a database another app is using. `database/gallery.db` is gitignored for that
 purpose. Fill in the `GALLERY_*` and `DANBOORU_*` values as in `../backend-old/.env`.
 
+Every path outside `/api` is the SPA shell (`SpaController`): the built `index.html` with
+the page's link-preview tags. It reads `resources/spa/index.html`, which the deploy copies
+from `../frontend/dist/`; copy it there yourself to try the shell locally. In development
+the Vite dev server serves the SPA instead.
+
 ## Checks
 
 CI's `backend` job runs each of these:

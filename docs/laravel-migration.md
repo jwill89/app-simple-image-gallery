@@ -214,6 +214,15 @@ How it was built, and where it differs from the Slim scripts:
 
 **Done when:** the OG tags for `/media/{id}/tags`, a tag search, `/tags`, `/tags/{id}` and `/favorites` match the old app's HTML.
 
+How it was built and checked:
+
+- **Recorded like the API.** The contract recorder now also serves the Slim app's `index.php` and records 11 `spa/` cases, using a fixed copy of the built `index.html` (`backend-old/tests/Fixtures/spa/`) and `Host: gallery.test`. They cover the home page, the gallery, a media item (tagged, untagged, a video, an unknown id, and a file name that needs encoding), tag searches with exclusions, `+` and HTML to escape, `/tags`, a tag, an unknown tag, `/favorites`, the FontAwesome kit, and a missing `index.html`. The replay checks each page's HTML byte for byte, and all 11 match. Re-recording changed none of the 180 API recordings.
+- **Where the HTML comes from.** `SpaController` reads `resources/spa/index.html` (`gallery.spa_index`), outside `public/`, so Apache can never serve the page without its tags. The deploy copies it there from `frontend/dist`.
+- **No sessions.** The `web` middleware group is empty: the shell sets no cookies and starts no session. The fallback route never matches `/api/…`, so an unknown API path is still a JSON 404, or 405 when the path exists.
+- **Media URLs.** `storage:link` creates `public/media`, linked to `gallery.media_path`, so `/media/full/…` and `/media/thumbs/…` keep their URLs.
+- **Not ported:** `index.php`'s branch that replaced a FontAwesome kit script already in `index.html`. The built `index.html` has none, so the kit is always added before `</head>`, as the old app did for it.
+- The `/api/docs` and `/api/openapi.json` routes were ported in Phases 3 and 4.
+
 ### Phase 7: Deploy and cut over
 
 Follow the Deployment section below.
@@ -258,7 +267,7 @@ Laravel replaces the flat webroot with an app folder whose `public/` is the docu
 
 ### Changes to deploy.ps1
 
-- **Payload:** Laravel's `app/`, `bootstrap/`, `config/`, `database/`, `public/`, `resources/`, `routes/`, `artisan`, `composer.json`, `composer.lock` and `openapi.json`. Copy `frontend/dist` into `public/`, except `index.html`, which goes wherever `SpaController` reads it.
+- **Payload:** Laravel's `app/`, `bootstrap/`, `config/`, `database/`, `public/`, `resources/`, `routes/`, `artisan`, `composer.json`, `composer.lock` and `openapi.json`. Copy `frontend/dist` into `public/`, except `index.html`, which goes to `resources/spa/index.html`, where `SpaController` reads it.
 - **Never shipped:** `.env`, `storage/` contents, `vendor/` and `bootstrap/cache/`.
 - **Composer:** `composer install --no-dev --optimize-autoloader`. Dev dependencies are no longer needed on the server, since Phinx is gone.
 - **Remote steps:** snapshot the database (now in the data folder), `php artisan migrate --force`, `php artisan optimize`, `php artisan queue:restart`, `chown` `storage/` and `bootstrap/cache/` to `www-data`, then the same health check on `/api/media/count`.
@@ -298,6 +307,8 @@ Decided before Phase 3. The Laravel app answers these differently from the recor
 One change to the OpenAPI document, decided in Phase 4: each operation has a readable `operationId` (`listTags`, `uploadMedia`, …) where swagger-php had hashed the Slim controller's class and method. Moving the methods would have changed every hash anyway. Nothing else in `openapi.json` changed. The frontend's `api.generated.ts` changed only in its `operations` keys, which no app code reads.
 
 When a request has more than one problem, Laravel may report a different one first. A Form Request checks the body before the controller looks up the id in the path, and it checks fields in the order its rules list them. For example, a bad name sent to an unknown tag id is now a 400 for the name, where the Slim app answered 404. The recordings only exercise one problem at a time.
+
+The SPA shell's pages now carry `X-Frame-Options: SAMEORIGIN` and `X-Content-Type-Options: nosniff`, which the Slim app set only on API responses. They come from the same global middleware, and keep the gallery from being framed by another site.
 
 Two smaller differences follow from using `HandleCors`, and the replay allows for both on every response: `Access-Control-Allow-Headers`, `-Methods` and `-Max-Age` are sent only on preflights, where browsers read them, and with exactly one allowed origin, every `/api` response names it in `Access-Control-Allow-Origin`. A response the Slim app sent without `Cache-Control` may also carry Symfony's default `no-cache, private`.
 

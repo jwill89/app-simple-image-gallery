@@ -63,8 +63,11 @@ final readonly class Recorder
         'POST /duplicates/dismissals',
     ];
 
-    /** Behavior that belongs to no single route: unmatched paths and CORS preflight. */
-    public const array CROSS_CUTTING = ['ANY /{unmatched}', 'OPTIONS /{any}'];
+    /**
+     * Behavior that belongs to no single API route: unmatched paths, CORS
+     * preflight, and the SPA shell index.php serves for every path outside /api.
+     */
+    public const array CROSS_CUTTING = ['ANY /{unmatched}', 'OPTIONS /{any}', 'GET /{spa}'];
 
     public const string FOREIGN_ORIGIN = 'https://evil.example';
 

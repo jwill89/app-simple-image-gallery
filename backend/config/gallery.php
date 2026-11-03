@@ -71,4 +71,9 @@ return [
     'media_path' => $orDefault($raw('GALLERY_MEDIA_PATH'), storage_path('app/media')),
     'dupes_path' => $orDefault($raw('GALLERY_DUPES_PATH'), storage_path('app/dupes')),
 
+    // The SPA's built index.html (frontend/dist/), which the SPA shell serves.
+    // It sits outside public/ so Apache never serves it without the shell's
+    // link-preview tags; the deploy copies it here.
+    'spa_index' => resource_path('spa/index.html'),
+
 ];

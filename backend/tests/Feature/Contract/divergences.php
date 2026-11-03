@@ -8,11 +8,13 @@ declare(strict_types=1);
  * Each entry replaces the recorded response of the listed steps (0-based) with
  * the expected one, in the recordings' format.
  *
- * Two smaller differences are rules in Tests\Support\Contract\Replay instead,
- * since they apply to every response: Access-Control-Allow-Headers, -Methods
- * and -Max-Age are sent only on preflights (where browsers read them), and a
- * response the Slim app sent without Cache-Control may carry Symfony's
- * default "no-cache, private".
+ * Three smaller differences are rules in Tests\Support\Contract\Replay instead,
+ * since they apply to whole kinds of response: Access-Control-Allow-Headers,
+ * -Methods and -Max-Age are sent only on preflights (where browsers read
+ * them), a response the Slim app sent without Cache-Control may carry
+ * Symfony's default "no-cache, private", and the SPA shell's pages carry
+ * X-Frame-Options and X-Content-Type-Options, which the Slim app set only on
+ * the API.
  */
 
 $security = ['x-content-type-options' => 'nosniff', 'x-frame-options' => 'SAMEORIGIN'];

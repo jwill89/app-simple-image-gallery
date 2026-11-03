@@ -5,7 +5,9 @@ What the Slim backend returns today, recorded for Phase 0 of
 done when it gives the same answers to the same requests.
 
 One JSON file per case, grouped by resource. `index.json` lists every case under its route
-in the plan's endpoint inventory, so each of the 43 routes can be checked for coverage.
+in the plan's endpoint inventory, so each of the 43 routes can be checked for coverage. The
+`spa/` cases are the SPA shell (`index.php`): the built `index.html` in `tests/Fixtures/spa/`
+with each page's link-preview tags, requested with `Host: gallery.test`.
 
 ```bash
 php bin/record-contract.php                 # re-record everything (from backend-old/)
@@ -142,6 +144,9 @@ decide for each one whether Laravel keeps it or the recording changes on purpose
 - **The login throttle is effectively 10 a minute, not 10 per 5 minutes.** Not recordable
   without waiting, but visible in `RateLimiter`: the global limiter's prune (60 s) runs first
   on every request and deletes the login limiter's older rows.
+- **The SPA shell's tag search description `urldecode()`s the path**, so a raw `+` is a space
+  (`c++` is described as "c"); the frontend sends `%2B`. Its pages carry no
+  `X-Frame-Options` or `X-Content-Type-Options`, which only the API's middleware set.
 
 ## Not recorded
 
@@ -152,5 +157,5 @@ decide for each one whether Laravel keeps it or the recording changes on purpose
   allows 100M), so a 1.5 MB file stands in for an oversized one (`media/upload-too-large`).
 - **`ScanFailed` (500)** and the other "could not save" 500s. They need the database to fail
   mid-request.
-- **The SPA shell** (`backend-old/index.php`'s OG tags). Phase 6 compares it against the live old
-  app.
+- **Static files.** Production serves the built assets and `media/` files before
+  `index.php`; the staged server sends every path outside `/api` to `index.php`.

@@ -58,6 +58,12 @@ final class Replay
     /** Access-Control headers a browser reads only on a preflight; Laravel sends them only there. */
     private const array PREFLIGHT_ONLY_HEADERS = ['access-control-allow-headers', 'access-control-allow-methods', 'access-control-max-age'];
 
+    /**
+     * SecurityHeaders' two headers, which the Slim app set on its API's
+     * responses only. Here every response has them, the SPA shell's included.
+     */
+    private const array SECURITY_HEADERS = ['x-content-type-options' => 'nosniff', 'x-frame-options' => 'SAMEORIGIN'];
+
     /** @var array<string, string> Values captured from earlier steps' responses. */
     private array $captured = [];
 
@@ -129,6 +135,11 @@ final class Replay
 
             /** @var array<string, mixed> $expected */
             $expected = $this->divergences[$index] ?? $step['response'];
+            if (!str_starts_with(self::string($request, 'path'), '/api')) {
+                /** @var array<string, string> $headers */
+                $headers = $expected['headers'] ?? [];
+                $expected['headers'] = $headers + self::SECURITY_HEADERS;
+            }
             foreach ($this->runStep($step, $expected) as $problem) {
                 $problems[] = "step {$index} (" . $request['method'] . ' ' . $request['path'] . "): {$problem}";
             }
@@ -164,7 +175,12 @@ final class Replay
         $expired->forceFill(['created_at' => Carbon::createFromTimestamp(1700000000)])->save();
 
         $this->root = $root = sys_get_temp_dir() . '/gallery-replay-' . bin2hex(random_bytes(4));
-        config(['gallery.media_path' => "{$root}/media", 'gallery.dupes_path' => "{$root}/dupes"]);
+        config([
+            'gallery.media_path' => "{$root}/media",
+            'gallery.dupes_path' => "{$root}/dupes",
+            // The built index.html the SPA shell was recorded with.
+            'gallery.spa_index' => ContractFixture::path('spa/index.html'),
+        ]);
         File::copyDirectory(ContractFixture::path('media'), "{$root}/media");
         File::ensureDirectoryExists("{$root}/media/full");
         File::copyDirectory(ContractFixture::path('dupes'), "{$root}/dupes");
@@ -177,9 +193,14 @@ final class Replay
         }
     }
 
-    /** A recorded file change, at the path it has here: the spec, or under media/ or dupes/. */
+    /** A recorded file change, at the path it has here: the spec, the SPA's index.html, or under media/ or dupes/. */
     private function applyFile(string $path, ?string $content, string $root): void
     {
+        if ($path === 'dist/index.html' && $content === null) {
+            config(['gallery.spa_index' => "{$root}/no-spa/index.html"]);
+
+            return;
+        }
         if ($path === 'openapi.json' && $content === null) {
             // The committed spec isn't deleted for this: File reports it missing.
             $spec = base_path('openapi.json');
@@ -279,7 +300,12 @@ final class Replay
             [$parameters, $files] = $this->multipart($parts);
         }
 
-        return call(self::string($request, 'method'), self::string($request, 'path'), $parameters, [], $files, $server, $content);
+        // A request to a path takes the app URL's host; one with a Host header
+        // (the SPA shell's, whose tags name the host) goes to that host.
+        $path = self::string($request, 'path');
+        $url = isset($headers['Host']) ? "http://{$headers['Host']}{$path}" : $path;
+
+        return call(self::string($request, 'method'), $url, $parameters, [], $files, $server, $content);
     }
 
     /**

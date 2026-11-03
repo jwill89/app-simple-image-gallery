@@ -1,0 +1,29 @@
+{
+    "id": "spa/index-missing",
+    "route": "GET /{spa}",
+    "about": "Without the built index.html: 500 with a line of text.",
+    "setup": {
+        "files": {
+            "dist/index.html": null
+        }
+    },
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/",
+                "headers": {
+                    "Accept": "*/*",
+                    "Host": "gallery.test"
+                }
+            },
+            "response": {
+                "status": 500,
+                "headers": {
+                    "content-type": "text/html; charset=UTF-8"
+                },
+                "text": "index.html not found."
+            }
+        }
+    ]
+}

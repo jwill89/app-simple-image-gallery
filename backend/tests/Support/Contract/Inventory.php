@@ -9,8 +9,8 @@ use Tests\Support\ContractFixture;
 /** The endpoint inventory the recordings index: "METHOD /path" with {param} and {param?} segments. */
 final class Inventory
 {
-    /** Keys in the index that name behavior, not a route. */
-    private const array CROSS_CUTTING = ['ANY /{unmatched}', 'OPTIONS /{any}'];
+    /** Keys in the index that name behavior, not an API route (the SPA shell's pages among them). */
+    private const array CROSS_CUTTING = ['ANY /{unmatched}', 'OPTIONS /{any}', 'GET /{spa}'];
 
     /** @return list<string> */
     public static function routes(): array

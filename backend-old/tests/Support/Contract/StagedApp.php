@@ -95,6 +95,7 @@ final class StagedApp
         self::copyTree($this->backendDir . '/api', $this->root . '/api');
         self::copyTree($this->backendDir . '/includes', $this->root . '/includes');
         self::copyFile($this->backendDir . '/openapi.json', $this->root . '/openapi.json');
+        self::copyFile($this->backendDir . '/index.php', $this->root . '/index.php');
         self::makeDir($this->stubRoot);
 
         $this->stubPort = self::freePort();
@@ -115,11 +116,12 @@ final class StagedApp
      */
     public function reset(array $sql = [], array $files = []): void
     {
-        foreach (['db', 'media', 'dupes', 'cache', 'logs'] as $dir) {
+        foreach (['db', 'media', 'dupes', 'cache', 'logs', 'dist'] as $dir) {
             self::removeTree($this->root . '/' . $dir);
         }
 
         self::copyFile($this->template, $this->root . '/db/gallery.db');
+        self::copyFile($this->fixturesDir() . '/spa/index.html', $this->root . '/dist/index.html');
         self::copyTree($this->fixturesDir() . '/media', $this->root . '/media');
         self::makeDir($this->root . '/media/full');
         self::copyTree($this->fixturesDir() . '/dupes', $this->root . '/dupes');
@@ -268,7 +270,11 @@ final class StagedApp
             PHP);
     }
 
-    /** php -S router: /api/* goes to the Slim app, as api/.htaccess sends it in production. */
+    /**
+     * php -S router: /api/* goes to the Slim app, and every other path to the
+     * SPA front controller, index.php, as the .htaccess files send them in
+     * production. (Production serves real files first; no case asks for one.)
+     */
     private function writeRouter(): void
     {
         file_put_contents($this->root . '/router.php', <<<'ROUTER'
@@ -280,8 +286,7 @@ final class StagedApp
                 return true;
             }
 
-            http_response_code(404);
-            echo 'Only /api is staged for the contract recording.';
+            require __DIR__ . '/index.php';
             return true;
 
             ROUTER);

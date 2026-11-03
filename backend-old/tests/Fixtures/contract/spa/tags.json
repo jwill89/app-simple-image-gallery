@@ -1,0 +1,58 @@
+{
+    "id": "spa/tags",
+    "route": "GET /{spa}",
+    "about": "The tag list, a tag (its implications page), and a tag that does not exist.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Host": "gallery.test"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "text/html; charset=UTF-8"
+                },
+                "text": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" href=\"/favicon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>Gallery — Tags</title>\n    <script type=\"module\" crossorigin src=\"/assets/index-Cp_gaAT6.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/useApi-CUWMwLLw-CW6aVKLY.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/endpoints-DW9rGnKf.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/_plugin-vue_export-helper-B8NYN4R9.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/Primitive-DZgZuynh.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/Teleport-DSPVQY73.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-D0_tPuDO.css\">\n      <!-- Open Graph -->\n    <meta property=\"og:title\" content=\"Gallery — Tags\" />\n    <meta property=\"og:description\" content=\"Browse all tags in the gallery.\" />\n    <meta property=\"og:image\" content=\"http://gallery.test/favicon.png\" />\n    <meta property=\"og:url\" content=\"http://gallery.test/tags\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Twitter Card -->\n    <meta name=\"twitter:card\" content=\"summary\" />\n    <meta name=\"twitter:title\" content=\"Gallery — Tags\" />\n    <meta name=\"twitter:description\" content=\"Browse all tags in the gallery.\" />\n    <meta name=\"twitter:image\" content=\"http://gallery.test/favicon.png\" />\n  </head>\n  <body>\n    <div id=\"app\"></div>\n  </body>\n</html>\n"
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/tags/11",
+                "headers": {
+                    "Accept": "*/*",
+                    "Host": "gallery.test"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "text/html; charset=UTF-8"
+                },
+                "text": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" href=\"/favicon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>Tag: café</title>\n    <script type=\"module\" crossorigin src=\"/assets/index-Cp_gaAT6.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/useApi-CUWMwLLw-CW6aVKLY.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/endpoints-DW9rGnKf.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/_plugin-vue_export-helper-B8NYN4R9.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/Primitive-DZgZuynh.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/Teleport-DSPVQY73.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-D0_tPuDO.css\">\n      <!-- Open Graph -->\n    <meta property=\"og:title\" content=\"Tag: café\" />\n    <meta property=\"og:description\" content=\"Implications for the &quot;café&quot; tag.\" />\n    <meta property=\"og:image\" content=\"http://gallery.test/favicon.png\" />\n    <meta property=\"og:url\" content=\"http://gallery.test/tags/11\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Twitter Card -->\n    <meta name=\"twitter:card\" content=\"summary\" />\n    <meta name=\"twitter:title\" content=\"Tag: café\" />\n    <meta name=\"twitter:description\" content=\"Implications for the &quot;café&quot; tag.\" />\n    <meta name=\"twitter:image\" content=\"http://gallery.test/favicon.png\" />\n  </head>\n  <body>\n    <div id=\"app\"></div>\n  </body>\n</html>\n"
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/tags/999",
+                "headers": {
+                    "Accept": "*/*",
+                    "Host": "gallery.test"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "text/html; charset=UTF-8"
+                },
+                "text": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" href=\"/favicon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>Gallery — Tag Details</title>\n    <script type=\"module\" crossorigin src=\"/assets/index-Cp_gaAT6.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/useApi-CUWMwLLw-CW6aVKLY.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/endpoints-DW9rGnKf.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/_plugin-vue_export-helper-B8NYN4R9.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/Primitive-DZgZuynh.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/Teleport-DSPVQY73.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-D0_tPuDO.css\">\n      <!-- Open Graph -->\n    <meta property=\"og:title\" content=\"Gallery — Tag Details\" />\n    <meta property=\"og:description\" content=\"Tag details and implications.\" />\n    <meta property=\"og:image\" content=\"http://gallery.test/favicon.png\" />\n    <meta property=\"og:url\" content=\"http://gallery.test/tags/999\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Twitter Card -->\n    <meta name=\"twitter:card\" content=\"summary\" />\n    <meta name=\"twitter:title\" content=\"Gallery — Tag Details\" />\n    <meta name=\"twitter:description\" content=\"Tag details and implications.\" />\n    <meta name=\"twitter:image\" content=\"http://gallery.test/favicon.png\" />\n  </head>\n  <body>\n    <div id=\"app\"></div>\n  </body>\n</html>\n"
+            }
+        }
+    ]
+}

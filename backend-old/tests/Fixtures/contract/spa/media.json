@@ -1,0 +1,24 @@
+{
+    "id": "spa/media",
+    "route": "GET /{spa}",
+    "about": "A media item: its type and id as the title, its tags by name as the description, and its @2x thumbnail as a large image.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/media/1/tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Host": "gallery.test"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "text/html; charset=UTF-8"
+                },
+                "text": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/png\" href=\"/favicon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>Image #1</title>\n    <script type=\"module\" crossorigin src=\"/assets/index-Cp_gaAT6.js\"></script>\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/useApi-CUWMwLLw-CW6aVKLY.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/endpoints-DW9rGnKf.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/_plugin-vue_export-helper-B8NYN4R9.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/Primitive-DZgZuynh.js\">\n    <link rel=\"modulepreload\" crossorigin href=\"/assets/Teleport-DSPVQY73.js\">\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-D0_tPuDO.css\">\n      <!-- Open Graph -->\n    <meta property=\"og:title\" content=\"Image #1\" />\n    <meta property=\"og:description\" content=\"animal, artist one, cat, hero, outdoors\" />\n    <meta property=\"og:image\" content=\"http://gallery.test/media/thumbs/cat-01%402x.webp\" />\n    <meta property=\"og:url\" content=\"http://gallery.test/media/1/tags\" />\n    <meta property=\"og:type\" content=\"website\" />\n    <!-- Twitter Card -->\n    <meta name=\"twitter:card\" content=\"summary_large_image\" />\n    <meta name=\"twitter:title\" content=\"Image #1\" />\n    <meta name=\"twitter:description\" content=\"animal, artist one, cat, hero, outdoors\" />\n    <meta name=\"twitter:image\" content=\"http://gallery.test/media/thumbs/cat-01%402x.webp\" />\n  </head>\n  <body>\n    <div id=\"app\"></div>\n  </body>\n</html>\n"
+            }
+        }
+    ]
+}

@@ -25,6 +25,7 @@ declare(strict_types=1);
 
 use Gallery\Tests\Support\Contract\Request as R;
 
+$page = static fn(string $path): array => R::get($path, ['headers' => ['Host' => 'gallery.test']]);
 $tooLongTag = str_repeat('a', 101);
 $tooLongCategory = str_repeat('c', 51);
 
@@ -1362,5 +1363,89 @@ return [
             R::put('/api/media/1', ['auth' => 'none', 'json' => (object) [], 'headers' => ['Accept' => 'application/json']]),
             R::patch('/api/version', ['json' => (object) []]),
         ],
+    ],
+
+    // ── SPA shell (index.php) ───────────────────────────────────────────────
+    // Every path outside /api gets the built index.html (tests/Fixtures/spa/)
+    // with link-preview tags for the page. Host is fixed so og:url and
+    // og:image don't name the recording server's random port.
+    [
+        'id' => 'spa/default',
+        'route' => 'GET /{spa}',
+        'about' => 'The home page, and pages with no preview of their own, get the default preview. og:url is the path as requested, without the query string.',
+        'steps' => [
+            $page('/'),
+            $page('/upload?from=menu'),
+            $page('/tags/categories'),
+            $page('/random/media/1/tags'),
+        ],
+    ],
+    [
+        'id' => 'spa/gallery',
+        'route' => 'GET /{spa}',
+        'about' => 'The gallery, with or without a page and page size.',
+        'steps' => [$page('/media'), $page('/media/2'), $page('/media/2/40')],
+    ],
+    [
+        'id' => 'spa/media',
+        'route' => 'GET /{spa}',
+        'about' => 'A media item: its type and id as the title, its tags by name as the description, and its @2x thumbnail as a large image.',
+        'steps' => [$page('/media/1/tags')],
+    ],
+    [
+        'id' => 'spa/media-other',
+        'route' => 'GET /{spa}',
+        'about' => 'An untagged item says so; a video is titled as one; an unknown id gets the default preview.',
+        'steps' => [$page('/media/11/tags'), $page('/media/5/tags'), $page('/media/999/tags')],
+    ],
+    [
+        'id' => 'spa/media-file-name',
+        'route' => 'GET /{spa}',
+        'about' => 'A file name with spaces and punctuation is percent-encoded in the og:image URL.',
+        'sql' => ["UPDATE media SET file_name = 'my photo #1 (café).jpg' WHERE media_id = 1"],
+        'steps' => [$page('/media/1/tags')],
+    ],
+    [
+        'id' => 'spa/with-tags',
+        'route' => 'GET /{spa}',
+        'about' => 'A tag search describes its tags, then the excluded ones. A leading + is dropped; the list is urldecode()d, so a raw + is a space.',
+        'steps' => [
+            $page('/media/1/40/with-tags/cat%2C-kitten'),
+            $page('/media/1/40/with-tags/%2Bcat%2Cartist%20one'),
+            $page('/media/1/40/with-tags/-animal'),
+            $page('/media/1/40/with-tags/c++'),
+        ],
+    ],
+    [
+        'id' => 'spa/escaped',
+        'route' => 'GET /{spa}',
+        'about' => 'What the page says is HTML-escaped, quotes included.',
+        'steps' => [$page('/media/1/40/with-tags/%22quoted%22%2C-%3Cb%3Ebold%3C%2Fb%3E%20%26%20more')],
+    ],
+    [
+        'id' => 'spa/tags',
+        'route' => 'GET /{spa}',
+        'about' => 'The tag list, a tag (its implications page), and a tag that does not exist.',
+        'steps' => [$page('/tags'), $page('/tags/11'), $page('/tags/999')],
+    ],
+    [
+        'id' => 'spa/favorites',
+        'route' => 'GET /{spa}',
+        'about' => 'The favorites page.',
+        'steps' => [$page('/favorites')],
+    ],
+    [
+        'id' => 'spa/fontawesome',
+        'route' => 'GET /{spa}',
+        'about' => 'With FONTAWESOME_KIT_ID set, the kit\'s script goes in after the preview tags.',
+        'env' => ['FONTAWESOME_KIT_ID' => 'abc123def'],
+        'steps' => [$page('/favorites')],
+    ],
+    [
+        'id' => 'spa/index-missing',
+        'route' => 'GET /{spa}',
+        'about' => 'Without the built index.html: 500 with a line of text.',
+        'files' => ['dist/index.html' => null],
+        'steps' => [$page('/')],
     ],
 ];

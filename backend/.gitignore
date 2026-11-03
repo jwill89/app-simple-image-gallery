@@ -16,6 +16,10 @@
 /public/build
 /public/hot
 /public/storage
+# The link to the media folder (php artisan storage:link), and the SPA's built
+# index.html, which the deploy copies from frontend/dist.
+/public/media
+/resources/spa/
 /storage/*.key
 /storage/pail
 /vendor
