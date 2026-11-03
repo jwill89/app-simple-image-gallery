@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Exceptions\ApiException;
 use App\Exceptions\ApiExceptionRenderer;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\VerifyOrigin;
@@ -48,4 +49,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(new ApiExceptionRenderer());
+        // A 4xx is the client's mistake, answered in full; only a 5xx is the
+        // server's problem and worth a log entry.
+        $exceptions->dontReportWhen(static fn(Throwable $e): bool => $e instanceof ApiException && $e->status < 500);
     })->create();

@@ -120,6 +120,20 @@ test('an item whose file is gone is removed, with its thumbnails', function (): 
         ->and(File::files("{$folder}/thumbs"))->toBe([]);
 });
 
+test('nothing is removed when the media path looks wrong', function (string $problem): void {
+    $folder = config()->string('gallery.media_path');
+    Media::factory()->count(2)->create();
+    if ($problem === 'no full/ folder') {
+        File::deleteDirectory("{$folder}/full");
+    }
+    dropIn('tiny.png', 'still.png');
+
+    command('gallery:ingest')->assertFailed();
+
+    expect(Media::query()->count())->toBe(2)
+        ->and(File::isFile("{$folder}/still.png"))->toBeTrue();
+})->with(['no full/ folder', 'no item\'s file in full/']);
+
 test('thumbnails and video metadata come from ffmpeg and ffprobe, called as cron.php called them', function (): void {
     $folder = config()->string('gallery.media_path');
     // ffmpeg writes what it is asked to; ffprobe describes a 1080p clip.

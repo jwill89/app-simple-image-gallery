@@ -1,3 +1,8 @@
+# Uploads of images and videos up to 100 MB, as the Slim app allowed (mod_php).
+php_value upload_max_filesize 100M
+php_value post_max_size 105M
+php_value max_execution_time 120
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
@@ -18,8 +23,9 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # Send Requests To Front Controller...
-    RewriteCond %{REQUEST_FILENAME} !-d
+    # Send Requests To Front Controller... Only real files are served as they
+    # are (the built SPA, and media/ through its link), never a folder:
+    # /media is the gallery page, not the media folder.
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>

@@ -229,8 +229,27 @@ Follow the Deployment section below.
 
 **Done when:** the live site runs on Laravel, admin login works, scheduled ingest runs and the health check passes.
 
+How it went (2026-11-03), and where it differs from the Deployment section:
+
+- **Backed up first.** `/var/www/gallery-backups/20261103-042056/` holds the database (`VACUUM INTO`, integrity checked), the Slim webroot as a tarball, the media as hard links, and both gallery vhost files. `ROLLBACK.txt` there has the steps back.
+- **The data stayed where it was.** Laravel's `.env` points `DB_DATABASE`, `GALLERY_MEDIA_PATH` and `GALLERY_DUPES_PATH` at the Slim webroot's `db/`, `media/` and `dupes/`, so not one of the Slim app's files changed. Going back is the vhost change alone, and both apps read the same data. Moving it to `/var/www/gallery-data/` moved to Phase 8.
+- **A preview port, not a subdomain.** Before the switch the Laravel app was served on `127.0.0.1:8088`, reachable only from the droplet, so no DNS record or certificate was needed. It was removed after the switch.
+- **Checked before the switch**, on the droplet:
+  - The same 50 requests went to both apps: API reads, error cases, writes refused for a missing token, Origin or wrong password, SPA pages with their OG tags, media files and static assets. 47 answered the same. Of the other three, two are the recorded divergences (an unknown `/api` path, a preflight). The third, `/media`, gets the same Apache 301 from both, differing only in the port named.
+  - Phase 5's check, with ffmpeg: 25 live files of every kind in the gallery (JPEG, PNG, WebP, animated GIF, MP4, WebM), plus a taken name, a copy, an unsupported file and three items whose files were gone. They went through a staged copy of the live `cron.php` and through `gallery:ingest`. Both left the same 20 rows, column for column, and the same 57 files, thumbnails included, byte for byte.
+- **The switch** changed only `DocumentRoot` and `<Directory>` in `gallery.mathdad.me.conf` (the http redirect) and `gallery.mathdad.me-le-ssl.conf`. The `Expires` headers, `Protocols` and certificate lines stay. After the switch: the API, the SPA with its OG tags, media with month-long `Expires`, 401 for a wrong password, http→https, and the site through Cloudflare all answered correctly.
+- **Queue worker:** the systemd unit `gallery-queue` runs `php artisan queue:work --tries=3 --max-time=3600` as `www-data` and restarts by itself, including after each deploy's `queue:restart`.
+- **The scheduler is new here.** The droplet never scheduled `cron.php`: no crontab or systemd timer ran it, and ingest was run by hand. It's now in `/etc/cron.d/gallery-scheduler`, which runs `php artisan schedule:run` every minute as `www-data`, in a file of its own so no other site's crontab is touched. `gallery:ingest` runs at midnight UTC: the droplet's clock is UTC and `SCHEDULE_TIMEZONE=UTC`. `sanctum:prune-expired` runs at the same time.
+- **Rollback** stops Laravel's background work too: disable `gallery-queue` and remove the scheduler's cron file (`ROLLBACK.txt` lists both).
+- **Admin login** was tested on the live site after the switch, and it works.
+- **A guard on ingest.** `gallery:ingest` now refuses to remove anything when none of the gallery's files are in `media/full`, which is what a wrong `GALLERY_MEDIA_PATH` looks like. Without the guard it would delete every row.
+- **Logging:** an `ApiException` with a 4xx status is no longer reported. Only 5xx errors and uncaught exceptions reach the log.
+- **Logins:** Slim's tokens don't carry over to Sanctum, so anyone logged in at cutover logs in once more.
+- **Deploys** now go to `DEPLOY_APP_ROOT` (`scripts/deploy.ps1`). They snapshot the database into the Slim webroot's `db/.backups/`, where it still lives. There is no `cache:clear`: cached responses expire within 60 s anyway, and a clear would also drop the rate limiter's counts and the queue's unique locks.
+
 ### Phase 8: Clean up
 
+- Move the data into `/var/www/gallery-data/` (see Deployment, step 1), point the three `.env` paths and the `public/media` link at it, and leave the Slim webroot as the rollback copy until it is deleted.
 - Move the contract fixtures the Laravel tests read into `backend/tests/`, then delete `backend-old/`.
 - After a week live, add a migration that drops `auth_tokens`, `rate_limits` and `phinx_migrations`.
 - Update README, AGENTS.md, CONTRIBUTING.md and CHANGELOG, and bump the app version. The API version stays the same because the contract didn't change.
@@ -270,9 +289,9 @@ Laravel replaces the flat webroot with an app folder whose `public/` is the docu
 - **Payload:** Laravel's `app/`, `bootstrap/`, `config/`, `database/`, `public/`, `resources/`, `routes/`, `artisan`, `composer.json`, `composer.lock` and `openapi.json`. Copy `frontend/dist` into `public/`, except `index.html`, which goes to `resources/spa/index.html`, where `SpaController` reads it.
 - **Never shipped:** `.env`, `storage/` contents, `vendor/` and `bootstrap/cache/`.
 - **Composer:** `composer install --no-dev --optimize-autoloader`. Dev dependencies are no longer needed on the server, since Phinx is gone.
-- **Remote steps:** snapshot the database (now in the data folder), `php artisan migrate --force`, `php artisan optimize`, `php artisan queue:restart`, `chown` `storage/` and `bootstrap/cache/` to `www-data`, then the same health check on `/api/media/count`.
+- **Remote steps:** snapshot the database (in the folder that holds it), `php artisan migrate --force`, `php artisan storage:link`, `php artisan optimize --except=views` (there are no Blade views to cache), `php artisan queue:restart`, `chown` the app to `www-data`, then the same health check on `/api/media/count`.
 - **Keep:** the code backup and rollback, the no-auto-restore rule for the database, and the two-connection limit for `ufw limit ssh`.
-- **Replace** the `cache/api/*.cache` cleanup with `php artisan cache:clear`.
+- **Dropped:** the `cache/api/*.cache` cleanup, with no `cache:clear` in its place (see Phase 7).
 
 ## Decisions and risks
 

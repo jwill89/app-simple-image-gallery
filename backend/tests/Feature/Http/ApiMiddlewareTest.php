@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Exceptions\ApiException;
 use App\Http\Requests\ApiRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Route;
 
 use function Pest\Laravel\getJson;
@@ -138,6 +140,22 @@ test('an uncaught error is 500 ServerError, without the exception\'s details', f
     getJson('/api/test/broken')
         ->assertStatus(500)
         ->assertExactJson(['error' => 'ServerError', 'message' => 'Something went wrong on the server. Please try again.']);
+});
+
+test('an API error is logged only when it is the server\'s (5xx), not the client\'s (4xx)', function (): void {
+    Exceptions::fake();
+    Route::middleware('api')->prefix('api')->group(function (): void {
+        Route::get('/test/missing', fn() => throw new ApiException('NotFound', 404, 'Not here.'));
+        Route::get('/test/unavailable', fn() => throw new ApiException('DanbooruUnavailable', 503, 'Try again shortly.'));
+    });
+
+    getJson('/api/test/missing')->assertStatus(404);
+    Exceptions::assertNothingReported();
+
+    getJson('/api/test/unavailable')->assertStatus(503);
+    getJson('/api/test/broken')->assertStatus(500);
+    Exceptions::assertReported(static fn(ApiException $e): bool => $e->status === 503);
+    Exceptions::assertReported(RuntimeException::class);
 });
 
 test('an ApiRequest fails with its first broken rule\'s code, status and message', function (): void {

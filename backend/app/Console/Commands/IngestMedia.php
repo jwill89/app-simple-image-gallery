@@ -34,20 +34,34 @@ final class IngestMedia extends Command
             return self::FAILURE;
         }
 
-        $removed = 0;
-        foreach (Media::query()->select(['media_id', 'file_name'])->lazyById() as $media) {
-            if (!File::isFile($media->fullPath())) {
-                $media->delete();
-                $removed++;
-            }
+        // A missing full/ folder, or one where no item's file is, means the media
+        // path is wrong (or a disk isn't mounted), not that everything was
+        // deleted: removing the items would empty the gallery.
+        $folder = config()->string('gallery.media_path');
+        if (!File::isDirectory("{$folder}/full")) {
+            $this->error("{$folder}/full is not a folder. Check GALLERY_MEDIA_PATH; nothing was changed.");
+
+            return self::FAILURE;
         }
-        if ($removed > 0) {
+        $gone = Media::query()->select(['media_id', 'file_name'])->lazyById()
+            ->reject(static fn(Media $media): bool => File::isFile($media->fullPath()))
+            ->collect();
+        if ($gone->isNotEmpty() && $gone->count() === Media::query()->count()) {
+            $this->error("None of the {$gone->count()} items' files are in {$folder}/full. Check GALLERY_MEDIA_PATH; nothing was changed.");
+
+            return self::FAILURE;
+        }
+
+        foreach ($gone as $media) {
+            $media->delete();
+        }
+        if ($gone->isNotEmpty()) {
             $cache->bump(CacheGroup::Media, CacheGroup::Tags);
         }
 
         $queued = 0;
         $unsupported = 0;
-        foreach (File::files(config()->string('gallery.media_path')) as $file) {
+        foreach (File::files($folder) as $file) {
             if (Media::isSupportedFile($file->getFilename())) {
                 ProcessNewMedia::dispatch($file->getFilename(), $importTags);
                 $queued++;
@@ -56,7 +70,7 @@ final class IngestMedia extends Command
             }
         }
 
-        $this->info("Removed {$removed} item(s) whose files are gone.");
+        $this->info("Removed {$gone->count()} item(s) whose files are gone.");
         $this->info("Queued {$queued} new file(s); left {$unsupported} of other types in place.");
 
         return self::SUCCESS;
