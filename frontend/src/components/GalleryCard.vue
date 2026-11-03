@@ -35,7 +35,7 @@ const altText = computed(() => {
 
 function toggleFavorite(e: Event) {
   e.stopPropagation()
-  favorites.toggle(props.item.media_id)
+  void favorites.toggle(props.item.media_id)
 }
 
 /** Activate the card (Enter / Space) for keyboard users, mirroring a click. */

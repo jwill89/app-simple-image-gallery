@@ -14,6 +14,15 @@ class UserFactory extends Factory
 {
     public function definition(): array
     {
-        return ['name' => fake()->name()];
+        return [
+            'username' => fake()->unique()->userName(),
+            'password' => 'password-123',
+            'is_admin' => false,
+        ];
+    }
+
+    public function admin(): static
+    {
+        return $this->state(['is_admin' => true]);
     }
 }

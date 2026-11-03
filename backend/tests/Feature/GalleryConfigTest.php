@@ -44,7 +44,9 @@ function galleryConfig(array $vars): array
 
 it('reads every gallery variable in .env.example', function (): void {
     $config = galleryConfig([
-        'GALLERY_ADMIN_PASSWORD' => 'secret',
+        'GALLERY_ALLOW_SIGNUP' => 'false',
+        'CLOUDFLARE_TURNSTILE_SITEKEY' => 'site-key',
+        'CLOUDFLARE_TURNSTILE_SECRET' => 'secret-key',
         'GALLERY_URL' => 'https://gallery.test',
         'GALLERY_ALLOWED_ORIGINS' => 'https://gallery.test',
         'DANBOORU_LOGIN' => 'someone',
@@ -58,9 +60,10 @@ it('reads every gallery variable in .env.example', function (): void {
     ]);
 
     expect($config)->toBe([
-        'version' => '5.0.0',
-        'api_version' => '5.0.0',
-        'admin_password' => 'secret',
+        'version' => '6.0.0',
+        'api_version' => '6.0.0',
+        'allow_signup' => false,
+        'turnstile' => ['site_key' => 'site-key', 'secret' => 'secret-key'],
         'url' => 'https://gallery.test',
         'allowed_origins' => ['https://gallery.test'],
         'fontawesome_kit_id' => 'kit',
@@ -88,13 +91,17 @@ it('drops a trailing slash from the public URL', function (): void {
     expect(galleryConfig(['GALLERY_URL' => 'https://gallery.test/'])['url'])->toBe('https://gallery.test');
 });
 
-it('keeps a password that env() would turn into another type', function (string $password): void {
-    expect(galleryConfig(['GALLERY_ADMIN_PASSWORD' => $password])['admin_password'])->toBe($password);
-})->with(['null', 'true', 'false', '(empty)']);
-
-it('treats an empty admin password as unset', function (): void {
-    expect(galleryConfig(['GALLERY_ADMIN_PASSWORD' => ''])['admin_password'])->toBe('');
-});
+it('takes sign-up as open unless it is switched off', function (string $value, bool $open): void {
+    expect(galleryConfig(['GALLERY_ALLOW_SIGNUP' => $value])['allow_signup'])->toBe($open);
+})->with([
+    'unset' => ['', true],
+    'true' => ['true', true],
+    'false' => ['false', false],
+    'FALSE' => ['FALSE', false],
+    '0' => ['0', false],
+    'off' => ['off', false],
+    'no' => ['no', false],
+]);
 
 it('keeps media and reports under storage/app when no paths are set', function (): void {
     $config = galleryConfig(['GALLERY_MEDIA_PATH' => '', 'GALLERY_DUPES_PATH' => '']);

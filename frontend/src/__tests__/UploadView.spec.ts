@@ -4,6 +4,7 @@ import { createPinia, setActivePinia, type Pinia } from 'pinia'
 import type * as UseApiModule from '../composables/useApi'
 import { ApiError } from '../composables/useApi'
 import { useToastStore } from '../stores/toast'
+import { useAuthStore } from '../stores/auth'
 import type { TagImportStatus } from '../types'
 import UploadView from '../views/UploadView.vue'
 
@@ -16,7 +17,6 @@ vi.mock('../composables/useApi', async (importOriginal) => {
   const actual = await importOriginal<typeof UseApiModule>()
   return {
     ...actual,
-    hasAuthToken: () => true,
     useApi: () => ({
       get,
       post: vi.fn(),
@@ -97,6 +97,8 @@ async function uploadThrough(files: File[], { fetchTags = false } = {}) {
 beforeEach(() => {
   pinia = createPinia()
   setActivePinia(pinia)
+  // The page is an admin's.
+  useAuthStore().user = { id: 1, username: 'admin', is_admin: true, created_at: '' }
   upload.mockReset()
   get.mockReset()
   get.mockResolvedValue(undefined)

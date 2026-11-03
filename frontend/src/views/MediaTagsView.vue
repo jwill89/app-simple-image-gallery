@@ -4,8 +4,10 @@ import { useRouter, useRoute } from 'vue-router'
 import { useMediaTags } from '../composables/useMediaTags'
 import { useGalleryStore } from '../stores/gallery'
 import { useToastStore } from '../stores/toast'
-import { useApi, getErrorMessage, hasAuthToken } from '../composables/useApi'
+import { useApi, getErrorMessage } from '../composables/useApi'
 import { useFavoritesStore } from '../stores/favorites'
+import { useAuthStore } from '../stores/auth'
+import { useAccountStore } from '../stores/account'
 import { endpoints } from '../api/endpoints'
 import type { DanbooruFetchResult, Media, Tag } from '../types'
 import TagMultiSelect from '../components/TagMultiSelect.vue'
@@ -37,7 +39,10 @@ const showHelpModal = ref(false)
 const showDeleteModal = ref(false)
 const showLightbox = ref(false)
 const deleting = ref(false)
-const authenticated = ref(hasAuthToken())
+const auth = useAuthStore()
+const account = useAccountStore()
+// The overflow menu's actions (Danbooru import, delete) are an admin's.
+const authenticated = computed(() => auth.isAdmin)
 const mediaUrl = ref('')
 const mediaReady = ref(false)
 const selectedTagIds = ref<number[]>([])
@@ -167,6 +172,44 @@ const formattedFileSize = computed(() => {
 
 onMounted(load)
 watch(() => props.mediaId, load)
+
+// ── Blocked tags ─────────────────────────────────────────────────────
+// Listings leave out what the account blocks; reached directly (a link, the
+// arrows), the item asks before showing.
+const blockingTags = computed(() => tags.value.filter((t) => account.blockedIds.has(t.tag_id)))
+const revealed = ref(false)
+watch(
+  () => props.mediaId,
+  () => {
+    revealed.value = false
+  },
+)
+const hidden = computed(() => blockingTags.value.length > 0 && !revealed.value)
+
+// ── Lists ────────────────────────────────────────────────────────────
+// The heart is the default list; the menu beside it holds the others.
+const otherLists = computed(() => favorites.lists.filter((l) => !l.is_default))
+const holding = ref(new Set<number>())
+
+async function loadHolding() {
+  holding.value = new Set()
+  if (!auth.isSignedIn) return
+  try {
+    holding.value = new Set((await api.get<number[]>(endpoints.lists.holding(props.mediaId))) ?? [])
+  } catch {
+    // Only the menu's ticks depend on it.
+  }
+}
+watch([() => props.mediaId, () => auth.isSignedIn], loadHolding, { immediate: true })
+
+async function toggleInList(listId: number) {
+  const present = !holding.value.has(listId)
+  await favorites.setInList(listId, props.mediaId, present)
+  const next = new Set(holding.value)
+  if (present) next.add(listId)
+  else next.delete(listId)
+  holding.value = next
+}
 
 async function load() {
   mediaUrl.value = ''
@@ -421,7 +464,15 @@ function onTouchEnd(e: TouchEvent) {
       <template v-else>
         <div class="columns">
           <div class="column is-three-fifths">
+            <AppAlert v-if="hidden" severity="warning" title="Hidden by your blocked tags">
+              It's tagged
+              {{ blockingTags.map((t) => t.tag_name).join(', ') }}, which you block.
+              <button type="button" class="button is-small mt-2" @click="revealed = true">
+                Show it anyway
+              </button>
+            </AppAlert>
             <figure
+              v-else
               class="image tags-page-img"
               @touchstart.passive="onTouchStart"
               @touchend.passive="onTouchEnd"
@@ -516,7 +567,7 @@ function onTouchEnd(e: TouchEvent) {
                   :title="
                     favorites.isFavorite(mediaId) ? 'Remove from favorites' : 'Add to favorites'
                   "
-                  @click="favorites.toggle(mediaId)"
+                  @click="void favorites.toggle(mediaId)"
                 >
                   <span class="icon">
                     <i
@@ -527,6 +578,28 @@ function onTouchEnd(e: TouchEvent) {
                   </span>
                   <span>{{ favorites.isFavorite(mediaId) ? 'Favorited' : 'Favorite' }}</span>
                 </button>
+
+                <AppMenu v-if="auth.isSignedIn" label="Add to a list">
+                  <template #trigger><i class="fa-solid fa-list-check" /></template>
+                  <AppMenuItem
+                    v-for="list in otherLists"
+                    :key="list.list_id"
+                    :icon="
+                      holding.has(list.list_id)
+                        ? 'fa-solid fa-square-check'
+                        : 'fa-regular fa-square'
+                    "
+                    @select="toggleInList(list.list_id)"
+                  >
+                    {{ list.name }}
+                  </AppMenuItem>
+                  <AppMenuItem
+                    icon="fa-solid fa-folder-plus"
+                    @select="void router.push({ name: 'favorites' })"
+                  >
+                    {{ otherLists.length === 0 ? 'Make a list…' : 'Manage lists…' }}
+                  </AppMenuItem>
+                </AppMenu>
 
                 <!-- Less-used / destructive admin actions live behind an overflow
                      menu so they're not one stray click away. -->

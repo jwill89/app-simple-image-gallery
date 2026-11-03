@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Http\Resources\FavoriteListResource;
 use App\Http\Resources\MediaResource;
+use App\Http\Resources\SavedSearchResource;
 use App\Http\Resources\TagCategoryResource;
 use App\Http\Resources\TagResource;
+use App\Http\Resources\UserResource;
 use OpenApi\Augmenter\Properties;
 use OpenApi\Builder;
 use OpenApi\Utils\Pipeline;
@@ -31,6 +34,9 @@ final class OpenApiDocument
         MediaResource::class,
         TagResource::class,
         TagCategoryResource::class,
+        UserResource::class,
+        FavoriteListResource::class,
+        SavedSearchResource::class,
     ];
 
     public static function builder(): Builder

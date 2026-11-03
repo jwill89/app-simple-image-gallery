@@ -25,8 +25,12 @@ SaaS. Key features:
   fallback. Import rules (category + tag-name mappings) are DB-driven and editable in the UI.
 - **Duplicate detection** via perceptual hashing (LSH candidate generation → Hamming
   distance → a worst-region comparison of the thumbnails that tells re-saves from variants).
-- **Favorites** (client-side, `localStorage`).
-- Admin-gated **uploads** and **deletes** via a single shared password → bearer token.
+- **Accounts** (since 6.0.0): open sign-up and login by username and password, behind Cloudflare
+  Turnstile. An account keeps **favorite lists** (the heart is its default "Favorites" list),
+  **blocked tags** (media carrying one leaves its listings) and **saved searches**. Signed out,
+  favorites stay in the browser's `localStorage`, and move into the account at the first sign-in.
+- An **admin** is an account with `is_admin`: **uploads**, **deletes**, tag management, the
+  duplicate scan and the Users page are theirs. The first admin is made with `gallery:user`.
 - A nightly **ingest** of files dropped into the media folder, and queued **background work**:
   ingest, Danbooru imports, and rebuilding thumbnails, fingerprints or metadata.
 - A PWA-ish **service worker** for thumbnail caching and adjacent-page prefetch.
@@ -34,7 +38,7 @@ SaaS. Key features:
 ### Tech stack
 
 | Layer | Tech |
-|------|------|
+| --- | --- |
 | Backend | PHP **8.5**, **Laravel 13**: Eloquent, Form Requests, API Resources, Sanctum, the database queue, the scheduler |
 | Database | **SQLite** (one file, WAL mode); Laravel migrations in `backend/database/migrations/` |
 | Image/video tooling | `ffmpeg`/`ffprobe` through Laravel's `Process`, PHP GD, `intervention/imagehash` (perceptual hash, always on GD) |
@@ -49,7 +53,7 @@ SaaS. Key features:
 
 ## 2. Repository layout
 
-```
+```text
 /
 ├── backend/                     # The Laravel app; its README covers local setup and the checks
 │   ├── app/
@@ -60,7 +64,8 @@ SaaS. Key features:
 │   │   │   ├── Requests/              # ApiRequest (contract-shaped validation errors) + one per write
 │   │   │   └── Resources/             # The JSON shapes: Media, Tag, TagCategory, mappings, …
 │   │   ├── Models/                    # Eloquent: Media, Tag, TagCategory, DismissedDuplicate,
-│   │   │                              #   DanbooruCategoryMapping, DanbooruTagMapping, User (the admin)
+│   │   │                              #   DanbooruCategoryMapping, DanbooruTagMapping,
+│   │   │                              #   User (an account), FavoriteList, SavedSearch
 │   │   ├── Services/
 │   │   │   ├── Danbooru/              # DanbooruTagger (MD5 → IQDB, import rules), DanbooruFailure
 │   │   │   ├── Duplicates/            # DuplicateScanner (LSH → Hamming → RegionDifference), ScanSettings
@@ -76,7 +81,7 @@ SaaS. Key features:
 │   ├── config/gallery.php       # Every gallery setting, read from .env (code never calls env())
 │   ├── database/migrations/     # The schema; the baseline is the Slim app's, created only where missing
 │   ├── routes/
-│   │   ├── api.php              # Every /api route: public ones first, then the auth:sanctum group
+│   │   ├── api.php              # Every /api route: public, then any account's, then the admin's
 │   │   ├── web.php              # The SPA shell's fallback route: everything outside /api
 │   │   └── console.php          # The schedule
 │   ├── public/                  # Apache's DocumentRoot: index.php, .htaccess, .user.ini (upload limits), the built SPA
@@ -103,8 +108,10 @@ SaaS. Key features:
 │   ├── src/
 │   │   ├── main.ts            # App bootstrap, global error handler, SW registration
 │   │   ├── router/index.ts    # Routes (lazy-loaded views)
-│   │   ├── stores/            # Pinia: gallery (tags/categories/totals/blur), favorites, toast
-│   │   ├── composables/       # useApi (fetch wrapper), useGalleryData, useMediaTags, usePrefetch
+│   │   ├── stores/            # Pinia: gallery (tags/categories/totals/blur), auth, account
+│   │   │                      #   (blocked tags, saved searches), favorites (+ lists), toast
+│   │   ├── composables/       # useApi (fetch wrapper), useGalleryData, useMediaTags, usePrefetch,
+│   │   │                      #   useTurnstile (loads Cloudflare's script)
 │   │   ├── components/        # Reusable UI (GalleryCard, TagBadge, TagMultiSelect, modals…)
 │   │   ├── views/             # Route-level pages
 │   │   ├── constants/         # categories.ts (color → CSS class helpers), uploads.ts (upload batching),
@@ -182,6 +189,7 @@ migrations) it does nothing. Change the schema by **adding a migration**; never 
 run on the droplet.
 
 ### Frontend
+
 ```bash
 cd frontend
 npm install
@@ -189,6 +197,7 @@ npm run dev        # Vite dev server on :5173, proxies /api and /media to http:/
 npm run build      # vue-tsc type-check + vite build → outputs to frontend/dist
 npm run preview
 ```
+
 The production app is **the built `dist/`**, copied into `backend/public/` (its `index.html` into
 `resources/spa/`) and served by Apache and the SPA shell; there is no Node server in prod.
 
@@ -198,6 +207,8 @@ Artisan commands, run from the app folder (on the droplet as `www-data`:
 `sudo -u www-data php artisan …`):
 
 ```bash
+php artisan gallery:user <name> --admin      # make an account (asks for its password), or make one an admin;
+                                             #   --no-admin, --password (a new one, signing it out everywhere)
 php artisan gallery:ingest [--import-tags]   # queue the files dropped into the media folder; remove items whose files are gone
 php artisan gallery:import-tags [id]         # queue a Danbooru import for every item, or one
 php artisan gallery:regenerate thumbnails    # or fingerprints, or metadata: queue a rebuild of every item from its file
@@ -217,10 +228,12 @@ php artisan gallery:dupes --tune --max-distance=8 --max-region-diff=off  # calib
   `media/full`, which is what a wrong `GALLERY_MEDIA_PATH` looks like.
 
 ### Deploy (to the DigitalOcean droplet)
+
 ```powershell
 ./scripts/deploy.ps1            # build the SPA → pack the code → upload → composer install → migrate → optimize
 ./scripts/deploy.ps1 -SkipBuild # redeploy the existing frontend/dist
 ```
+
 `scripts/deploy.ps1` (PuTTY pscp/plink; host, user, key and app folder come from the untracked
 `scripts/deploy.config.ps1`) ships **code only**. It never ships `.env`, `storage/`, `vendor/`, the
 data or the backups. On the host it:
@@ -261,8 +274,10 @@ Laravel's own keys (`APP_KEY`, `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL
 `QUEUE_CONNECTION=database`, `CACHE_STORE=file`, `DB_DATABASE`) plus the gallery's, which
 `config/gallery.php` reads:
 
-```
-GALLERY_ADMIN_PASSWORD     # admin password; login is refused while it is empty
+```text
+GALLERY_ALLOW_SIGNUP       # anyone may make an account unless "false" (admins come from gallery:user)
+CLOUDFLARE_TURNSTILE_SITEKEY  # Turnstile's site key, sent to the sign-in pages (GET /api/auth/config)
+CLOUDFLARE_TURNSTILE_SECRET   # Turnstile's secret; empty switches the bot check off (local, tests)
 GALLERY_URL                # public base URL, for Danbooru's IQDB fallback
 GALLERY_ALLOWED_ORIGINS    # comma-separated CORS + CSRF origin allowlist
 GALLERY_MEDIA_PATH         # media folder (full/, thumbs/, the ingest folder); default storage/app/media
@@ -285,7 +300,7 @@ as `www-data`.
 
 ## 4. Data model (SQLite)
 
-```
+```text
 media(media_id PK, media_type['image'|'video'], file_name UNIQUE, file_time, hash[MD5], bits_fingerprint,
       width, height, duration[secs, videos], file_size[bytes])   # metadata extracted at ingest
 tag_categories(category_id PK, category_name UNIQUE COLLATE NOCASE, color[tag hue], description, sort_order)
@@ -296,8 +311,12 @@ danbooru_category_map(danbooru_category_id PK, danbooru_category_name, gallery_c
 danbooru_tag_map(id PK, danbooru_tag UNIQUE, gallery_tag)
 dismissed_duplicates(media_id_1, media_id_2, dismissed_at)  # PK(id1,id2), stored with id1<id2
 
-users                                           # one row: the admin the tokens belong to
-personal_access_tokens                          # Sanctum: login tokens, stored hashed, valid 24h
+users(id, username UNIQUE NOCASE, password[hashed], is_admin)   # accounts
+favorite_lists(list_id, user_id FK, name NOCASE, is_default)      # UNIQUE(user_id, name); one default each
+favorite_list_items(list_id FK, media_id FK, added_at)            # PK(list_id, media_id)
+blocked_tags(user_id FK, tag_id FK, created_at)                   # PK(user_id, tag_id)
+saved_searches(search_id, user_id FK, name NOCASE, query)         # UNIQUE(user_id, name)
+personal_access_tokens                          # Sanctum: login tokens, stored hashed, a day or 30 (expires_at)
 jobs · job_batches · failed_jobs                # the database queue
 migrations                                      # Laravel's migration log
 ```
@@ -310,6 +329,7 @@ Key indexes (in the baseline migration): `media(hash)`, `media(file_time, media_
 `tags(category_id)`.
 
 Notes:
+
 - **Metadata** (`width`, `height`, `duration`, `file_size`) is read at ingest by
   `Services/Media/MediaMetadata` (images: `getimagesize`; videos and animated GIFs: `ffprobe`),
   through `MediaIngest`, so uploads and the ingest both fill it. Backfill with
@@ -336,8 +356,20 @@ REST-RPC conventions: reads → `200`, create → `201` (created resource), upda
 (updated resource), delete → `204`, RPC action/batch → `200`. Non-CRUD state changes are
 `POST …/{verb}`.
 
-- **System / Auth:** `GET /version`, `GET /openapi.json`, `GET /docs` (🔓); `POST /auth/login` (🔓),
-  `DELETE /auth/token` (🔒 log out: revokes the token sent).
+🔑 = any signed-in account; 🔒 = an admin account.
+
+- **System / Auth:** `GET /version`, `GET /openapi.json`, `GET /docs` (🔓); `GET /auth/config`
+  (🔓 sign-up open?, Turnstile site key), `POST /auth/register`, `POST /auth/login` (🔓, with
+  `turnstile_token` while Turnstile is on); `GET /auth/me`, `DELETE /auth/token` (🔑 log out).
+- **Account (`/account`, 🔑):** `PATCH /password`, `DELETE` (with `{ password }`), `GET
+  /blocked-tags`, `PUT|DELETE /blocked-tags/{tag_id}`.
+- **Lists (`/lists`, 🔑):** `GET`, `POST`, `PATCH|DELETE /{list_id}`, `GET /{list_id}/ids`,
+  `GET /{list_id}/media?page&per_page`, `POST /{list_id}/media` (`{ media_ids }`, ≤ 2000),
+  `PUT|DELETE /{list_id}/media/{media_id}`; `GET /media/{media_id}/lists`. Someone else's list
+  is a 404.
+- **Saved searches (`/saved-searches`, 🔑):** `GET`, `POST`, `PATCH|DELETE /{search_id}`.
+- **Users (`/users`, 🔒):** `GET`, `PATCH /{user_id}` (`is_admin`, `password`), `DELETE /{user_id}`.
+  There is always one admin left (`409 LastAdmin`).
 - **Media (`/media`):** path-based listings (cached) — `GET /media/page/{page}[/{per_page}]`,
   `GET /media/untagged/{page}[/{per_page}]`, `GET /media/with-tags/{tag_list}/{page}[/{per_page}]`
   (`tag_list` comma-sep, leading `-` excludes), each with the `next_cursor` to go on from;
@@ -347,7 +379,8 @@ REST-RPC conventions: reads → `200`, create → `201` (created resource), upda
   (🔓 batch read); `POST /media` (🔒 multipart upload = create → 201; thumbnails and, with
   `fetch_tags`, Danbooru lookups are queued), `POST /media/bulk-delete` (🔒),
   `DELETE /media/{id}` (🔒 → 204). Media-scoped tags: `GET /media/{id}/tags` (🔓),
-  **`PATCH /media/{id}/tags`** and **`DELETE /media/{id}/tags/{tag_id}`** (🔓 — anyone may tag, see §7),
+  **`PATCH /media/{id}/tags`** and **`DELETE /media/{id}/tags/{tag_id}`** (🔓 — anyone may tag,
+  see §7),
   `POST /media/{id}/danbooru-tags` (🔒).
 - **Tags (`/tags`):** `GET /tags` (every tag; or `?search=…&limit&exclude` for the best matches,
   exact then prefix then containing; or `?names=…` / `?ids=…` lookups), `GET /tags/display` (a
@@ -407,8 +440,20 @@ REST-RPC conventions: reads → `200`, create → `201` (created resource), upda
 4. **`throttle:api`** (the `api` group): 120 requests a minute per IP, then
    `429 RateLimitExceeded` with `retry_after`. It runs before authentication (a priority list in
    `bootstrap/app.php`), so every request counts, signed in or not.
-5. **`auth:sanctum`** on the protected group in `routes/api.php`: no valid token is
+5. **`auth:sanctum`** on the account and admin groups in `routes/api.php`: no valid token is
    `401 Unauthorized` as `{ error, message }`; there is no login page to redirect to.
+6. **`admin`** (`EnsureAdmin`) on the admin group: an account that isn't an admin is
+   `403 Forbidden`. It runs before the route's bindings, so it never says whether a record exists.
+
+**`trustProxies`** (global) trusts Cloudflare's ranges (`App\Support\Cloudflare`) and nothing
+else, so `$request->ip()` is the visitor: every limit above, and the login and sign-up limits,
+count per visitor. Without it they counted per Cloudflare server, shared by everyone behind it.
+A request from anywhere else keeps its own address; its `X-Forwarded-For` is ignored. Update the
+list if Cloudflare changes theirs (cloudflare.com/ips).
+
+Public reads take no auth middleware, but a valid token sent with one still counts:
+`App\Support\Viewer` finds the account, and its blocked tags leave the media listings. An
+invalid token there reads as signed out.
 
 The `web` group is empty: the SPA shell keeps no session and sets no cookies. `TrimStrings` and
 `ConvertEmptyStringsToNull` are removed, so a password or tag name arrives exactly as sent.
@@ -419,8 +464,10 @@ The `web` group is empty: the SPA shell keeps no session and sets no cookies. `T
 
 Keep these invariants when editing auth or routes:
 
-- **Every state-changing route needs a bearer token**: it sits in the `auth:sanctum` group in
-  `routes/api.php`. If you add a write route, put it in that group.
+- **Every state-changing route needs a bearer token**: an admin's write sits in the
+  `['auth:sanctum', 'admin']` group in `routes/api.php`, an account's own (its lists, blocked
+  tags, searches, password) in the `auth:sanctum` group, and acts only on that account's rows;
+  someone else's is a 404. A new write goes in one of the two.
 - **The public writes**, deliberately outside the group, each its own route: `PATCH /media/{id}/tags`
   and `DELETE /media/{id}/tags/{tag_id}` (anyone may tag media — an *intentional* design choice), and
   `POST /media/by-ids` (a read that uses POST only to carry a large id list). Being exact routes, a
@@ -428,12 +475,19 @@ Keep these invariants when editing auth or routes:
   lightly. They still pass the origin check.
 - **CSRF**: writes are refused unless `Origin` (or, failing that, `Referer`) is in
   `GALLERY_ALLOWED_ORIGINS`; a write with neither header is refused.
-- **Login**: refused entirely while `GALLERY_ADMIN_PASSWORD` is empty (so no default can grant
-  access); throttled to 10 attempts / 5 minutes per IP (its own limiter) on top of the global one;
-  the password is compared with `hash_equals()`.
-- **Tokens**: Sanctum tokens on the one admin user (`User::admin()`): 64 random hex characters,
-  **stored as a SHA-256 hash**, valid 24 hours (`sanctum.expiration`), pruned daily. Sent as
-  `Authorization: Bearer …`; the frontend keeps it in `sessionStorage` (`useApi.ts`).
+- **Sign-up and login** pass Cloudflare Turnstile first (`Services/Turnstile`, while
+  `CLOUDFLARE_TURNSTILE_SECRET` is set): a token passes once, for its own form (`action`), and
+  Cloudflare out of reach is `503 CaptchaUnavailable`, never a sign-in. Login is throttled to 10
+  attempts / 5 minutes per IP and sign-up to 5 accounts an hour, on top of the global limit. A
+  wrong username and a wrong password get the same answer, after the same hash check. Sign-up
+  never makes an admin; `gallery:user` or another admin does. A wrong *current* password (changing
+  it, deleting the account) is `403 IncorrectPassword`, since the app reads a 401 as signed out.
+- **Tokens**: Sanctum tokens: 64 random hex characters, **stored as a SHA-256 hash**, each with
+  its own `expires_at`: a day, or 30 with "keep me signed in" (`User::issueToken()`;
+  `sanctum.expiration` is the 30-day cap). Pruned daily. A new password signs out the account's
+  other tokens. `sanctum.last_used_at` is off: a signed-in reader sends its token with every
+  listing, and recording it made each read a write. Sent as `Authorization: Bearer …`; the
+  frontend keeps it in `sessionStorage`, or `localStorage` when remembered (`useApi.ts`).
 - **Only `public/` is served.** `.env`, the code, the data folders, `backups/` and
   `slim-rollback/` sit beside it, out of reach; an unknown path gets the SPA page, never a file.
   Never point a vhost at the app folder itself.
@@ -445,8 +499,17 @@ Keep these invariants when editing auth or routes:
 - **Vue 3 `<script setup lang="ts">` + Composition API only.** No Options API, no class components.
 - **State**: Pinia stores (`stores/`). `gallery` holds `knownTags`, `categories`, `totalMedia`,
   `blurThumbnails` (persisted to `localStorage`), and `lastViewedItemIds` (used for prev/next
-  navigation on the media detail page). `favorites` is a `Set<number>` persisted to `localStorage`.
-  `toast` drives `ToastContainer`.
+  navigation on the media detail page). `auth` holds the signed-in `user` (`isAdmin`), restored
+  at start-up; `account` its blocked tags and saved searches. `favorites` is the heart: this
+  browser's ids in `localStorage` while signed out, the account's default list (and its other
+  `lists`) while signed in; `signedIn()` moves the browser's into the account. `toast` drives
+  `ToastContainer`.
+- **What a page shows depends on who is reading.** Signing in or out, and blocking a tag, call
+  `gallery.listingsChanged()`: the count reloads, and a kept-alive `GalleryView` loads its page
+  again when it is next on screen. Admin-only controls read `auth.isAdmin`, never "is there a
+  token"; a page that needs an account or an admin wraps itself in `SignInGate` (`admin`), which
+  offers a sign-in that comes back. Sign-up and sign-in render `TurnstileWidget` when
+  `GET /auth/config` gives a site key, and reset it after every try (a token passes once).
 - **The app never loads every tag.** There are thousands. `knownTags` holds the tags seen so far
   (by id), from searches and lookups: a picker searches the server (`store.searchTags`, or
   `useTagSearch` for a plain input), and a chip or a breadcrumb looks its tag up with
@@ -600,8 +663,9 @@ Keep these invariants when editing auth or routes:
   So a write from a request, a job or a command clears what it changes, as long as it goes through
   the models: a query-builder `update()`/`delete()` or a raw pivot write fires no event, and must
   call `bump()` itself. **If you add a cached GET, check that every write that affects it bumps its
-  group**, or it serves stale data for up to the TTL. Deploys don't clear the cache: entries expire within a minute anyway, and a
-  clear would also drop the rate limiter's counts and the queue's unique locks.
+  group**, or it serves stale data for up to the TTL. Deploys don't clear the cache: entries
+  expire within a minute anyway, and a clear would also drop the rate limiter's counts and the
+  queue's unique locks.
 - **SQLite** runs with WAL, foreign keys on, `synchronous=NORMAL` and a 5 s busy timeout
   (`config/database.php`). One queue worker keeps writers few.
 - **Request cost** (measured on the droplet, 2026-11): a cached read takes about 10 ms, the
@@ -688,9 +752,11 @@ Keep these invariants when editing auth or routes:
 - **CI runs lint, static analysis, tests and build.** GitHub Actions (`.github/workflows/ci.yml`)
   runs, on the backend, `composer audit` + `composer lint` (Pint) + `composer rector:check` +
   `composer analyse` (Larastan level 8 + strict and deprecation rules) + `composer docs` with
-  `git diff --exit-code openapi.json` + `composer test` (Pest). On the frontend: `npm audit --omit=dev`
-  + `npm run gen:types` with `git diff --exit-code src/types/api.generated.ts` + `npm run lint`
-  (ESLint, type-checked, incl. accessibility) + `npm run lint:css` (Stylelint) + `npm run knip` +
+  `git diff --exit-code openapi.json` + `composer test` (Pest). On the frontend:
+  `npm audit --omit=dev` + `npm run gen:types` with
+  `git diff --exit-code src/types/api.generated.ts` + `npm run lint`
+  (ESLint, type-checked, incl. accessibility) + `npm run lint:css` (Stylelint) + `npm run lint:md`
+  (markdownlint over every `.md` in the repo, `.markdownlint-cli2.jsonc`) + `npm run knip` +
   `npm run format:check` (Prettier) + `npm run build` (vue-tsc + Vite) + `npm run test` (Vitest),
   with coverage reported (no hard gate). A third job runs PSScriptAnalyzer over `scripts/*.ps1` with
   `PSScriptAnalyzerSettings.psd1`. The frontend job checks out submodules. Backend feature tests run
@@ -748,9 +814,11 @@ Keep these invariants when editing auth or routes:
 
 ## 11. How to add things (quick recipes)
 
-**A new API endpoint**
-1. Add the route to `routes/api.php`: public reads at the top, writes inside the `auth:sanctum`
-   group (a public write outside it only deliberately, see §7).
+### A new API endpoint
+
+1. Add the route to `routes/api.php`: public reads at the top, an account's own writes in the
+   `auth:sanctum` group, an admin's in the `['auth:sanctum', 'admin']` group (a public write only
+   deliberately, see §7).
 2. For a write with a body, add a Form Request extending `ApiRequest`: `rules()`, `messages()` in
    the contract's wording, and `errorCodes()` for each rule's code and status.
 3. Add the controller action: work through models and services, return a Resource (or
@@ -764,25 +832,30 @@ Keep these invariants when editing auth or routes:
    reaches them.
 6. Run `composer docs` (backend) and `npm run gen:types` (frontend); commit both regenerated files.
 
-**A new media field**
+### A new media field
+
 A **migration** adding the column (and `SchemaTest`'s expectation), the `Media` model (`$fillable`,
 casts), `MediaResource` (+ `#[OAS\Property]` on its schema), `MediaIngest`/`MediaMetadata` if it is
 read at ingest (and `gallery:regenerate` to backfill), then regenerate the spec + types
 (`composer docs`, `npm run gen:types`) so the frontend `Media` type picks it up.
 
-**A new tag-category color**
+### A new tag-category color
+
 Add to `TagCategory::COLORS` (backend) **and** `VALID_COLORS` in `constants/categories.ts`
 (frontend) **and** define the CSS in `frontend/src/style.css`.
 
-**A new background task**
+### A new background task
+
 A job class (`ShouldQueue`) dispatched where the work starts; if it runs on a timetable, one line
 in `routes/console.php`. Writing through the models clears the cached reads it changes (§9).
 
-**A new setting**
+### A new setting
+
 `config/gallery.php` (read raw, as the others are), `.env.example` with a comment, the
 `GalleryConfigTest` expectation, and §3's list above. On the droplet, add it to `.env` and deploy.
 
-**A new frontend page**
+### A new frontend page
+
 Create a view in `views/`, add a lazy route with `meta.title` in `router/index.ts`, fetch via
 `useApi`/a composable, and link it from `AppNavbar.vue`.
 
@@ -794,17 +867,20 @@ Create a view in `views/`, add a lazy route with `meta.title` in `router/index.t
       with a PascalCase code and a human message.
 - [ ] The right status codes (`200`/`201`/`204`), and responses through Resources.
 - [ ] Endpoints/schemas are `#[OAS\*]`-annotated with an `operationId`; `composer docs` +
-      `npm run gen:types` re-run and the regenerated `openapi.json` / `api.generated.ts` committed (CI enforces).
+      `npm run gen:types` re-run and the regenerated `openapi.json` / `api.generated.ts`
+      committed (CI enforces).
 - [ ] Writes go through the models so their events clear the cache (or `bump()` by hand, §9).
-- [ ] New state-changing routes are in the `auth:sanctum` group (or public, consciously).
+- [ ] New state-changing routes are in the admin group, or the account group acting only on the
+      account's own rows (or public, consciously).
 - [ ] Schema changes land in a **new migration**.
 - [ ] Settings are read with `config()`, never `env()` outside `config/`.
 - [ ] Slow or per-file work runs in a queued job.
 - [ ] A feature test covers it; the contract replay stays green, and a deliberate contract change
       is in `divergences.php`.
-- [ ] Frontend: typed (import from `types/`), `<script setup>`, API via `useApi` + `api/endpoints.ts`, no direct `fetch`.
-- [ ] Bump `CACHE_VERSION` (`src/sw/cache.ts`) only if cached entries would be wrong for the new code (a bump
-      empties the thumbnail cache too).
+- [ ] Frontend: typed (import from `types/`), `<script setup>`, API via `useApi` +
+      `api/endpoints.ts`, no direct `fetch`.
+- [ ] Bump `CACHE_VERSION` (`src/sw/cache.ts`) only if cached entries would be wrong for the
+      new code (a bump empties the thumbnail cache too).
 - [ ] Keep the mirrored lists in sync: tag colors (`TagCategory::COLORS` ↔ `constants/categories.ts`),
       file types (`Media::IMAGE_EXTENSIONS`/`VIDEO_EXTENSIONS` ↔ `UploadView.vue`), and upload limits
       (`public/.user.ini` + `.htaccess` ↔ `constants/uploads.ts`).

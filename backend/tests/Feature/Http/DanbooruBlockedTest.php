@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Models\User;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
@@ -47,10 +46,7 @@ function cloudflareBlockPage(): PromiseInterface
  */
 function danbooruAdminHeaders(): array
 {
-    $token = bin2hex(random_bytes(32));
-    User::admin()->tokens()->create(['name' => 'admin', 'token' => hash('sha256', $token), 'abilities' => ['*']]);
-
-    return ['Origin' => 'https://gallery.test', 'Authorization' => "Bearer {$token}"];
+    return ['Origin' => 'https://gallery.test', 'Authorization' => 'Bearer ' . adminUser()->issueToken()];
 }
 
 beforeEach(function (): void {

@@ -2,17 +2,21 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { TooltipProvider } from 'reka-ui'
 import { useGalleryStore } from './stores/gallery'
+import { useAuthStore } from './stores/auth'
 import AppNavbar from './components/AppNavbar.vue'
 import AppFooter from './components/AppFooter.vue'
 import ToastContainer from './components/ToastContainer.vue'
 import ErrorBoundary from './components/ErrorBoundary.vue'
 
 const store = useGalleryStore()
+const auth = useAuthStore()
 const navbarHeight = ref(52)
 let resizeObserver: ResizeObserver | null = null
 
 onMounted(() => {
   void store.initialize()
+  // Signed in from an earlier visit: who, and their lists and settings.
+  void auth.restore()
 
   // Observe navbar height changes
   const navEl = document.querySelector('nav.navbar')

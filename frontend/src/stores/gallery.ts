@@ -38,6 +38,15 @@ export const useGalleryStore = defineStore('gallery', () => {
     galleryResetSeq.value++
   }
 
+  // Bumped when what the listings show has changed for this reader — signing
+  // in or out, blocking or unblocking a tag — so a kept-alive gallery loads
+  // its page again when it comes back on screen.
+  const listingsVersion = ref(0)
+  function listingsChanged() {
+    listingsVersion.value++
+    void refreshTotals()
+  }
+
   // Persist blur preference
   watch(blurThumbnails, (val) => {
     localStorage.setItem('blurThumbnails', String(val))
@@ -167,6 +176,8 @@ export const useGalleryStore = defineStore('gallery', () => {
     error,
     lastViewedItemIds,
     galleryResetSeq,
+    listingsVersion,
+    listingsChanged,
     initialize,
     rememberTags,
     tagById,

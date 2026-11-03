@@ -7,10 +7,13 @@
     php_value max_execution_time 120
 </IfModule>
 
-# .user.ini is PHP's settings, not a page.
-<Files ".user.ini">
+# No dotfile is a page: .user.ini is PHP's settings, and a .env or the like
+# dropped in here by mistake must not be served either. (The real .env sits
+# beside public/, which is all Apache serves.) Only files: a folder such as
+# .well-known still serves what is in it.
+<FilesMatch "^\.">
     Require all denied
-</Files>
+</FilesMatch>
 
 # Browsers find a new service worker by fetching /sw.js again, so no cache may
 # keep it: Cloudflare caches .js files, and served a deploy's old worker for up

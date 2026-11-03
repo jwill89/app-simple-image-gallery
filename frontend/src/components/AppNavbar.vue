@@ -2,16 +2,19 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useGalleryStore } from '../stores/gallery'
-import { useApi, hasAuthToken, clearAuthToken } from '../composables/useApi'
+import { useApi, getErrorMessage, getFieldError } from '../composables/useApi'
 import { useFavoritesStore } from '../stores/favorites'
 import { useToastStore } from '../stores/toast'
+import { useAuthStore } from '../stores/auth'
+import { useAccountStore } from '../stores/account'
 import { endpoints } from '../api/endpoints'
-import type { Media } from '../types'
+import type { Media, SavedSearch } from '../types'
 import { ToolbarRoot, ToolbarButton, Toggle } from 'reka-ui'
 import TagSearchInput from './TagSearchInput.vue'
 import AppMenu from './AppMenu.vue'
 import AppMenuItem from './AppMenuItem.vue'
 import AppTooltip from './AppTooltip.vue'
+import AppDialog from './AppDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -19,11 +22,12 @@ const store = useGalleryStore()
 const api = useApi()
 const favorites = useFavoritesStore()
 const toastStore = useToastStore()
+const auth = useAuthStore()
+const account = useAccountStore()
 
 const burgerActive = ref(false)
 const selectedTags = ref<string[]>([])
 const perPage = ref(40)
-const authenticated = ref(hasAuthToken())
 
 // The bar is opaque, so nothing shows through it — but with infinite scroll the
 // media passes underneath continuously, and a flat 1px border isn't enough
@@ -149,17 +153,59 @@ async function navigateRandom() {
 }
 
 function navigateLogin() {
-  void router.push({ name: 'login' })
+  // Back here once signed in, unless "here" is the sign-in or sign-up page.
+  const redirect = route.name === 'login' || route.name === 'register' ? undefined : route.fullPath
+  void router.push({ name: 'login', query: redirect ? { redirect } : {} })
   burgerActive.value = false
 }
 
-function logout() {
-  // Revoke the token on the server too, so a copy of it stops working. Signed
-  // out here either way: a failed revoke still expires within the day.
-  api.del(endpoints.auth.logout).catch(() => undefined)
-  clearAuthToken()
-  authenticated.value = false
+function navigateTo(name: 'account' | 'users') {
+  selectedTags.value = []
+  void router.push({ name })
   burgerActive.value = false
+}
+
+async function signOut() {
+  burgerActive.value = false
+  await auth.signOut()
+  toastStore.info('You are signed out.', 3000, 'Signed out')
+}
+
+// ── Saved searches ───────────────────────────────────────────────────
+/** The search on screen, as a saved search keeps it ("cat,-dog", or "untagged"). */
+const currentQuery = computed(() =>
+  route.name === 'media-with-tags' && typeof route.params.tags === 'string'
+    ? route.params.tags
+    : '',
+)
+const showSearches = computed(
+  () => auth.isSignedIn && (account.searches.length > 0 || currentQuery.value !== ''),
+)
+const saveOpen = ref(false)
+const saveName = ref('')
+const saveError = ref('')
+
+function runSearch(search: SavedSearch) {
+  void router.push({
+    name: 'media-with-tags',
+    params: { page: 1, perPage: perPage.value, tags: search.query },
+  })
+}
+
+function openSaveSearch() {
+  saveName.value = currentQuery.value === 'untagged' ? 'Untagged' : currentQuery.value
+  saveError.value = ''
+  saveOpen.value = true
+}
+
+async function saveSearch() {
+  try {
+    await account.saveSearch(saveName.value.trim(), currentQuery.value)
+    saveOpen.value = false
+    toastStore.success(`Saved the search "${saveName.value.trim()}".`, 4000, 'Saved searches')
+  } catch (e) {
+    saveError.value = getFieldError(e, 'name') || getErrorMessage(e, 'Could not save the search.')
+  }
 }
 
 function searchWithTags() {
@@ -206,7 +252,6 @@ function onPerPageChange() {
 
 // Sync auth state and route params on navigation
 router.afterEach((to) => {
-  authenticated.value = hasAuthToken()
   if (to.params.tags && to.params.tags !== 'untagged') {
     const tagsParam = to.params.tags as string
     selectedTags.value = tagsParam
@@ -356,17 +401,40 @@ router.afterEach((to) => {
         </div>
       </div>
 
-      <div class="navbar-item">
-        <!-- Admin destinations and sign-out live behind the account menu, so
-               the nav doesn't change shape when you sign in and Logout stops
-               being the loudest thing on screen. -->
-        <AppMenu v-if="authenticated" label="Account">
-          <template #trigger><i class="fa-solid fa-user" /></template>
-          <AppMenuItem icon="fa-solid fa-cloud-arrow-up" @select="navigateUpload">
-            Upload
+      <div v-if="showSearches" class="navbar-item">
+        <AppMenu label="Saved searches">
+          <template #trigger><i class="fa-solid fa-bookmark" /></template>
+          <AppMenuItem
+            v-for="search in account.searches"
+            :key="search.search_id"
+            icon="fa-solid fa-magnifying-glass"
+            @select="runSearch(search)"
+          >
+            {{ search.name }}
           </AppMenuItem>
-          <AppMenuItem icon="fa-solid fa-clone" @select="navigateDupes">Duplicates</AppMenuItem>
-          <AppMenuItem icon="fa-solid fa-right-from-bracket" @select="logout">
+          <AppMenuItem v-if="currentQuery" icon="fa-regular fa-bookmark" @select="openSaveSearch">
+            Save this search…
+          </AppMenuItem>
+        </AppMenu>
+      </div>
+
+      <div class="navbar-item">
+        <!-- The account's destinations and sign-out live behind one menu, so
+               the nav doesn't change shape when you sign in and Sign out isn't
+               the loudest thing on screen. -->
+        <AppMenu v-if="auth.isSignedIn" :label="`Signed in as ${auth.user?.username ?? ''}`">
+          <template #trigger><i class="fa-solid fa-user" /></template>
+          <AppMenuItem icon="fa-solid fa-user-gear" @select="navigateTo('account')">
+            Account
+          </AppMenuItem>
+          <template v-if="auth.isAdmin">
+            <AppMenuItem icon="fa-solid fa-cloud-arrow-up" @select="navigateUpload">
+              Upload
+            </AppMenuItem>
+            <AppMenuItem icon="fa-solid fa-clone" @select="navigateDupes">Duplicates</AppMenuItem>
+            <AppMenuItem icon="fa-solid fa-users" @select="navigateTo('users')">Users</AppMenuItem>
+          </template>
+          <AppMenuItem icon="fa-solid fa-right-from-bracket" @select="signOut">
             Sign out
           </AppMenuItem>
         </AppMenu>
@@ -377,10 +445,36 @@ router.afterEach((to) => {
           @click="navigateLogin"
         >
           <span class="icon"><i class="fa-solid fa-right-to-bracket" /></span>
-          <span class="nav-login-label">Admin</span>
+          <span class="nav-login-label">Sign in</span>
         </ToolbarButton>
       </div>
     </ToolbarRoot>
+
+    <AppDialog v-model:open="saveOpen" title="Save this search" width="24rem">
+      <div class="field">
+        <label class="label" for="save-search-name">Name</label>
+        <input
+          id="save-search-name"
+          v-model="saveName"
+          class="input"
+          maxlength="60"
+          @keyup.enter="saveSearch"
+        />
+        <p class="help">Searches for: {{ currentQuery }}</p>
+        <p v-if="saveError" class="help is-danger" role="alert">{{ saveError }}</p>
+      </div>
+      <template #footer>
+        <button type="button" class="button" @click="saveOpen = false">Cancel</button>
+        <button
+          type="button"
+          class="button is-primary"
+          :disabled="saveName.trim() === ''"
+          @click="saveSearch"
+        >
+          Save
+        </button>
+      </template>
+    </AppDialog>
   </nav>
 </template>
 

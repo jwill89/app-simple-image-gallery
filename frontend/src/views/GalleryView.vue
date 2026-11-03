@@ -177,7 +177,12 @@ function updateStoreItemIds() {
   store.lastViewedItemIds = displayItems.value.map((i) => i.media_id)
 }
 
+// The listings' version this view last loaded: when signing in or out, or
+// blocking a tag, moves it on, the kept-alive view loads again (below).
+let loadedVersion = store.listingsVersion
+
 async function loadPage() {
+  loadedVersion = store.listingsVersion
   if (isInfiniteScroll.value) {
     const start = batchStartPage.value
     accumulatedItems.value = []
@@ -434,6 +439,13 @@ onActivated(() => {
   addListeners()
   setupObserver()
   setupTopObserver()
+  // What this reader sees changed while the view was away (signed in or out,
+  // blocked a tag): its page is out of date.
+  if (loadedVersion !== store.listingsVersion) {
+    restoreOnActivate = false
+    void loadPage()
+    return
+  }
   // Returning from a media detail page: restore the scroll position we left at.
   if (restoreOnActivate) {
     restoreOnActivate = false
@@ -441,6 +453,13 @@ onActivated(() => {
     requestAnimationFrame(() => window.scrollTo(0, y))
   }
 })
+// Signed in or out (from the navbar) while the gallery is on screen.
+watch(
+  () => store.listingsVersion,
+  () => {
+    if (isActive.value) void loadPage()
+  },
+)
 onDeactivated(() => {
   isActive.value = false
   removeListeners()

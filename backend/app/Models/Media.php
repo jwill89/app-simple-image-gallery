@@ -63,14 +63,20 @@ class Media extends Model
      * whole table, and `media_id >= ABS(RANDOM()) % MAX(media_id)` re-evaluates
      * RANDOM() per row, which scans and skews. RANDOM() is masked to 63 bits so
      * no ABS() can overflow. Rows after a gap left by a delete are slightly
-     * more likely, which is fine for a gallery's "random".
+     * more likely, which is fine for a gallery's "random". Media carrying any
+     * of $hiddenTags (an account's blocked tags) is never picked.
+     *
+     * @param list<int> $hiddenTags
      */
-    public static function pickRandom(): ?self
+    public static function pickRandom(array $hiddenTags = []): ?self
     {
         return self::query()
+            ->hidingTags($hiddenTags)
             ->where('media_id', '>=', DB::raw('(SELECT (RANDOM() & 9223372036854775807) % MAX(media_id) FROM media)'))
             ->orderBy('media_id')
-            ->first();
+            ->first()
+            // Past the last item the account may see: start again from the first.
+            ?? self::query()->hidingTags($hiddenTags)->orderBy('media_id')->first();
     }
 
     /** @return BelongsToMany<Tag, $this> */
@@ -173,6 +179,21 @@ class Media extends Model
         }
         if ($exclude !== []) {
             $query->whereNotIn('media.media_id', DB::table('media_tags')->select('media_id')->whereIn('tag_id', $exclude));
+        }
+    }
+
+    /**
+     * Leaves out media carrying any of these tags: what an account has
+     * blocked (User::blockedTagIds()). An empty list leaves everything in.
+     *
+     * @param Builder<self> $query
+     * @param list<int> $tagIds
+     */
+    #[Scope]
+    protected function hidingTags(Builder $query, array $tagIds): void
+    {
+        if ($tagIds !== []) {
+            $query->whereNotIn('media.media_id', DB::table('media_tags')->select('media_id')->whereIn('tag_id', $tagIds));
         }
     }
 

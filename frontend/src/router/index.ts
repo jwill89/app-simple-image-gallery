@@ -131,8 +131,26 @@ const router = createRouter({
     {
       path: '/login',
       name: 'login',
-      meta: { title: 'Admin Login' },
+      meta: { title: 'Sign in' },
       component: () => import('../views/LoginView.vue'),
+    },
+    {
+      path: '/register',
+      name: 'register',
+      meta: { title: 'Create an account' },
+      component: () => import('../views/RegisterView.vue'),
+    },
+    {
+      path: '/account',
+      name: 'account',
+      meta: { title: 'Account' },
+      component: () => import('../views/AccountView.vue'),
+    },
+    {
+      path: '/users',
+      name: 'users',
+      meta: { title: 'Users' },
+      component: () => import('../views/UsersView.vue'),
     },
     {
       path: '/:pathMatch(.*)*',

@@ -14,6 +14,68 @@ release body taken from that version's section below. So bump the version and
 update its section here in the same commit and push a green commit — no manual
 tagging.
 
+## [6.0.0] - 2026-11-03
+
+**Accounts.** Anyone can make one, with a username and password, behind
+Cloudflare Turnstile. An account keeps favorites on the server, in lists of its
+own; blocks tags, whose media then leaves its listings; and saves searches. An
+admin is an account with the admin role, which replaces the shared admin
+password. The HTTP contract moves to **`6.0.0`**.
+
+### Breaking (for running the gallery)
+
+- **`GALLERY_ADMIN_PASSWORD` is gone.** Make your admin account after deploying:
+  `php artisan gallery:user <name> --admin` (it asks for the password). Signing
+  up never makes an admin.
+- **New settings:** `GALLERY_ALLOW_SIGNUP` (on unless `false`), and
+  `CLOUDFLARE_TURNSTILE_SITEKEY` / `CLOUDFLARE_TURNSTILE_SECRET` (no secret, no
+  bot check).
+- Everyone signs in again: the migration replaces the users table.
+
+### Breaking (for API clients — the contract is `6.0.0`)
+
+- **`POST /auth/login` takes `{ username, password, remember? }`** and answers
+  `{ token, user }`. A wrong username or password is `401 InvalidCredentials`;
+  a missing one `400 MissingCredentials`. `AdminNotConfigured` is gone.
+- **The admin's routes refuse other accounts:** `403 Forbidden`, before the
+  route says whether the record it names exists.
+
+### Added
+
+- **Sign-up** (`POST /auth/register`), `GET /auth/me`, and `GET /auth/config`
+  (whether sign-up is open, and Turnstile's site key). Sign-up is limited to 5
+  accounts an hour per IP.
+- **Cloudflare Turnstile** on sign-up and login, when its keys are set. A token
+  passes once, for its own form.
+- **"Keep me signed in"**: a login lasts 30 days instead of one.
+- **Favorite lists** (`/lists`): the heart is the default "Favorites" list,
+  and an account can make others; a media page adds to them. Signing in moves
+  the browser's favorites into the account.
+- **Blocked tags** (`/account/blocked-tags`): media carrying one leaves the
+  account's listings, counts, searches and random picks. Opened directly, it
+  asks before showing.
+- **Saved searches** (`/saved-searches`), from the navbar's bookmark menu.
+- **Account page**: blocked tags, saved searches, a new password, and deleting
+  the account.
+- **Users page** for admins (`/users`): make or unmake admins, set a password,
+  delete an account. There is always one admin left.
+- `php artisan gallery:user`: make an account, make it an admin or not, or set
+  its password.
+
+### Fixed
+
+- **Rate limits counted per Cloudflare server, not per visitor**, so everyone
+  behind one shared a limit: a few wrong passwords could lock out a whole
+  region. Laravel now trusts Cloudflare's address ranges, and only those, to say
+  who the visitor is.
+
+### Security
+
+- `public/` refuses every dotfile, not only `.user.ini`, in case a `.env` or
+  the like is ever put there. (The real `.env` sits beside `public/`, which is
+  all Apache serves, and was never reachable.)
+- Changing a password signs out the account's other logins.
+
 ## [5.0.0] - 2026-11-03
 
 The backend moved from Slim 4 to **Laravel 13**, which changes how the gallery
@@ -582,6 +644,7 @@ release: nearly every endpoint's path, verb, and/or status code changed.
 ## [2.0.2] - 2026-06-30
 
 ### Added
+
 - **PHPStan static analysis** at level 8 (`backend/phpstan.neon`, `composer analyse`),
   with the `phpstan-phpunit` extension and a CI gate. The whole backend is clean at level 8.
 - **`backend/API.md`** — a full HTTP API endpoint reference (auth model, response
@@ -590,6 +653,7 @@ release: nearly every endpoint's path, verb, and/or status code changed.
   (PHP 8.5) on critical repository mutators whose return must be checked.
 
 ### Changed
+
 - Collapsed the pass-through `Collection` layer into unified repositories
   (`Gallery\Repository\TagRepository`, `TagCategoryRepository`, `DanbooruRulesRepository`);
   `MediaCollection` keeps its real file/thumbnail behavior.
@@ -603,23 +667,27 @@ release: nearly every endpoint's path, verb, and/or status code changed.
   pipeline uses the PHP 8.5 pipe operator.
 
 ### Fixed
+
 - `TagRepository::getOrCreate` no longer relies on an implicitly-defined `$name`
   variable on the no-prefix path (surfaced by static analysis; now always initialized).
 
 ## [2.0.1] - 2026-06-28
 
 ### Added
+
 - Automated test suites: **PHPUnit 13** for the backend (`backend/tests/`, run against an
   in-memory SQLite database) and **Vitest** for the frontend (`frontend/src/__tests__/`,
   happy-dom). Both run in CI with coverage reporting.
 
 ### Changed
+
 - Refactored the backend Storage/Collection layers, `RateLimiter`, `DanbooruTagger`, and
   `DuplicateScanner` to **constructor dependency injection**. The PHP-DI container
   (`backend/api/dependencies.php`) now supplies `PDO` and autowires the graph for both the API
   and the CLI scripts, making the data layer unit-testable without touching the live database.
 
 ### Fixed
+
 - `AbstractStructure` array construction (e.g. `new Media([...])`) now works — properties are
   assigned via reflection, fixing a latent error when the base class set a subclass's private
   properties.

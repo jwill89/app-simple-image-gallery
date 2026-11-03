@@ -98,23 +98,41 @@ async function parseApiError(response: Response, _url: string): Promise<ApiError
   return new ApiError(response.status, code, message, fields)
 }
 
+const TOKEN_KEY = 'auth_token'
+
 /**
- * Get the stored auth token for protected endpoints.
+ * The login token. A "keep me signed in" login is kept in localStorage, where
+ * it lasts its 30 days across browser restarts; any other in sessionStorage,
+ * gone with the tab, as the server's token is within the day.
  */
 function getAuthToken(): string | null {
-  return sessionStorage.getItem('auth_token')
+  return sessionStorage.getItem(TOKEN_KEY) ?? localStorage.getItem(TOKEN_KEY)
 }
 
-export function setAuthToken(token: string): void {
-  sessionStorage.setItem('auth_token', token)
+let onTokenCleared: (() => void) | null = null
+
+/**
+ * Runs whenever the token goes: signed out here, or a 401 found it expired
+ * or revoked. The auth store uses it to forget the account.
+ */
+export function whenAuthTokenCleared(handler: () => void): void {
+  onTokenCleared = handler
+}
+
+export function setAuthToken(token: string, remember = false): void {
+  sessionStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(TOKEN_KEY)
+  ;(remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, token)
 }
 
 export function clearAuthToken(): void {
-  sessionStorage.removeItem('auth_token')
+  sessionStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(TOKEN_KEY)
+  onTokenCleared?.()
 }
 
 export function hasAuthToken(): boolean {
-  return !!sessionStorage.getItem('auth_token')
+  return getAuthToken() !== null
 }
 
 /**
@@ -166,11 +184,12 @@ export function useApi() {
     })
   }
 
-  function put<T>(url: string, body: unknown): Promise<T | undefined> {
+  /** A PUT with a body, or without one for "add this" (a list item, a blocked tag). */
+  function put<T>(url: string, body?: unknown): Promise<T | undefined> {
     return request<T>(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: body === undefined ? undefined : JSON.stringify(body),
     })
   }
 

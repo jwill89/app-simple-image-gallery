@@ -1,12 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import {
-  useApi,
-  getErrorMessage,
-  getErrorCode,
-  getErrorStatus,
-  hasAuthToken,
-} from '../composables/useApi'
+import { useApi, getErrorMessage, getErrorCode, getErrorStatus } from '../composables/useApi'
 import { useToastStore } from '../stores/toast'
 import { useTagSearch } from '../composables/useTagSearch'
 import { endpoints } from '../api/endpoints'
@@ -21,6 +15,7 @@ import EmptyState from '../components/EmptyState.vue'
 import AppDialog from '../components/AppDialog.vue'
 import AppTooltip from '../components/AppTooltip.vue'
 import PageHeader from '../components/PageHeader.vue'
+import { useAuthStore } from '../stores/auth'
 
 const props = defineProps<{
   tagId: number
@@ -29,7 +24,9 @@ const props = defineProps<{
 const api = useApi()
 const toastStore = useToastStore()
 
-const authenticated = ref(hasAuthToken())
+const auth = useAuthStore()
+// Editing is an admin's.
+const authenticated = computed(() => auth.isAdmin)
 const loading = ref(false)
 const loadFailed = ref(false)
 

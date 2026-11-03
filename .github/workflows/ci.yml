@@ -115,6 +115,9 @@ jobs:
       - name: Lint styles (Stylelint, incl. the palette rule)
         run: npm run lint:css
 
+      - name: Lint the Markdown docs (markdownlint, .markdownlint-cli2.jsonc)
+        run: npm run lint:md
+
       - name: Unused files, exports and dependencies (Knip)
         run: npm run knip
 
