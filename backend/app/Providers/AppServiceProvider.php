@@ -19,9 +19,18 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Passkeys\Passkey;
+use Laravel\Passkeys\Passkeys;
 
 class AppServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        // Passkeys go through PasskeyController, under /api with the rest; the
+        // package's own routes would keep the challenge in a web session.
+        Passkeys::ignoreRoutes();
+    }
+
     public function boot(): void
     {
         // config/cors.php and config/filesystems.php are read before
@@ -47,6 +56,7 @@ class AppServiceProvider extends ServiceProvider
             'user_id' => User::class,
             'list_id' => FavoriteList::class,
             'search_id' => SavedSearch::class,
+            'passkey_id' => Passkey::class,
         ];
         foreach ($models as $parameter => $model) {
             Route::pattern($parameter, '[0-9]+');

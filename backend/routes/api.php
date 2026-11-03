@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\DuplicateController;
 use App\Http\Controllers\Api\FavoriteListController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\MediaTagController;
+use App\Http\Controllers\Api\PasskeyController;
 use App\Http\Controllers\Api\SavedSearchController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\TagCategoryController;
@@ -24,10 +25,10 @@ use Illuminate\Support\Facades\Route;
 | API routes (prefixed /api)
 |--------------------------------------------------------------------------
 |
-| API 6. The recordings in tests/Fixtures/contract/ say how the Slim app
+| API 7. The recordings in tests/Fixtures/contract/ say how the Slim app
 | answered API 4; tests/Feature/Contract/ContractTest.php replays them, and
-| divergences.php lists what API 5 and 6 answer differently. The api group
-| adds the 120-a-minute rate limiter.
+| divergences.php lists what API 5 to 7 answer differently. The api group
+| keeps the session (bootstrap/app.php) and adds the 120-a-minute rate limiter.
 |
 | A path id is digits and names a record that exists, or the request is a 404
 | (AppServiceProvider binds each {…_id} to its model).
@@ -36,8 +37,8 @@ use Illuminate\Support\Facades\Route;
 
 // Public reads. Each answers with an ETag and Cache-Control: no-cache, so a
 // browser keeps the body and asks again with If-None-Match: an unchanged
-// answer is a 304 with no body. A signed-in account's token, when sent, still
-// counts: its blocked tags leave the media listings (App\Support\Viewer).
+// answer is a 304 with no body. A signed-in browser's session still counts:
+// its account's blocked tags leave the media listings (App\Support\Viewer).
 Route::middleware('cache.headers:no_cache;private;etag')->group(static function (): void {
     Route::get('/version', [SystemController::class, 'version']);
 
@@ -66,8 +67,11 @@ Route::get('/docs', [SystemController::class, 'docs']);
 Route::get('/media/random', [MediaController::class, 'random']);
 
 Route::get('/auth/config', [AuthController::class, 'config']);
+Route::get('/auth/session', [AuthController::class, 'session']);
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/passkey/options', [PasskeyController::class, 'signInOptions']);
+Route::post('/auth/passkey', [PasskeyController::class, 'signIn']);
 
 // A read that is a POST only to carry a long list of ids.
 Route::post('/media/by-ids', [MediaController::class, 'byIds']);
@@ -77,15 +81,19 @@ Route::patch('/media/{media_id}/tags', [MediaTagController::class, 'store']);
 Route::delete('/media/{media_id}/tags/{tag_id}', [MediaTagController::class, 'destroy']);
 
 // An account's own things: any signed-in account.
-Route::middleware('auth:sanctum')->group(static function (): void {
-    Route::delete('/auth/token', [AuthController::class, 'logout']);
-    Route::get('/auth/me', [AuthController::class, 'me']);
+Route::middleware('auth')->group(static function (): void {
+    Route::delete('/auth/session', [AuthController::class, 'logout']);
 
     Route::patch('/account/password', [AccountController::class, 'changePassword']);
     Route::delete('/account', [AccountController::class, 'destroy']);
     Route::get('/account/blocked-tags', [AccountController::class, 'blockedTags']);
     Route::put('/account/blocked-tags/{tag_id}', [AccountController::class, 'blockTag']);
     Route::delete('/account/blocked-tags/{tag_id}', [AccountController::class, 'unblockTag']);
+    Route::get('/account/passkeys', [PasskeyController::class, 'index']);
+    Route::post('/account/passkeys/options', [PasskeyController::class, 'addOptions']);
+    Route::post('/account/passkeys', [PasskeyController::class, 'store']);
+    Route::patch('/account/passkeys/{passkey_id}', [PasskeyController::class, 'update']);
+    Route::delete('/account/passkeys/{passkey_id}', [PasskeyController::class, 'destroy']);
 
     Route::get('/lists', [FavoriteListController::class, 'index']);
     Route::post('/lists', [FavoriteListController::class, 'store']);
@@ -105,7 +113,7 @@ Route::middleware('auth:sanctum')->group(static function (): void {
 });
 
 // Every other write needs an admin account.
-Route::middleware(['auth:sanctum', 'admin'])->group(static function (): void {
+Route::middleware(['auth', 'admin'])->group(static function (): void {
     Route::get('/users', [UserController::class, 'index']);
     Route::patch('/users/{user_id}', [UserController::class, 'update']);
     Route::delete('/users/{user_id}', [UserController::class, 'destroy']);

@@ -43,7 +43,8 @@ test('it makes an account an admin or not, but keeps one admin', function (): vo
 
 test('it sets a new password and signs the account out everywhere', function (): void {
     $user = User::factory()->create(['username' => 'reader']);
-    $user->issueToken();
+    $user->setRememberToken('kept-signed-in');
+    $user->save();
 
     command('gallery:user reader --password')
         ->expectsQuestion('Password', 'brand-new-one')
@@ -51,5 +52,5 @@ test('it sets a new password and signs the account out everywhere', function ():
         ->assertSuccessful();
 
     expect(Hash::check('brand-new-one', $user->refresh()->password))->toBeTrue()
-        ->and($user->tokens()->count())->toBe(0);
+        ->and($user->getRememberToken())->not->toBe('kept-signed-in');
 });

@@ -5,10 +5,12 @@ declare(strict_types=1);
 use App\Exceptions\ApiException;
 use App\Http\Requests\ApiRequest;
 use App\Models\User;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Route;
+use Tests\Support\TestBrowser;
 
 use function Pest\Laravel\getJson;
 use function Pest\Laravel\postJson;
@@ -50,44 +52,52 @@ beforeEach(function (): void {
 
     Route::middleware('api')->prefix('api')->group(function (): void {
         Route::get('/test/public', fn() => new JsonResponse(['ok' => true]));
-        Route::post('/test/protected', fn() => new JsonResponse(['ok' => true]))->middleware('auth:sanctum');
+        Route::post('/test/protected', fn() => new JsonResponse(['ok' => true]))->middleware('auth');
         Route::post('/test/validated', fn(ExampleApiRequest $request) => new JsonResponse($request->validated()));
         Route::get('/test/broken', fn() => throw new RuntimeException('Something broke'));
     });
 });
 
-/** A login's token for the admin; $expiresAt ends it sooner (or already). */
-function adminToken(?Carbon $expiresAt = null): string
-{
-    $token = adminUser()->issueToken();
-    if ($expiresAt !== null) {
-        adminUser()->tokens()->latest('id')->firstOrFail()->forceFill(['expires_at' => $expiresAt])->save();
-    }
-
-    return $token;
-}
-
-test('a write without a token is 401 Unauthorized, and still counted by the rate limiter', function (): void {
+test('a write not signed in is 401 Unauthorized, and still counted by the rate limiter', function (): void {
     withHeaders(['Origin' => ALLOWED])->postJson('/api/test/protected')
         ->assertStatus(401)
         ->assertExactJson(['error' => 'Unauthorized', 'message' => 'Authentication is required. Please log in and try again.'])
         ->assertHeader('X-RateLimit-Remaining', '119');
+    // There are no bearer tokens.
+    withHeaders(['Origin' => ALLOWED, 'Authorization' => 'Bearer ' . str_repeat('a', 64)])->postJson('/api/test/protected')->assertStatus(401);
 });
 
-test('an expired token, or one without the Bearer scheme, is 401', function (): void {
-    $expired = adminToken(now()->subMinute());
-    $current = adminToken();
-
-    withHeaders(['Origin' => ALLOWED, 'Authorization' => "Bearer {$expired}"])->postJson('/api/test/protected')->assertStatus(401);
-    withHeaders(['Origin' => ALLOWED, 'Authorization' => "Token {$current}"])->postJson('/api/test/protected')->assertStatus(401);
-});
-
-test('a token from login is accepted', function (): void {
+test('a browser that logged in passes, by its session cookie alone', function (): void {
     User::factory()->create(['username' => 'someone', 'password' => 'secret-password']);
-    $token = withHeaders(['Origin' => ALLOWED])->postJson('/api/auth/login', ['username' => 'someone', 'password' => 'secret-password'])->assertOk()->json('token');
+    $browser = new TestBrowser();
 
-    expect($token)->toBeString()->toMatch('/^[0-9a-f]{64}$/');
-    withHeaders(['Origin' => ALLOWED, 'Authorization' => "Bearer {$token}"])->postJson('/api/test/protected')->assertOk();
+    $browser->send('POST', '/api/test/protected')->assertStatus(401);
+    $browser->send('POST', '/api/auth/login', ['username' => 'someone', 'password' => 'secret-password'])->assertOk();
+    $browser->send('POST', '/api/test/protected')->assertOk();
+    new TestBrowser()->send('POST', '/api/test/protected')->assertStatus(401);
+});
+
+test('a write the browser doesn\'t mark same-origin is refused, even from an allowed origin', function (): void {
+    // PreventRequestForgery lets every request through in tests; here it
+    // checks them as it does on the server.
+    app()->bind(PreventRequestForgery::class, static fn(Application $app): PreventRequestForgery => new class ($app, $app->make('encrypter')) extends PreventRequestForgery {
+        protected function runningUnitTests(): bool
+        {
+            return false;
+        }
+    });
+    $from = static fn(?string $site) => withHeaders(['Origin' => ALLOWED, ...($site === null ? [] : ['Sec-Fetch-Site' => $site])])->postJson('/api/test/protected');
+
+    $from('cross-site')
+        ->assertStatus(403)
+        ->assertExactJson(['error' => 'ForbiddenOrigin', 'message' => 'The request origin is not allowed.'])
+        ->assertHeaderMissing('X-RateLimit-Remaining');
+    $from('same-site')->assertStatus(403);
+    // A client that doesn't say, as no current browser is.
+    $from(null)->assertStatus(403);
+    // Past the check: not signed in.
+    $from('same-origin')->assertStatus(401);
+    getJson('/api/test/public')->assertOk();
 });
 
 test('the origin check refuses a write before authentication and the rate limiter see it', function (): void {
@@ -102,13 +112,11 @@ test('the origin check refuses a write before authentication and the rate limite
 });
 
 test('without an Origin, an allowed Referer passes the origin check, port included', function (): void {
-    $token = adminToken();
-
-    withHeaders(['Referer' => 'http://localhost:5173/tags?page=2', 'Authorization' => "Bearer {$token}"])->postJson('/api/test/protected')->assertOk();
-    withHeaders(['Referer' => ALLOWED . '/tags', 'Authorization' => "Bearer {$token}"])->postJson('/api/test/protected')->assertOk();
+    withHeaders(['Referer' => 'http://localhost:5173/tags?page=2'])->actingAs(adminUser())->postJson('/api/test/protected')->assertOk();
+    withHeaders(['Referer' => ALLOWED . '/tags'])->actingAs(adminUser())->postJson('/api/test/protected')->assertOk();
 });
 
-test('a read needs neither an Origin nor a token', function (): void {
+test('a read needs neither an Origin nor a sign-in', function (): void {
     getJson('/api/test/public')->assertOk()->assertHeader('X-RateLimit-Remaining', '119');
 });
 
@@ -159,8 +167,7 @@ test('an API error is logged only when it is the server\'s (5xx), not the client
 });
 
 test('an ApiRequest fails with its first broken rule\'s code, status and message', function (): void {
-    $token = adminToken();
-    $post = static fn(array $body) => withHeaders(['Origin' => ALLOWED, 'Authorization' => "Bearer {$token}"])->postJson('/api/test/validated', $body);
+    $post = static fn(array $body) => withHeaders(['Origin' => ALLOWED])->postJson('/api/test/validated', $body);
 
     $post([])->assertStatus(400)->assertExactJson(['error' => 'InvalidName', 'message' => 'Name is required.', 'errors' => ['name' => ['Name is required.']]]);
     $post(['name' => 'too long'])->assertStatus(422)->assertExactJson(['error' => 'NameTooLong', 'message' => 'Name must be 5 characters or fewer.', 'errors' => ['name' => ['Name must be 5 characters or fewer.']]]);

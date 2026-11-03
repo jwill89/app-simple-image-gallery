@@ -20,7 +20,6 @@ use Tests\Support\ContractFixtureSeeder;
 
 use function Pest\Laravel\getJson;
 use function Pest\Laravel\seed;
-use function Pest\Laravel\withHeaders;
 
 // An upload stays quick: it adds the file, and queues what can be slow, the
 // thumbnails (ffmpeg) and the Danbooru lookup, whose outcome
@@ -52,7 +51,7 @@ function uploadTinyPng(bool $fetchTags): TestResponse
     $copy = dirname(config()->string('gallery.media_path')) . '/tiny.png';
     File::copy(ContractFixture::path('uploads/tiny.png'), $copy);
 
-    return withHeaders(adminHeaders())->post('/api/media', [
+    return asAdmin()->post('/api/media', [
         'files' => [new UploadedFile($copy, 'tiny.png', 'image/png', null, true)],
         ...($fetchTags ? ['fetch_tags' => '1'] : []),
     ]);

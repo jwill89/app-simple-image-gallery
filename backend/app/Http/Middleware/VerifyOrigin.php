@@ -18,7 +18,7 @@ use Symfony\Component\HttpFoundation\Response;
  * client working around CORS, such as curl.
  *
  * Global, ahead of the rate limiter and authentication, so a refused request
- * is neither counted nor told whether its token was good.
+ * is neither counted nor told whether its session was signed in.
  */
 final class VerifyOrigin
 {

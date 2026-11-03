@@ -6,6 +6,7 @@ namespace Tests\Support;
 
 use App\Http\Resources\FavoriteListResource;
 use App\Http\Resources\MediaResource;
+use App\Http\Resources\PasskeyResource;
 use App\Http\Resources\SavedSearchResource;
 use App\Http\Resources\TagCategoryResource;
 use App\Http\Resources\TagResource;
@@ -37,6 +38,7 @@ final class OpenApiDocument
         UserResource::class,
         FavoriteListResource::class,
         SavedSearchResource::class,
+        PasskeyResource::class,
     ];
 
     public static function builder(): Builder

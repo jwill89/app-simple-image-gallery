@@ -182,7 +182,7 @@ final class TagController extends Controller
         operationId: 'createTag',
         summary: 'Create a tag',
         tags: ['Tags'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         requestBody: new OAS\RequestBody(
             required: true,
             content: new OAS\MediaType\Json(
@@ -218,7 +218,7 @@ final class TagController extends Controller
         summary: 'Update a tag (the fields given)',
         description: 'PUT is accepted too, and also leaves out fields as they are.',
         tags: ['Tags'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         requestBody: new OAS\RequestBody(
             required: true,
@@ -254,7 +254,7 @@ final class TagController extends Controller
         operationId: 'deleteTag',
         summary: 'Delete a tag',
         tags: ['Tags'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Deleted'),
@@ -266,7 +266,7 @@ final class TagController extends Controller
         operationId: 'migrateAndDeleteTag',
         summary: 'Move a tag\'s media to another tag, then delete it',
         tags: ['Tags'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [
             new OAS\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
             new OAS\Parameter(name: 'target_tag_id', in: 'path', required: true, description: 'Move media to this tag before deleting.', schema: new OAS\Schema(type: 'integer')),
@@ -306,7 +306,7 @@ final class TagController extends Controller
         operationId: 'migrateTag',
         summary: 'Move a tag\'s media to another tag, keeping it',
         tags: ['Tags'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         requestBody: new OAS\RequestBody(
             required: true,

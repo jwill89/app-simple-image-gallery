@@ -37,7 +37,7 @@ final class FavoriteListController extends Controller
         operationId: 'listFavoriteLists',
         summary: 'Your lists',
         tags: ['Lists'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         responses: [
             new OAS\Response(response: 200, description: 'The lists', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/FavoriteList'))),
         ],
@@ -60,7 +60,7 @@ final class FavoriteListController extends Controller
         operationId: 'createFavoriteList',
         summary: 'Make a list',
         tags: ['Lists'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         requestBody: new OAS\RequestBody(
             required: true,
             content: new OAS\MediaType\Json(required: ['name'], properties: [new OAS\Property(property: 'name', schema: new OAS\Schema(type: 'string', maxLength: 60))]),
@@ -86,7 +86,7 @@ final class FavoriteListController extends Controller
         operationId: 'renameFavoriteList',
         summary: 'Rename a list',
         tags: ['Lists'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'list_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         requestBody: new OAS\RequestBody(
             required: true,
@@ -115,7 +115,7 @@ final class FavoriteListController extends Controller
         operationId: 'deleteFavoriteList',
         summary: 'Delete a list',
         tags: ['Lists'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'list_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Deleted'),
@@ -141,7 +141,7 @@ final class FavoriteListController extends Controller
         operationId: 'favoriteListIds',
         summary: 'The media ids in a list',
         tags: ['Lists'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'list_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 200, description: 'The ids', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(type: 'integer'))),
@@ -163,7 +163,7 @@ final class FavoriteListController extends Controller
         operationId: 'favoriteListMedia',
         summary: 'A page of a list',
         tags: ['Lists'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [
             new OAS\Parameter(name: 'list_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
             new OAS\Parameter(name: 'page', in: 'query', required: false, schema: new OAS\Schema(type: 'integer', default: 1, minimum: 1)),
@@ -200,7 +200,7 @@ final class FavoriteListController extends Controller
         operationId: 'addToFavoriteList',
         summary: 'Add media to a list',
         tags: ['Lists'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [
             new OAS\Parameter(name: 'list_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
             new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
@@ -227,7 +227,7 @@ final class FavoriteListController extends Controller
         operationId: 'addManyToFavoriteList',
         summary: 'Add many media to a list',
         tags: ['Lists'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'list_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         requestBody: new OAS\RequestBody(
             required: true,
@@ -263,7 +263,7 @@ final class FavoriteListController extends Controller
         operationId: 'removeFromFavoriteList',
         summary: 'Take media out of a list',
         tags: ['Lists'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [
             new OAS\Parameter(name: 'list_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
             new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
@@ -289,7 +289,7 @@ final class FavoriteListController extends Controller
         operationId: 'listsHoldingMedia',
         summary: 'Your lists that hold this media',
         tags: ['Lists'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 200, description: 'The list ids', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(type: 'integer'))),

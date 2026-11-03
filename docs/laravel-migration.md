@@ -595,6 +595,16 @@ recorded login cases are superseded in `divergences.php`, pointing at
 `is_admin` set. The rest of the contract is unchanged. AGENTS.md §5 to §7 describe the accounts, and
 the CHANGELOG lists every change.
 
+### API 7
+
+Sessions and passkeys (7.0.0, 2026-11-03) ended the 24-hour bearer token this plan kept from the
+Slim app, Sanctum with it. The token stayed through the move only because it was part of the
+contract; with accounts, keeping it in the browser's storage let any script on the page copy a
+login. A browser now signs in with Laravel's HttpOnly session cookie, and the API group keeps the
+session. The recordings still carry the recorder's `Authorization: Bearer <admin-token>`; the
+replay acts as the admin for a request that sends it, and as no one for any other token, which is
+what the recordings expect of an expired or malformed one. The rest of the contract is unchanged.
+
 ### Risks
 
 | Risk | Guard |

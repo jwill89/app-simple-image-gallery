@@ -136,7 +136,7 @@ final class MediaTagController extends Controller
         operationId: 'importDanbooruTags',
         summary: 'Import Danbooru tags for a media item',
         tags: ['Media'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         requestBody: new OAS\RequestBody(
             required: false,

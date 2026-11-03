@@ -1,14 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import {
-  useApi,
-  setAuthToken,
-  clearAuthToken,
-  hasAuthToken,
-  whenAuthTokenCleared,
-} from '../composables/useApi'
+import { useApi, getErrorStatus, whenUnauthorized } from '../composables/useApi'
 import { endpoints } from '../api/endpoints'
-import type { AuthConfig, LoginResponse, User } from '../types'
+import type { AuthConfig, SessionResponse, SignInResponse, User } from '../types'
 import { useAccountStore } from './account'
 import { useFavoritesStore } from './favorites'
 import { useGalleryStore } from './gallery'
@@ -23,10 +17,11 @@ export interface Credentials {
 }
 
 /**
- * Who is signed in, if anyone. Signing in loads the account's own things —
- * its lists, blocked tags and saved searches — and signing out (or a 401
- * finding the token expired) forgets them, so the app is back to what any
- * visitor sees.
+ * Who is signed in, if anyone. The server keeps that in a session cookie the
+ * page can't read, so the store asks once as the app starts. Signing in loads
+ * the account's own things — its lists, blocked tags and saved searches — and
+ * signing out (or a 401: the session ran out, or ended elsewhere) forgets
+ * them, so the app is back to what any visitor sees.
  */
 export const useAuthStore = defineStore('auth', () => {
   const api = useApi()
@@ -36,21 +31,14 @@ export const useAuthStore = defineStore('auth', () => {
   const isSignedIn = computed(() => user.value !== null)
   const isAdmin = computed(() => user.value?.is_admin === true)
 
-  whenAuthTokenCleared(() => {
-    if (user.value === null) return
-    user.value = null
-    useFavoritesStore().signedOut()
-    useAccountStore().clear()
-    useGalleryStore().listingsChanged()
-  })
+  whenUnauthorized(sessionEnded)
 
-  /** At start-up: the account the stored token signs in, if it still does. */
+  /** At start-up: the account this browser's session signs in, if any. */
   async function restore(): Promise<void> {
-    if (!hasAuthToken()) return
     try {
-      user.value = (await api.get<User>(endpoints.auth.me)) ?? null
+      user.value = (await api.get<SessionResponse>(endpoints.auth.session))?.user ?? null
     } catch {
-      // A 401 has cleared the token; anything else leaves it for next time.
+      // Signed out, or the server is out of reach: browse as anyone may.
       user.value = null
     }
     if (user.value !== null) await loadAccount()
@@ -66,26 +54,42 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function signIn(credentials: Credentials): Promise<void> {
-    await start(await api.post<LoginResponse>(endpoints.auth.login, credentials), credentials)
+    await signedIn(await api.post<SignInResponse>(endpoints.auth.login, credentials))
   }
 
   async function register(credentials: Credentials): Promise<void> {
-    await start(await api.post<LoginResponse>(endpoints.auth.register, credentials), credentials)
+    await signedIn(await api.post<SignInResponse>(endpoints.auth.register, credentials))
   }
 
+  /**
+   * Sign this browser out. Only the server can end the session (its cookie is
+   * out of the page's reach), so a failure is thrown, and the app stays signed
+   * in rather than pretending; a 401 means it already was signed out.
+   */
   async function signOut(): Promise<void> {
-    // Revoked on the server too, so a copy of the token stops working. Signed
-    // out here either way: a failed revoke still expires on its own.
-    await api.del(endpoints.auth.logout).catch(() => undefined)
-    clearAuthToken()
+    try {
+      await api.del(endpoints.auth.session)
+    } catch (e) {
+      if (getErrorStatus(e) !== 401) throw e
+    }
+    sessionEnded()
   }
 
-  async function start(result: LoginResponse | undefined, credentials: Credentials): Promise<void> {
-    if (!result) throw new Error('The server sent no login token.')
-    setAuthToken(result.token, credentials.remember)
+  /** A sign-in's answer: the account this browser's session now names. */
+  async function signedIn(result: SignInResponse | undefined): Promise<void> {
+    if (!result) throw new Error('The server did not say who signed in.')
     user.value = result.user
     useGalleryStore().listingsChanged()
     await loadAccount()
+  }
+
+  /** The server has ended this browser's session: forget the account here. */
+  function sessionEnded(): void {
+    if (user.value === null) return
+    user.value = null
+    useFavoritesStore().signedOut()
+    useAccountStore().clear()
+    useGalleryStore().listingsChanged()
   }
 
   async function loadAccount(): Promise<void> {
@@ -108,7 +112,9 @@ export const useAuthStore = defineStore('auth', () => {
     restore,
     loadConfig,
     signIn,
+    signedIn,
     register,
     signOut,
+    sessionEnded,
   }
 })

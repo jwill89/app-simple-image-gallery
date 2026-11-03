@@ -30,7 +30,7 @@ final class UserController extends Controller
         operationId: 'listUsers',
         summary: 'List accounts',
         tags: ['Users'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         responses: [
             new OAS\Response(response: 200, description: 'The accounts', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/User'))),
             new OAS\Response(response: 403, description: 'Forbidden', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
@@ -50,7 +50,7 @@ final class UserController extends Controller
         operationId: 'updateUser',
         summary: 'Change an account',
         tags: ['Users'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'user_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         requestBody: new OAS\RequestBody(
             required: true,
@@ -75,11 +75,10 @@ final class UserController extends Controller
         if ($request->has('is_admin')) {
             $user->is_admin = $request->boolean('is_admin');
         }
-        if ($request->has('password')) {
-            $user->password = $request->string('password')->toString();
-            $user->tokens()->delete();
-        }
         $user->save();
+        if ($request->has('password')) {
+            $user->setNewPassword($request->string('password')->toString());
+        }
         Log::info('Account changed by an admin', ['user_id' => $user->id, 'by' => $request->user()?->getAuthIdentifier()]);
 
         return new UserResource($user);
@@ -94,7 +93,7 @@ final class UserController extends Controller
         operationId: 'deleteUser',
         summary: 'Delete an account',
         tags: ['Users'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'user_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Deleted'),
@@ -108,7 +107,7 @@ final class UserController extends Controller
             throw new ApiException('LastAdmin', 409, 'The last admin account can\'t be deleted. Make another admin first.');
         }
 
-        $user->tokens()->delete();
+        // Its sessions end with it: they name an account that no longer exists.
         $user->delete();
         Log::info('Account deleted by an admin', ['user_id' => $user->id, 'by' => $request->user()?->getAuthIdentifier()]);
 

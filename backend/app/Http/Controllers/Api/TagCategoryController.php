@@ -46,7 +46,7 @@ final class TagCategoryController extends Controller
         operationId: 'createTagCategory',
         summary: 'Create a tag category',
         tags: ['Tag Categories'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(
             required: ['category_name'],
             properties: [
@@ -80,7 +80,7 @@ final class TagCategoryController extends Controller
         summary: 'Update a tag category (the fields given)',
         description: 'PUT is accepted too, and also leaves out fields as they are.',
         tags: ['Tag Categories'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'category_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(
             properties: [
@@ -113,7 +113,7 @@ final class TagCategoryController extends Controller
         operationId: 'deleteTagCategory',
         summary: 'Delete a tag category',
         tags: ['Tag Categories'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'category_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Deleted'),

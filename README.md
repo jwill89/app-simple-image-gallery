@@ -10,7 +10,7 @@ searches, and admin-gated uploads.
 > - **API reference** — the live contract is the OpenAPI 3.1 spec at `/api/openapi.json`
 >   ([backend/openapi.json](backend/openapi.json) in the repo), browsable at **`/api/docs`** (Scalar).
 > - **[CONTRIBUTING.md](CONTRIBUTING.md)** — local setup, coding standards, and PR flow.
-> - **[CHANGELOG.md](CHANGELOG.md)** — release history (current version: **6.0.0**).
+> - **[CHANGELOG.md](CHANGELOG.md)** — release history (current version: **7.0.0**).
 
 ---
 
@@ -29,8 +29,8 @@ searches, and admin-gated uploads.
   outcome of each file and of its Danbooru lookup.
 - **Nightly ingest** — files dropped into the media folder are added every night.
 - **Accounts** — open sign-up and login by username and password, with Cloudflare Turnstile
-  to keep bots out. An account keeps favorites in lists of its own, hides media carrying the tags
-  it blocks, and saves searches. Without one, favorites stay in the browser.
+  to keep bots out, or by passkey. An account keeps favorites in lists of its own, hides media
+  carrying the tags it blocks, and saves searches. Without one, favorites stay in the browser.
 - **Admin actions** — uploads, deletes, tag management, the duplicate scan and the Users page
   belong to admin accounts.
 - **PWA caching** — a service worker caches thumbnails and prefetches the next page.
@@ -66,6 +66,9 @@ searches, and admin-gated uploads.
    `.env.example`):
 
    ```dotenv
+   # The address people use. Over https, the session cookie is Secure; passkeys belong to its host.
+   APP_URL=https://gallery.example.com
+
    # The SQLite database: an absolute path.
    DB_DATABASE=/var/www/gallery.example.com/db/gallery.db
 
@@ -226,12 +229,18 @@ Do **not** edit a migration that has already run in production — add a new one
   always one admin left.
 - Set the Turnstile keys on a public site, and close sign-up (`GALLERY_ALLOW_SIGNUP=false`) if
   you don't want new accounts.
-- Keep `GALLERY_ALLOWED_ORIGINS` tight — it backs both CORS and the CSRF
-  origin check. State-changing requests with no `Origin`/`Referer` are rejected.
-- Login is rate-limited (10 attempts / 5 minutes per IP), and sign-up (5 accounts an hour per
-  IP), on top of the global request limiter (120 a minute per IP). Behind Cloudflare, the IP is
-  the visitor's: only Cloudflare's own addresses are trusted to say who it is. Login tokens are
-  stored hashed and expire after a day, or 30 days with "keep me signed in".
+- Keep `GALLERY_ALLOWED_ORIGINS` tight — it backs CORS, the CSRF origin check and the origins
+  passkeys answer from. State-changing requests with no `Origin`/`Referer` are rejected, and so
+  is any the browser doesn't mark same-origin.
+- Set `APP_URL` to the address people use, over https: it makes the session cookie Secure, and
+  passkeys belong to its host.
+- A browser signs in with an HttpOnly session cookie, which the page's scripts can't read. It
+  lasts until the browser closes, or 30 days with "keep me signed in"; a new password signs the
+  account out everywhere else.
+- Login is rate-limited (10 attempts / 5 minutes per IP, passkey sign-ins included), and sign-up
+  (5 accounts an hour per IP), on top of the global request limiter (120 a minute per IP). Behind
+  Cloudflare, the IP is the visitor's: only Cloudflare's own addresses are trusted to say who it
+  is.
 - Serve only `backend/public/`; the `.env`, the code and the data sit outside it.
 - `backend/.env` and the database are gitignored and must never be committed.
 

@@ -2,8 +2,8 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Gallery API",
-        "description": "Internal HTTP API for the self-hosted media gallery — a **hybrid REST-RPC**\ninterface served under the `/api` base path. All responses are JSON.\n\n**Conventions**\n- Reads return `200` with the resource or collection.\n- Creates return `201` with the created resource.\n- Updates (`PUT`/`PATCH`) return `200` with the updated resource.\n- Deletes return `204` with no body.\n- Non-CRUD actions (login, migrate, scan, bulk operations) are `POST`\n  verbs that return `200` with a small result object.\n- Errors return `{ \"error\": \"<MachineCode>\", \"message\": \"<human text>\" }`\n  with a `4xx`/`5xx` status. `error` is a stable PascalCase code safe to\n  branch on; `message` is for display and may change.\n\n**Auth** — a Bearer token (`Authorization: Bearer <token>`) obtained from\n`POST /auth/login` (valid 24h). All `GET`s are public; state-changing\nmethods require a token, except a small public allowlist (media tagging\nand the batched `POST /media/by-ids` read).",
-        "version": "6.0.0"
+        "description": "Internal HTTP API for the self-hosted media gallery — a **hybrid REST-RPC**\ninterface served under the `/api` base path. All responses are JSON.\n\n**Conventions**\n- Reads return `200` with the resource or collection.\n- Creates return `201` with the created resource.\n- Updates (`PUT`/`PATCH`) return `200` with the updated resource.\n- Deletes return `204` with no body.\n- Non-CRUD actions (login, migrate, scan, bulk operations) are `POST`\n  verbs that return `200` with a small result object.\n- Errors return `{ \"error\": \"<MachineCode>\", \"message\": \"<human text>\" }`\n  with a `4xx`/`5xx` status. `error` is a stable PascalCase code safe to\n  branch on; `message` is for display and may change.\n\n**Auth** — a session cookie, set by `POST /auth/login`, `POST /auth/register`\nor `POST /auth/passkey`, which the browser sends with every request. It is\nHttpOnly, so the page's scripts never see it; `GET /auth/session` says who\nit signs in. Writes are refused (`403 ForbiddenOrigin`) unless the browser\nmarks them same-origin (`Sec-Fetch-Site`) and they come from an allowed\norigin. Reads are public; a write needs a signed-in account (or an admin),\nexcept a small public allowlist (media tagging and the batched\n`POST /media/by-ids` read).",
+        "version": "7.0.0"
     },
     "servers": [
         {
@@ -18,7 +18,7 @@
                     "Account"
                 ],
                 "summary": "Change your password",
-                "description": "PATCH /account/password — Change the password. Every other login of the\naccount is signed out; this one stays.",
+                "description": "PATCH /account/password — Change the password. Every other browser\nsigned in as the account is signed out; this one stays, and stays kept\nsigned in if it was.",
                 "operationId": "changePassword",
                 "requestBody": {
                     "content": {
@@ -71,7 +71,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -139,7 +139,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -169,7 +169,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -209,7 +209,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             },
@@ -247,7 +247,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -285,13 +285,63 @@
                 }
             }
         },
+        "/auth/session": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Who this browser is signed in as",
+                "description": "GET /auth/session — The account this browser is signed in as, or null.\nThe page asks once as it starts, since it can't read the session cookie.",
+                "operationId": "currentSession",
+                "responses": {
+                    "200": {
+                        "description": "The account, or null when signed out",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SessionResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Log out",
+                "description": "DELETE /auth/session — Log out this browser. The account's other\nbrowsers stay signed in.",
+                "operationId": "logout",
+                "responses": {
+                    "204": {
+                        "description": "Signed out"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ]
+            }
+        },
         "/auth/register": {
             "post": {
                 "tags": [
                     "Auth"
                 ],
                 "summary": "Create an account",
-                "description": "POST /auth/register — Create an account and sign it in. Body:\n{ username, password, remember?, turnstile_token? }.",
+                "description": "POST /auth/register — Create an account and sign this browser in as it.\nBody: { username, password, remember?, turnstile_token? }.",
                 "operationId": "register",
                 "requestBody": {
                     "content": {
@@ -312,7 +362,7 @@
                                     },
                                     "remember": {
                                         "type": "boolean",
-                                        "description": "Keep the login for 30 days instead of one."
+                                        "description": "Keep this browser signed in for 30 days, not just until it closes."
                                     },
                                     "turnstile_token": {
                                         "type": "string",
@@ -334,7 +384,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/LoginResponse"
+                                    "$ref": "#/components/schemas/SignInResponse"
                                 }
                             }
                         }
@@ -398,7 +448,7 @@
                     "Auth"
                 ],
                 "summary": "Log in",
-                "description": "POST /auth/login — Exchange a username and password for a bearer token.\nBody: { username, password, remember?, turnstile_token? }. The token\nlasts a day, or 30 with remember.",
+                "description": "POST /auth/login — Sign this browser in with a username and password.\nBody: { username, password, remember?, turnstile_token? }.",
                 "operationId": "login",
                 "requestBody": {
                     "content": {
@@ -414,7 +464,7 @@
                                     },
                                     "remember": {
                                         "type": "boolean",
-                                        "description": "Keep the login for 30 days instead of one."
+                                        "description": "Keep this browser signed in for 30 days, not just until it closes."
                                     },
                                     "turnstile_token": {
                                         "type": "string",
@@ -432,11 +482,11 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Issued token",
+                        "description": "Signed in",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/LoginResponse"
+                                    "$ref": "#/components/schemas/SignInResponse"
                                 }
                             }
                         }
@@ -492,73 +542,6 @@
                         }
                     }
                 }
-            }
-        },
-        "/auth/me": {
-            "get": {
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "The signed-in account",
-                "description": "GET /auth/me — The account the token signs in.",
-                "operationId": "currentUser",
-                "responses": {
-                    "200": {
-                        "description": "The account",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/User"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/auth/token": {
-            "delete": {
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Log out (revoke this token)",
-                "description": "DELETE /auth/token — Log out: the token this request carries stops\nworking at once, rather than when it expires.",
-                "operationId": "logout",
-                "responses": {
-                    "204": {
-                        "description": "Revoked"
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
             }
         },
         "/danbooru/category-mappings": {
@@ -652,7 +635,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -692,7 +675,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -774,7 +757,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -853,7 +836,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             },
@@ -891,7 +874,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -960,7 +943,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -1019,7 +1002,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -1049,7 +1032,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             },
@@ -1113,7 +1096,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -1199,7 +1182,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             },
@@ -1247,7 +1230,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -1297,7 +1280,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -1365,7 +1348,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             },
@@ -1447,7 +1430,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -1495,7 +1478,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             },
@@ -1541,7 +1524,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -1591,7 +1574,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -1848,7 +1831,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -1988,7 +1971,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -2156,7 +2139,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -2423,7 +2406,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -2474,6 +2457,372 @@
                 }
             }
         },
+        "/auth/passkey/options": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Start signing in with a passkey",
+                "description": "POST /auth/passkey/options — A challenge to sign in with: any passkey\nsaved for this site may answer it, and names its account itself.",
+                "operationId": "passkeySignInOptions",
+                "responses": {
+                    "200": {
+                        "description": "The options for navigator.credentials.get()",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PasskeyOptions"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/passkey": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Sign in with a passkey",
+                "description": "POST /auth/passkey — Sign this browser in with a passkey's answer to the\nchallenge. Body: { credential, remember? }.",
+                "operationId": "passkeySignIn",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "credential": {
+                                        "type": "object",
+                                        "description": "The PublicKeyCredential navigator.credentials.get() gave, as its toJSON() writes it.",
+                                        "additionalProperties": true
+                                    },
+                                    "remember": {
+                                        "type": "boolean",
+                                        "description": "Keep this browser signed in for 30 days, not just until it closes."
+                                    }
+                                },
+                                "required": [
+                                    "credential"
+                                ]
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Signed in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SignInResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "InvalidPasskey (the answer is unreadable), PasskeyExpired (no challenge waiting, or too old)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "PasskeyNotAccepted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "TooManyAttempts",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/account/passkeys": {
+            "get": {
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Your passkeys",
+                "description": "GET /account/passkeys — The account's passkeys, oldest first.",
+                "operationId": "listPasskeys",
+                "responses": {
+                    "200": {
+                        "description": "The passkeys",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Passkey"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Add a passkey",
+                "description": "POST /account/passkeys — Add the passkey that answered the challenge.\nBody: { credential, name? }. Unnamed, it is named after where it is kept,\nwhen its maker says (Windows Hello, iCloud Keychain, …).",
+                "operationId": "addPasskey",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "credential": {
+                                        "type": "object",
+                                        "description": "The PublicKeyCredential navigator.credentials.create() gave, as its toJSON() writes it.",
+                                        "additionalProperties": true
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 64
+                                    }
+                                },
+                                "required": [
+                                    "credential"
+                                ]
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "The passkey",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Passkey"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "InvalidPasskey, InvalidPasskeyName, PasskeyExpired, PasskeyRejected (its answer didn't check out, or it is already added)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ]
+            }
+        },
+        "/account/passkeys/options": {
+            "post": {
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Start adding a passkey",
+                "description": "POST /account/passkeys/options — A challenge to add a passkey with, once\nthe account's password confirms who is asking. Body: { password }.",
+                "operationId": "passkeyAddOptions",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "password": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "password"
+                                ]
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The options for navigator.credentials.create()",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PasskeyOptions"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "MissingCredentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "IncorrectPassword",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ]
+            }
+        },
+        "/account/passkeys/{passkey_id}": {
+            "patch": {
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Rename a passkey",
+                "description": "PATCH /account/passkeys/{passkey_id} — Rename a passkey. Body: { name }.",
+                "operationId": "renamePasskey",
+                "parameters": [
+                    {
+                        "name": "passkey_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 64
+                                    }
+                                },
+                                "required": [
+                                    "name"
+                                ]
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The passkey",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Passkey"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "InvalidPasskeyName",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "PasskeyNotFound",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Account"
+                ],
+                "summary": "Remove a passkey",
+                "description": "DELETE /account/passkeys/{passkey_id} — Remove a passkey: it no longer\nsigns anyone in (the browser or password manager still lists it until\nit is deleted there).",
+                "operationId": "deletePasskey",
+                "parameters": [
+                    {
+                        "name": "passkey_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Removed"
+                    },
+                    "404": {
+                        "description": "PasskeyNotFound",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sessionCookie": []
+                    }
+                ]
+            }
+        },
         "/saved-searches": {
             "get": {
                 "tags": [
@@ -2499,7 +2848,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             },
@@ -2568,7 +2917,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -2655,7 +3004,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             },
@@ -2693,7 +3042,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -2835,7 +3184,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -2916,7 +3265,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             },
@@ -2964,7 +3313,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -3095,7 +3444,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -3300,7 +3649,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             },
@@ -3338,7 +3687,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -3397,7 +3746,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -3472,7 +3821,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -3564,7 +3913,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -3612,7 +3961,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -3652,7 +4001,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -3739,7 +4088,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             },
@@ -3787,7 +4136,7 @@
                 },
                 "security": [
                     {
-                        "bearerAuth": []
+                        "sessionCookie": []
                     }
                 ]
             }
@@ -3980,19 +4329,6 @@
                     }
                 }
             },
-            "LoginResponse": {
-                "type": "object",
-                "description": "A bearer token, and the account it signs in.",
-                "properties": {
-                    "token": {
-                        "type": "string",
-                        "description": "Bearer token, valid for a day, or 30 with remember."
-                    },
-                    "user": {
-                        "$ref": "#/components/schemas/User"
-                    }
-                }
-            },
             "MediaFeed": {
                 "type": "object",
                 "description": "Media items after a cursor.",
@@ -4073,6 +4409,20 @@
                     }
                 }
             },
+            "PasskeyOptions": {
+                "type": "object",
+                "description": "WebAuthn options for the browser (PublicKeyCredentialRequestOptionsJSON to sign in, PublicKeyCredentialCreationOptionsJSON to add a passkey), with a challenge this session answers once.",
+                "properties": {
+                    "challenge": {
+                        "type": "string",
+                        "description": "Random, base64url."
+                    }
+                },
+                "required": [
+                    "challenge"
+                ],
+                "additionalProperties": true
+            },
             "ScanResult": {
                 "type": "object",
                 "description": "Duplicate-scan summary statistics.",
@@ -4098,6 +4448,38 @@
                         "description": "Execution time in seconds."
                     }
                 }
+            },
+            "SessionResponse": {
+                "type": "object",
+                "description": "Who this browser is signed in as.",
+                "properties": {
+                    "user": {
+                        "description": "Null when signed out.",
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/User"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "user"
+                ]
+            },
+            "SignInResponse": {
+                "type": "object",
+                "description": "The account this browser is now signed in as.",
+                "properties": {
+                    "user": {
+                        "$ref": "#/components/schemas/User"
+                    }
+                },
+                "required": [
+                    "user"
+                ]
             },
             "TagImplication": {
                 "type": "object",
@@ -4429,13 +4811,44 @@
                         "description": "As the gallery's URL writes it: \"cat,-dog\", or \"untagged\"."
                     }
                 }
+            },
+            "Passkey": {
+                "type": "object",
+                "description": "A passkey an account signs in with.",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "authenticator": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Where it is kept (iCloud Keychain, Google Password Manager, Windows Hello…), when its maker says."
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "last_used_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                }
             }
         },
         "securitySchemes": {
-            "bearerAuth": {
-                "type": "http",
-                "description": "Admin bearer token issued by POST /auth/login (valid 24 hours).",
-                "scheme": "bearer"
+            "sessionCookie": {
+                "type": "apiKey",
+                "description": "The session cookie a sign-in sets: until the browser closes, or 30 days with \"keep me signed in\".",
+                "name": "gallery-session",
+                "in": "cookie"
             }
         }
     },
@@ -4446,7 +4859,7 @@
         },
         {
             "name": "Auth",
-            "description": "Admin authentication."
+            "description": "Sign-up, sign-in (password or passkey) and sign-out."
         },
         {
             "name": "Media",

@@ -28,7 +28,7 @@ export type TagImplication = Required<Schemas['TagImplication']>
 export type CategoryMapping = Required<Schemas['CategoryMapping']>
 /** A Danbooru→gallery tag-name mapping. */
 export type TagMapping = Required<Schemas['TagMapping']>
-/** An account (GET /auth/me, the admin's GET /users). */
+/** An account (GET /auth/session, the admin's GET /users). */
 export type User = Required<Schemas['User']>
 /** One of an account's lists of media; the default one is "Favorites". */
 export type FavoriteList = Required<Schemas['FavoriteList']>
@@ -66,10 +66,17 @@ export interface TagListPage {
 export type TagImportStatus = Required<Schemas['TagImportStatus']>
 
 export type Count = Required<Schemas['Count']>
-/** A login or sign-up's token, and the account it signs in. */
-export interface LoginResponse {
-  token: string
+/** A login or sign-up's answer: the account this browser is now signed in as. */
+export interface SignInResponse {
   user: User
+}
+
+/** A passkey the signed-in account can sign in with (GET /account/passkeys). */
+export type Passkey = Required<Schemas['Passkey']>
+
+/** Who this browser is signed in as (GET /auth/session); null when signed out. */
+export interface SessionResponse {
+  user: User | null
 }
 
 /** What the sign-in and sign-up pages need (GET /auth/config). */

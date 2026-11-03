@@ -15,7 +15,7 @@
         "intervention/image": "^4.4",
         "intervention/imagehash": "^1.0",
         "laravel/framework": "^13.0",
-        "laravel/sanctum": "^4.0",
+        "laravel/passkeys": "0.2.1",
         "laravel/tinker": "^3.0"
     },
     "require-dev": {

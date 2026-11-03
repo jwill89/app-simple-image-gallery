@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Support\Contract;
 
 use App\Models\User;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
@@ -17,6 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Tests\Support\ContractFixture;
 use Tests\Support\ContractFixtureSeeder;
 
+use function Pest\Laravel\actingAs;
 use function Pest\Laravel\call;
 use function Pest\Laravel\seed;
 
@@ -32,10 +32,13 @@ use function Pest\Laravel\seed;
  */
 final class Replay
 {
-    /** The tokens the recorder put in the database for each case. */
-    public const string ADMIN_TOKEN = 'c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00';
-
-    public const string EXPIRED_TOKEN = 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
+    /**
+     * How the recordings sign in: with the token the recorder gave its admin.
+     * This app signs a browser in with a session cookie, so a request carrying
+     * it acts as the admin, and one carrying any other token (an expired one,
+     * one without the Bearer scheme) as no one, as it always was.
+     */
+    private const string ADMIN_AUTHORIZATION = 'Bearer <admin-token>';
 
     /** The .env the recordings were made with, and the config key each variable is. */
     private const array ENV = [
@@ -83,13 +86,13 @@ final class Replay
      */
     private const array SECURITY_HEADERS = ['x-content-type-options' => 'nosniff', 'x-frame-options' => 'SAMEORIGIN'];
 
-    /** @var array<string, string> Values captured from earlier steps' responses. */
-    private array $captured = [];
-
     private DanbooruStub $danbooru;
 
     /** The case's copy of the fixture media/ and dupes/ folders. */
     private string $root;
+
+    /** The recorder's admin. */
+    private User $admin;
 
     /**
      * @param array<string, mixed> $recording
@@ -189,10 +192,7 @@ final class Replay
         }
 
         // The recorder's admin, an account with is_admin set since API 6.
-        $admin = User::query()->create(['username' => 'admin', 'password' => 'contract-password', 'is_admin' => true]);
-        $admin->tokens()->create(['name' => 'admin', 'token' => hash('sha256', self::ADMIN_TOKEN), 'abilities' => ['*']]);
-        $expired = $admin->tokens()->create(['name' => 'admin', 'token' => hash('sha256', self::EXPIRED_TOKEN), 'abilities' => ['*']]);
-        $expired->forceFill(['created_at' => Carbon::createFromTimestamp(1700000000)])->save();
+        $this->admin = User::query()->create(['username' => 'admin', 'password' => 'contract-password', 'is_admin' => true]);
 
         $this->root = $root = sys_get_temp_dir() . '/gallery-replay-' . bin2hex(random_bytes(4));
         config([
@@ -271,14 +271,6 @@ final class Replay
             $problems[] = 'the repeated sends answered ' . json_encode($counts) . ', recorded ' . json_encode($recordedCounts);
         }
 
-        // A later request's <captured:NAME> is the NAME field of the latest
-        // response that had one (the recordings use it for login's token).
-        $body = json_decode((string) $response->baseResponse->getContent(), true);
-        foreach (is_array($body) && !array_is_list($body) ? $body : [] as $name => $value) {
-            if (is_string($value)) {
-                $this->captured[$name] = $value;
-            }
-        }
 
         // The Danbooru calls it made, credentials left out, as the stub logged them.
         $calls = $this->danbooru->takeCalls();
@@ -297,13 +289,16 @@ final class Replay
     {
         /** @var array<string, string> $headers */
         $headers = $request['headers'] ?? [];
+        app('auth')->forgetGuards();
+        if (($headers['Authorization'] ?? null) === self::ADMIN_AUTHORIZATION) {
+            actingAs($this->admin);
+        }
         $server = [];
         foreach ($headers as $name => $value) {
-            if ($name === 'Authorization') {
-                $value = str_replace('<admin-token>', self::ADMIN_TOKEN, $value);
-                $value = (string) preg_replace_callback('/<captured:(\w+)>/', fn(array $m): string => $this->captured[$m[1]] ?? '', $value);
+            // A token means nothing to this app; the session above is who asks.
+            if ($name !== 'Authorization') {
+                $server[$name === 'Content-Type' ? 'CONTENT_TYPE' : 'HTTP_' . strtoupper(str_replace('-', '_', $name))] = $value;
             }
-            $server[$name === 'Content-Type' ? 'CONTENT_TYPE' : 'HTTP_' . strtoupper(str_replace('-', '_', $name))] = $value;
         }
 
         $parameters = [];

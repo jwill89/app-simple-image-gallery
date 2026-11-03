@@ -13,7 +13,6 @@ use Tests\Support\ContractFixtureSeeder;
 
 use function Pest\Laravel\getJson;
 use function Pest\Laravel\seed;
-use function Pest\Laravel\withHeaders;
 
 // Danbooru's firewall (Cloudflare) refusing the server, which the recordings
 // don't show: their stub refuses in JSON, as the API itself does. A block is
@@ -39,16 +38,6 @@ function cloudflareBlockPage(): PromiseInterface
     );
 }
 
-/**
- * The headers of a signed-in admin's write, with a token as login issues one.
- *
- * @return array<string, string>
- */
-function danbooruAdminHeaders(): array
-{
-    return ['Origin' => 'https://gallery.test', 'Authorization' => 'Bearer ' . adminUser()->issueToken()];
-}
-
 beforeEach(function (): void {
     seed(ContractFixtureSeeder::class);
     config([
@@ -64,7 +53,7 @@ beforeEach(function (): void {
 test('every call names the account in the User-Agent, as Danbooru asks', function (): void {
     danbooruAnswers(Http::response([], 200));
 
-    withHeaders(danbooruAdminHeaders())->postJson('/api/media/1/danbooru-tags');
+    asAdmin()->postJson('/api/media/1/danbooru-tags');
 
     Http::assertSent(static fn(Request $request): bool => $request->header('User-Agent') === ['GalleryTagImporter/1.0; user #123']);
     Http::assertNotSent(static fn(Request $request): bool => $request->header('User-Agent') !== ['GalleryTagImporter/1.0; user #123']);
@@ -74,7 +63,7 @@ test('without a user ID, the User-Agent is the app alone', function (): void {
     config(['gallery.danbooru.user_id' => '']);
     danbooruAnswers(Http::response([], 200));
 
-    withHeaders(danbooruAdminHeaders())->postJson('/api/media/1/danbooru-tags');
+    asAdmin()->postJson('/api/media/1/danbooru-tags');
 
     Http::assertSent(static fn(Request $request): bool => $request->header('User-Agent') === ['GalleryTagImporter/1.0']);
 });
@@ -82,7 +71,7 @@ test('without a user ID, the User-Agent is the app alone', function (): void {
 test('a firewall block is 503 DanbooruBlocked, quoting the Ray ID, not rejected credentials', function (): void {
     danbooruAnswers(cloudflareBlockPage());
 
-    $response = withHeaders(danbooruAdminHeaders())->postJson('/api/media/1/danbooru-tags')
+    $response = asAdmin()->postJson('/api/media/1/danbooru-tags')
         ->assertStatus(503)
         ->assertJsonPath('error', 'DanbooruBlocked');
 
@@ -94,7 +83,7 @@ test('a block without a user ID set says to set one', function (): void {
     config(['gallery.danbooru.user_id' => '']);
     danbooruAnswers(cloudflareBlockPage());
 
-    $response = withHeaders(danbooruAdminHeaders())->postJson('/api/media/1/danbooru-tags')
+    $response = asAdmin()->postJson('/api/media/1/danbooru-tags')
         ->assertStatus(503)
         ->assertJsonPath('error', 'DanbooruBlocked');
 
@@ -108,7 +97,7 @@ test('a block without a user ID set says to set one', function (): void {
 test('a 403 from the API itself, in JSON, is still rejected credentials', function (): void {
     danbooruAnswers(Http::response(['success' => false, 'message' => 'Access denied'], 403));
 
-    withHeaders(danbooruAdminHeaders())->postJson('/api/media/1/danbooru-tags')
+    asAdmin()->postJson('/api/media/1/danbooru-tags')
         ->assertStatus(500)
         ->assertJsonPath('error', 'DanbooruAuthFailed');
 });
@@ -124,7 +113,7 @@ test('an upload while blocked still adds the file, and its lookup reports why it
 
     try {
         // The queue runs inline here, so the queued lookup is done on return.
-        $response = withHeaders(danbooruAdminHeaders())->post('/api/media', [
+        $response = asAdmin()->post('/api/media', [
             'files' => [new UploadedFile("{$root}/tiny.png", 'tiny.png', 'image/png', null, true)],
             'fetch_tags' => '1',
         ]);

@@ -46,7 +46,7 @@ final class DanbooruCategoryMappingController extends Controller
         operationId: 'saveDanbooruCategoryMapping',
         summary: 'Create a category mapping',
         tags: ['Danbooru'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(
             required: ['danbooru_category_id', 'danbooru_category_name', 'gallery_category_id'],
             properties: [
@@ -85,7 +85,7 @@ final class DanbooruCategoryMappingController extends Controller
         operationId: 'deleteDanbooruCategoryMapping',
         summary: 'Delete a category mapping',
         tags: ['Danbooru'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'danbooru_category_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Deleted'),

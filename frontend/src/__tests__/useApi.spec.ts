@@ -1,12 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  ApiError,
-  clearAuthToken,
-  getFieldError,
-  hasAuthToken,
-  setAuthToken,
-  useApi,
-} from '../composables/useApi'
+import { ApiError, getFieldError, useApi, whenUnauthorized } from '../composables/useApi'
 
 interface MockResponse {
   ok?: boolean
@@ -27,7 +20,7 @@ function mockFetch(response: MockResponse = {}) {
 
 describe('useApi', () => {
   beforeEach(() => {
-    sessionStorage.clear()
+    whenUnauthorized(() => undefined)
   })
 
   it('GET returns parsed JSON and prefixes the /api base path', async () => {
@@ -48,13 +41,23 @@ describe('useApi', () => {
     expect((opts.headers as Record<string, string>)['Content-Type']).toBe('application/json')
   })
 
-  it('attaches the bearer token when one is stored', async () => {
-    setAuthToken('tok123')
+  it('sends the session cookie, and no token of its own', async () => {
     const fetchMock = mockFetch()
     await useApi().get('/protected/')
 
     const [, opts] = fetchMock.mock.calls[0]
-    expect((opts.headers as Headers).get('Authorization')).toBe('Bearer tok123')
+    expect(opts.credentials).toBe('same-origin')
+    expect(opts.headers).toBeUndefined()
+  })
+
+  it('uploads a form as a POST, leaving its content type to the browser', async () => {
+    const fetchMock = mockFetch({ jsonData: { ok: true } })
+    const form = new FormData()
+    await useApi().upload('/media', form)
+
+    const [, opts] = fetchMock.mock.calls[0]
+    expect(opts).toMatchObject({ method: 'POST', body: form, credentials: 'same-origin' })
+    expect(opts.headers).toBeUndefined()
   })
 
   it('resolves to undefined on a 204 No Content (e.g. DELETE)', async () => {
@@ -113,20 +116,16 @@ describe('useApi', () => {
     })
   })
 
-  it('clears the auth token on a 401 response', async () => {
-    setAuthToken('tok')
-    expect(hasAuthToken()).toBe(true)
+  it('reports a 401 as the session ending, and still throws it', async () => {
+    const ended = vi.fn()
+    whenUnauthorized(ended)
     mockFetch({ ok: false, status: 401 })
 
     await expect(useApi().get('/protected/')).rejects.toBeInstanceOf(ApiError)
-    expect(hasAuthToken()).toBe(false)
-  })
+    expect(ended).toHaveBeenCalledOnce()
 
-  it('token helpers set, check, and clear sessionStorage', () => {
-    expect(hasAuthToken()).toBe(false)
-    setAuthToken('abc')
-    expect(hasAuthToken()).toBe(true)
-    clearAuthToken()
-    expect(hasAuthToken()).toBe(false)
+    mockFetch({ ok: false, status: 403 })
+    await expect(useApi().get('/forbidden/')).rejects.toBeInstanceOf(ApiError)
+    expect(ended).toHaveBeenCalledOnce()
   })
 })

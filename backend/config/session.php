@@ -18,7 +18,10 @@ return [
     |
     */
 
-    'driver' => env('SESSION_DRIVER', 'database'),
+    // Files, in storage/framework/sessions: the API reads and writes the
+    // session on every request, which would make every read a write to the
+    // SQLite database.
+    'driver' => env('SESSION_DRIVER', 'file'),
 
     /*
     |--------------------------------------------------------------------------
@@ -32,9 +35,12 @@ return [
     |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 120),
+    // A day without a request signs a session out. Its cookie lasts until the
+    // browser closes; "keep me signed in" adds a remember cookie for 30 days
+    // (auth.guards.web.remember), which starts a new session after that.
+    'lifetime' => (int) env('SESSION_LIFETIME', 1440),
 
-    'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
+    'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', true),
 
     /*
     |--------------------------------------------------------------------------
@@ -169,7 +175,8 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // On, unless set, whenever the app is served over HTTPS.
+    'secure' => env('SESSION_SECURE_COOKIE', str_starts_with((string) env('APP_URL', ''), 'https://')),
 
     /*
     |--------------------------------------------------------------------------

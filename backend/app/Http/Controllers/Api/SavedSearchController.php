@@ -30,7 +30,7 @@ final class SavedSearchController extends Controller
         operationId: 'listSavedSearches',
         summary: 'Your saved searches',
         tags: ['Saved searches'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         responses: [
             new OAS\Response(response: 200, description: 'The searches', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/SavedSearch'))),
         ],
@@ -48,7 +48,7 @@ final class SavedSearchController extends Controller
         operationId: 'createSavedSearch',
         summary: 'Save a search',
         tags: ['Saved searches'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         requestBody: new OAS\RequestBody(
             required: true,
             content: new OAS\MediaType\Json(required: ['name', 'query'], properties: [
@@ -81,7 +81,7 @@ final class SavedSearchController extends Controller
         operationId: 'updateSavedSearch',
         summary: 'Change a saved search',
         tags: ['Saved searches'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'search_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         requestBody: new OAS\RequestBody(
             required: true,
@@ -115,7 +115,7 @@ final class SavedSearchController extends Controller
         operationId: 'deleteSavedSearch',
         summary: 'Delete a saved search',
         tags: ['Saved searches'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'search_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Deleted'),

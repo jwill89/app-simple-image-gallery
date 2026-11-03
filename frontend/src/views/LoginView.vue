@@ -1,8 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getErrorMessage } from '../composables/useApi'
+import { getErrorCode, getErrorMessage } from '../composables/useApi'
+import {
+  cancelPasskeyRequest,
+  passkeyAutofillSupported,
+  passkeyCancelled,
+  passkeysSupported,
+  usePasskeys,
+} from '../composables/usePasskeys'
 import { useAuthStore } from '../stores/auth'
+import type { SignInResponse } from '../types'
 import TurnstileWidget from '../components/TurnstileWidget.vue'
 
 const auth = useAuthStore()
@@ -18,6 +26,11 @@ const siteKey = ref<string | null>(null)
 const signupOpen = ref(false)
 const error = ref('')
 const busy = ref(false)
+const passkeys = usePasskeys()
+const canUsePasskeys = passkeysSupported()
+const passkeyBusy = ref(false)
+/** Whether the username field offers saved passkeys, as this browser can. */
+let autofill = false
 
 /** Where to go once signed in: back where the sign-in link was, if it was on this site. */
 const redirect = computed(() => {
@@ -37,10 +50,51 @@ const ready = computed(
 if (auth.isSignedIn) void router.replace(redirect.value)
 
 onMounted(async () => {
+  autofill = canUsePasskeys && (await passkeyAutofillSupported())
+  if (autofill) void offerPasskeys()
   const config = await auth.loadConfig().catch(() => null)
   siteKey.value = config?.turnstile_site_key ?? null
   signupOpen.value = config?.signup_open ?? false
 })
+
+// The autofill offer waits for an answer until the page goes.
+onBeforeUnmount(cancelPasskeyRequest)
+
+async function finish(result: SignInResponse | undefined) {
+  await auth.signedIn(result)
+  void router.replace(redirect.value)
+}
+
+/**
+ * Offer saved passkeys in the username field's autofill. It waits until one
+ * is picked, the button asks instead, or the page closes. A passkey the
+ * server turned down (or answering a challenge more than five minutes old)
+ * is reported, and the offer made again; any other failure ends it.
+ */
+async function offerPasskeys() {
+  try {
+    await finish(await passkeys.signIn(() => remember.value, true))
+  } catch (e) {
+    if (passkeyCancelled(e)) return
+    error.value = getErrorMessage(e, 'Could not sign in with that passkey.')
+    if (['PasskeyExpired', 'PasskeyNotAccepted'].includes(getErrorCode(e))) void offerPasskeys()
+  }
+}
+
+async function signInWithPasskey() {
+  if (passkeyBusy.value) return
+  passkeyBusy.value = true
+  error.value = ''
+  try {
+    await finish(await passkeys.signIn(() => remember.value))
+  } catch (e) {
+    if (!passkeyCancelled(e)) error.value = getErrorMessage(e, 'Could not sign in with a passkey.')
+    // Asking here ended the autofill offer; make it again.
+    if (autofill && !auth.isSignedIn) void offerPasskeys()
+  } finally {
+    passkeyBusy.value = false
+  }
+}
 
 async function signIn() {
   if (!ready.value || busy.value) return
@@ -82,7 +136,7 @@ async function signIn() {
                   v-model="username"
                   class="input"
                   type="text"
-                  autocomplete="username"
+                  autocomplete="username webauthn"
                   autocapitalize="none"
                   spellcheck="false"
                   autofocus
@@ -126,6 +180,18 @@ async function signIn() {
             >
               Sign in
             </button>
+            <template v-if="canUsePasskeys">
+              <p class="or" aria-hidden="true">or</p>
+              <button
+                type="button"
+                class="button is-fullwidth"
+                :class="{ 'is-loading': passkeyBusy }"
+                @click="signInWithPasskey"
+              >
+                <span class="icon"><i class="fa-solid fa-key" /></span>
+                <span>Sign in with a passkey</span>
+              </button>
+            </template>
             <p v-if="signupOpen" class="has-text-centered mt-4">
               No account?
               <router-link :to="{ name: 'register', query: route.query }">Create one</router-link>
@@ -136,3 +202,21 @@ async function signIn() {
     </div>
   </section>
 </template>
+
+<style scoped>
+.or {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin: var(--sp-3) 0;
+  color: var(--text-2);
+  font-size: var(--t-sm);
+}
+
+.or::before,
+.or::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+</style>

@@ -25,10 +25,12 @@ export const endpoints = {
     config: '/auth/config',
     register: '/auth/register',
     login: '/auth/login',
-    /** The account the token signs in. */
-    me: '/auth/me',
-    /** DELETE: revoke the token the request carries (log out). */
-    logout: '/auth/token',
+    /** GET: who this browser is signed in as. DELETE: sign it out. */
+    session: '/auth/session',
+    /** POST: a challenge to sign in with a passkey. */
+    passkeyOptions: '/auth/passkey/options',
+    /** POST, with { credential, remember }: sign in with the passkey's answer. */
+    passkey: '/auth/passkey',
   },
   account: {
     /** DELETE, with { password }: the account itself. */
@@ -37,6 +39,12 @@ export const endpoints = {
     blockedTags: '/account/blocked-tags',
     /** PUT blocks the tag, DELETE unblocks it. */
     blockedTag: (tagId: Id) => `/account/blocked-tags/${tagId}`,
+    /** GET lists them; POST, with { credential, name? }, adds one. */
+    passkeys: '/account/passkeys',
+    /** POST, with { password }: a challenge to add a passkey with. */
+    passkeyOptions: '/account/passkeys/options',
+    /** PATCH renames it, DELETE removes it. */
+    passkey: (passkeyId: Id) => `/account/passkeys/${passkeyId}`,
   },
   lists: {
     all: '/lists',

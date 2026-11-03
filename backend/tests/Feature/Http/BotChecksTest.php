@@ -40,14 +40,14 @@ test('with the check on, login and sign-up need a token Cloudflare passes, for t
     turnstileAnswers(['success' => true, 'action' => 'login']);
     $login = ['username' => 'reader', 'password' => 'long-enough'];
 
-    asAccount(['Origin' => 'https://gallery.test'])->postJson('/api/auth/login', $login)
+    fromGallery()->postJson('/api/auth/login', $login)
         ->assertStatus(400)->assertJson(['error' => 'CaptchaRequired']);
-    asAccount(['Origin' => 'https://gallery.test'])->postJson('/api/auth/login', [...$login, 'turnstile_token' => 'token'])->assertOk();
+    fromGallery()->postJson('/api/auth/login', [...$login, 'turnstile_token' => 'token'])->assertOk();
     Http::assertSent(static fn(Request $request): bool => $request->url() === SITEVERIFY
         && $request['secret'] === 'secret-key' && $request['response'] === 'token' && $request['remoteip'] === '127.0.0.1');
 
     // A login token, replayed at sign-up.
-    asAccount(['Origin' => 'https://gallery.test'])->postJson('/api/auth/register', ['username' => 'newcomer', 'password' => 'long-enough', 'turnstile_token' => 'token'])
+    fromGallery()->postJson('/api/auth/register', ['username' => 'newcomer', 'password' => 'long-enough', 'turnstile_token' => 'token'])
         ->assertStatus(403)->assertJson(['error' => 'CaptchaFailed']);
     expect(User::query()->where('username', 'newcomer')->exists())->toBeFalse();
 });
@@ -55,7 +55,7 @@ test('with the check on, login and sign-up need a token Cloudflare passes, for t
 test('a token Cloudflare turns down is refused before the password is even checked', function (): void {
     turnstileAnswers(['success' => false, 'error-codes' => ['invalid-input-response']]);
 
-    asAccount(['Origin' => 'https://gallery.test'])->postJson('/api/auth/login', ['username' => 'reader', 'password' => 'wrong-password', 'turnstile_token' => 'used'])
+    fromGallery()->postJson('/api/auth/login', ['username' => 'reader', 'password' => 'wrong-password', 'turnstile_token' => 'used'])
         ->assertStatus(403)->assertExactJson(['error' => 'CaptchaFailed', 'message' => 'The check that you\'re not a bot didn\'t pass. Please try it again.']);
 });
 
@@ -63,12 +63,12 @@ test('with Cloudflare out of reach, nobody signs in: 503, never a 502 Cloudflare
     config(['gallery.turnstile.site_key' => 'site-key', 'gallery.turnstile.secret' => 'secret-key']);
     Http::fake([SITEVERIFY => static fn() => throw new ConnectionException('timed out')]);
 
-    asAccount(['Origin' => 'https://gallery.test'])->postJson('/api/auth/login', ['username' => 'reader', 'password' => 'long-enough', 'turnstile_token' => 'token'])
+    fromGallery()->postJson('/api/auth/login', ['username' => 'reader', 'password' => 'long-enough', 'turnstile_token' => 'token'])
         ->assertStatus(503)->assertJson(['error' => 'CaptchaUnavailable']);
 });
 
 test('behind Cloudflare, each visitor has their own login limit', function (): void {
-    $fromCloudflare = static fn(string $visitor) => asAccount(['Origin' => 'https://gallery.test', 'X-Forwarded-For' => $visitor])
+    $fromCloudflare = static fn(string $visitor) => fromGallery(['X-Forwarded-For' => $visitor])
         ->withServerVariables(['REMOTE_ADDR' => '162.158.10.20']);
 
     foreach (range(1, 10) as $ignored) {
@@ -82,10 +82,10 @@ test('behind Cloudflare, each visitor has their own login limit', function (): v
 
 test('from anywhere else, a forged X-Forwarded-For doesn\'t escape the limit', function (): void {
     foreach (range(1, 10) as $n) {
-        asAccount(['Origin' => 'https://gallery.test', 'X-Forwarded-For' => "203.0.113.{$n}"])->withServerVariables(['REMOTE_ADDR' => '192.0.2.50'])
+        fromGallery(['X-Forwarded-For' => "203.0.113.{$n}"])->withServerVariables(['REMOTE_ADDR' => '192.0.2.50'])
             ->postJson('/api/auth/login', ['username' => 'reader', 'password' => 'wrong-password'])->assertStatus(401);
     }
 
-    asAccount(['Origin' => 'https://gallery.test', 'X-Forwarded-For' => '203.0.113.99'])->withServerVariables(['REMOTE_ADDR' => '192.0.2.50'])
+    fromGallery(['X-Forwarded-For' => '203.0.113.99'])->withServerVariables(['REMOTE_ADDR' => '192.0.2.50'])
         ->postJson('/api/auth/login', ['username' => 'reader', 'password' => 'long-enough'])->assertStatus(429);
 });

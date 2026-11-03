@@ -45,7 +45,7 @@ final class DanbooruTagMappingController extends Controller
         operationId: 'createDanbooruTagMapping',
         summary: 'Create a tag name mapping',
         tags: ['Danbooru'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(
             required: ['danbooru_tag', 'gallery_tag'],
             properties: [
@@ -75,7 +75,7 @@ final class DanbooruTagMappingController extends Controller
         operationId: 'updateDanbooruTagMapping',
         summary: 'Update a tag name mapping',
         tags: ['Danbooru'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(
             required: ['danbooru_tag', 'gallery_tag'],
@@ -106,7 +106,7 @@ final class DanbooruTagMappingController extends Controller
         operationId: 'deleteDanbooruTagMapping',
         summary: 'Delete a tag name mapping',
         tags: ['Danbooru'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Deleted'),
