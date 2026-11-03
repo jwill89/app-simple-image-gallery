@@ -29,7 +29,7 @@ SaaS. Key features:
 - Admin-gated **uploads** and **deletes** via a single shared password → bearer token.
 - A nightly **ingest** of files dropped into the media folder, and queued **background work**:
   ingest, Danbooru imports, and rebuilding thumbnails, fingerprints or metadata.
-- A PWA-ish **service worker** for thumbnail/API caching and adjacent-page prefetch.
+- A PWA-ish **service worker** for thumbnail caching and adjacent-page prefetch.
 
 ### Tech stack
 
@@ -79,7 +79,7 @@ SaaS. Key features:
 │   │   ├── api.php              # Every /api route: public ones first, then the auth:sanctum group
 │   │   ├── web.php              # The SPA shell's fallback route: everything outside /api
 │   │   └── console.php          # The schedule
-│   ├── public/                  # Apache's DocumentRoot: index.php, .htaccess (upload limits), the built SPA
+│   ├── public/                  # Apache's DocumentRoot: index.php, .htaccess, .user.ini (upload limits), the built SPA
 │   │                            #   (the deploy copies frontend/dist here), media → the media folder
 │   ├── resources/spa/index.html # The built SPA's index.html, which the shell serves (deploy copies it; gitignored)
 │   ├── storage/                 # Logs, the file cache (responses, rate limits, locks); contents gitignored
@@ -94,7 +94,8 @@ SaaS. Key features:
 │   └── .env.example             # Every setting, documented
 │
 ├── frontend/                  # Vue 3 + Vite source
-│   ├── vite.config.ts         # Vite + Vitest config (build outDir, dev proxy, test block)
+│   ├── vite.config.ts         # Vite + Vitest config (build outDir, dev proxy, test block, the service worker's build)
+│   ├── tsconfig.{app,sw,node}.json  # the app (DOM), the service worker (WebWorker), the Vite config
 │   ├── vitest.setup.ts        # Vitest setup (pins TZ=UTC)
 │   ├── eslint.config.ts       # shared config (eslint-config submodule) + this project's rules
 │   ├── stylelint.config.js    # standard CSS rules + the palette rule
@@ -106,10 +107,11 @@ SaaS. Key features:
 │   │   ├── composables/       # useApi (fetch wrapper), useGalleryData, useMediaTags, usePrefetch
 │   │   ├── components/        # Reusable UI (GalleryCard, TagBadge, TagMultiSelect, modals…)
 │   │   ├── views/             # Route-level pages
-│   │   ├── constants/         # categories.ts (color → CSS class helpers), uploads.ts (upload batching)
-│   │   ├── __tests__/         # Vitest specs (*.spec.ts): useApi, categories, stores, uploads, UploadView
+│   │   ├── constants/         # categories.ts (color → CSS class helpers), uploads.ts (upload batching),
+│   │   │                      #   thumbnails.ts (thumbnail URLs + the prefetch message, shared with the worker)
+│   │   ├── sw/                # The service worker: sw.ts (events) + cache.ts (caching, prefetch); built to /sw.js
+│   │   ├── __tests__/         # Vitest specs (*.spec.ts): useApi, categories, stores, uploads, UploadView, swCache
 │   │   └── style.css          # Custom styles + extended Bulma color palette
-│   ├── public/sw.js           # Service worker (caching + prefetch)
 │   └── dist/                  # Vite build output (gitignored); the deploy copies it into backend/public
 │
 ├── .github/workflows/ci.yml   # CI: lint, static analysis, tests + build per side; PSScriptAnalyzer; release
@@ -530,16 +532,32 @@ Keep these invariants when editing auth or routes:
   titles stop drifting between sizes), `EmptyState`, `StatRow`, `TagCategoryLegend`.
 - **Thumbnails**: derive from `file_name` by stripping the extension →
   `/media/thumbs/<base>.webp` (1x) and `/media/thumbs/<base>@2x.webp` (2x, used in `srcset`).
-- **Service worker** (`public/sw.js`): cache-first for thumbs/static assets, network-first for
-  the media listings (`isMediaList()`: the numbered pages and `GET /api/media`, capped at 200
-  entries), network-only for full-size media. Registered **in production only**
-  (`import.meta.env.PROD` in `main.ts`) — a worker caching `/assets/*` in front of the Vite dev
-  server makes local debugging depend on which copy it hands back. The app posts
-  `PREFETCH_THUMBNAILS` to warm the *next* page (paged, `prefetchAdjacentPage`) or the *next
+  `thumbnailUrl()` in `constants/thumbnails.ts` builds them; the cards, the prefetch and the
+  service worker all go through that module.
+- **Service worker** (`src/sw/`): cache-first for thumbs/static assets; everything else,
+  the API included, goes straight to the network. Don't route the media listings through it:
+  they queued infinite scroll's next batch behind the thumbnail work. Registered **in production
+  only** (`import.meta.env.PROD` in `main.ts`) — a worker caching `/assets/*` in front of the Vite
+  dev server makes local debugging depend on which copy it hands back. The app posts a
+  `PrefetchThumbnailsMessage` to warm the *next* page (paged, `prefetchAdjacentPage`) or the *next
   batch* (infinite scroll, `prefetchNextBatch`) via `usePrefetch.ts`; keep both in `GalleryView`
-  in sync. Bump `CACHE_VERSION` in `sw.js`
-  when changing caching behavior — a stale worker keeps controlling the page until every tab for
-  the origin closes, so a hard refresh will not replace it.
+  in sync. It sends only the size the cards load (it follows a shown card's `currentSrc`). The
+  worker shares a download between the prefetch and the page (`inFlight`), and trims the
+  thumbnail cache once per 100 downloads: listing its 2,000 keys holds up every read of that
+  cache, and trimming after each download stalled a scroll for seconds. Bump `CACHE_VERSION` (in
+  `cache.ts`) only when cached entries would be wrong for the new code: a bump empties every
+  cache, thumbnails included, so the next scroll downloads them all again. Any change to the
+  built `sw.js` installs on the next visit anyway.
+- **The worker is TypeScript, built apart from the app.** `sw.ts` wires the worker's events;
+  `cache.ts` does the caching using only what pages and workers share (`caches`, `fetch`,
+  `Request`, `Response`), so `swCache.spec.ts` runs it against a fake cache. The
+  `gallery-service-worker` plugin in `vite.config.ts` builds `sw.ts` after the app into
+  `dist/sw.js`: one classic script at the root under a fixed name, since the browser registers
+  and updates a worker by its URL. Built with the app, it would get a hashed name and import what
+  it shares from another chunk. `tsconfig.sw.json` types it with the WebWorker lib, and
+  `tsconfig.app.json` leaves out only `sw.ts`, so `cache.ts` and `constants/thumbnails.ts` are
+  checked against both the page's and the worker's globals. Keep them that way. ESLint's
+  no-`fetch` rule skips `src/sw/`.
 - **Infinite scroll's bottom sentinel needs a top-up loop.** `IntersectionObserver` only reports
   intersection *changes*, so on a viewport tall enough that a fresh batch doesn't push the sentinel
   back out of view, no second callback arrives and loading stalls. `loadNextBatch` keeps pulling
@@ -578,6 +596,21 @@ Keep these invariants when editing auth or routes:
 - **Request cost** (measured on the droplet, 2026-11): a cached read takes about 10 ms, the
   1.5 MB tag list about 13 ms. Laravel's boot adds 3–5 ms over the Slim app it replaced, which
   is lost in a request's trip through Cloudflare.
+- **The droplet runs Apache's event MPM with PHP-FPM; don't go back to prefork.** Each
+  Cloudflare edge server opens its own connection to the origin. Under prefork with mod_php
+  (until 2026-11-03), each Apache process sat out the 5 s keep-alive after answering one, so
+  thumbnails Cloudflare hadn't cached came at about 8 a second: 120 took 15 s, and an API request
+  waited behind them as long. Under event, 200 uncached thumbnails take 1.9 s, and the API
+  answers in 0.27 s meanwhile. Cached thumbnails come back in about 0.16 s, however many are
+  asked for at once. PHP-FPM's pool `www` (`/etc/php/8.5/fpm/pool.d/www.conf`, 12 processes)
+  serves every PHP site on the droplet. PHP's errors still go to the vhost's `ErrorLog`, as
+  `[proxy_fcgi:error] … AH01071: Got error 'PHP message: …'` (one request's messages on one
+  line), and a copy goes to `/var/log/php8.5-fpm.log`. The way back is in
+  `backups/fpm-switch/ROLLBACK.txt`.
+- **Xdebug is installed on the droplet but switched off** (`phpdismod -v 8.5 xdebug`,
+  2026-11-03). It had been loaded for every PHP request, and its cost was most of a cached read:
+  `/api/version` took 28 ms with it and 14 ms without. If you turn it on to debug something,
+  turn it off again (`phpdismod`, then restart `php8.5-fpm` and the queue worker).
 - **The duplicate scan is the heaviest operation** (`gallery:dupes`, or `POST /duplicates/scan`):
   LSH banding → Hamming filter → a comparison of each remaining pair's `@2x` thumbnails (not
   originals, to bound memory); it raises `memory_limit`/`max_execution_time` for the run.
@@ -618,8 +651,11 @@ Keep these invariants when editing auth or routes:
   exists). The replay ignores the fields API 5 added (`Replay::ADDED_FIELDS`: `errors`,
   `next_cursor`) when a recording lacks them. Record it in the plan's "Contract changes" or
   "API 5" section too.
-- **PHP's upload limits fail quietly, so the upload page works within them.** `backend/public/.htaccess`
-  sets `upload_max_filesize 100M` / `post_max_size 105M`, and `php.ini` keeps PHP's default
+- **PHP's upload limits fail quietly, so the upload page works within them.** `backend/public/.user.ini`
+  (read by PHP-FPM, within 5 minutes of a change) sets `upload_max_filesize 100M` /
+  `post_max_size 105M`, and `.htaccess` repeats them for mod_php. Keep its `php_value` lines
+  inside `<IfModule php_module>`: without mod_php, Apache answers every request with a 500 when
+  it meets one. `php.ini` keeps PHP's default
   `max_file_uploads = 20`. Past 20 files PHP drops the rest of a request, and past `post_max_size`
   the whole body, before the app sees it. So the upload page sends files in batches of at most
   20 files and 100 MB, and doesn't send a file over 100 MB at all (`constants/uploads.ts`, mirroring
@@ -756,7 +792,8 @@ Create a view in `views/`, add a lazy route with `meta.title` in `router/index.t
 - [ ] A feature test covers it; the contract replay stays green, and a deliberate contract change
       is in `divergences.php`.
 - [ ] Frontend: typed (import from `types/`), `<script setup>`, API via `useApi` + `api/endpoints.ts`, no direct `fetch`.
-- [ ] Bump `sw.js` `CACHE_VERSION` if caching/asset behavior changed.
+- [ ] Bump `CACHE_VERSION` (`src/sw/cache.ts`) only if cached entries would be wrong for the new code (a bump
+      empties the thumbnail cache too).
 - [ ] Keep the mirrored lists in sync: tag colors (`TagCategory::COLORS` ↔ `constants/categories.ts`),
       file types (`Media::IMAGE_EXTENSIONS`/`VIDEO_EXTENSIONS` ↔ `UploadView.vue`), and upload limits
-      (`public/.htaccess` ↔ `constants/uploads.ts`).
+      (`public/.user.ini` + `.htaccess` ↔ `constants/uploads.ts`).

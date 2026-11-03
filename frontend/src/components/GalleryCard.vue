@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useGalleryStore, type MediaItem } from '../stores/gallery'
 import { useFavoritesStore } from '../stores/favorites'
+import { thumbnailBaseName, thumbnailUrl } from '../constants/thumbnails'
 
 const props = defineProps<{
   item: MediaItem
@@ -14,10 +15,9 @@ const emit = defineEmits<{
 const store = useGalleryStore()
 const favorites = useFavoritesStore()
 
-const baseName = computed(() => props.item.file_name.split('.').slice(0, -1).join('.'))
-const thumbDir = '/media/thumbs'
-const thumbnailPath = computed(() => `${thumbDir}/${baseName.value}.webp`)
-const thumbnail2xPath = computed(() => `${thumbDir}/${baseName.value}@2x.webp`)
+const baseName = computed(() => thumbnailBaseName(props.item.file_name))
+const thumbnailPath = computed(() => thumbnailUrl(props.item.file_name))
+const thumbnail2xPath = computed(() => thumbnailUrl(props.item.file_name, '2x'))
 
 const isAnimated = computed(() => {
   if (props.item.media_type === 'video') return true

@@ -5,12 +5,13 @@
  * max_file_uploads it drops the extra files, and past post_max_size it drops
  * the whole body. So a large selection goes in several requests, each within
  * every limit. They mirror the server's settings; keep them in sync with
- * backend/public/.htaccess and the droplet's php.ini.
+ * backend/public/.user.ini (and its mod_php copy in .htaccess) and the
+ * droplet's php.ini.
  */
 interface UploadLimits {
   /** max_file_uploads: PHP's default of 20, which the droplet's php.ini keeps. */
   filesPerRequest: number
-  /** upload_max_filesize 100M (backend/public/.htaccess). */
+  /** upload_max_filesize 100M (backend/public/.user.ini). */
   bytesPerFile: number
   /** post_max_size 105M, less room for the multipart encoding around each file. */
   bytesPerRequest: number

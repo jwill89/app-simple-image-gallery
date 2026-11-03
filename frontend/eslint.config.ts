@@ -98,7 +98,8 @@ export default [
     // a 401 always clears it (AGENTS.md §8).
     name: 'gallery/api-client-only',
     files: ['src/**/*.{ts,vue}'],
-    ignores: ['src/composables/useApi.ts', 'src/__tests__/**'],
+    // The service worker downloads thumbnails and assets, not the API.
+    ignores: ['src/composables/useApi.ts', 'src/__tests__/**', 'src/sw/**'],
     rules: {
       'no-restricted-syntax': [
         'error',

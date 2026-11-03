@@ -125,13 +125,29 @@ differences from API 4, are in [docs/laravel-migration.md](docs/laravel-migratio
   reports each queued Danbooru lookup as it finishes.
 - Deploys install no dev packages on the server, cache the config and routes,
   and leave the code readable but not writable by other users.
+- **The service worker is TypeScript** (`frontend/src/sw/`), type-checked
+  against a worker's globals, linted and tested like the app, and built to
+  `/sw.js` by a Vite plugin. It shares the thumbnail URLs and the prefetch
+  message with the app instead of repeating them.
+- **PHP's upload limits are in `public/.user.ini`**, which PHP-FPM reads.
+  `.htaccess` keeps them for mod_php inside `<IfModule php_module>`, since
+  without mod_php a bare `php_value` makes Apache refuse every request. The
+  droplet now runs Apache's event MPM with PHP-FPM: thumbnails Cloudflare
+  hasn't cached load about 13 times faster, and API requests no longer wait
+  behind them.
 
 ### Fixed
 
 - After an upload, the files kept for a retry showed other files' statuses.
 - The upload page advertised 500 MB per file; the server accepts 100 MB.
-- The service worker never cached a media listing: its rule matched only the
-  `/api/media?page=…` form the API stopped using in 3.0.0.
+- **Infinite scroll's thumbnails arrived slowly** when they weren't cached.
+  The service worker prefetched both sizes of every thumbnail, though a screen
+  shows one; downloaded a second copy when the page asked for one still on its
+  way; and listed all 2,000 cached thumbnails after storing each download. It
+  now prefetches the size the cards use, shares a download between the
+  prefetch and the page, and trims its cache once per 100 downloads. The media
+  listings no longer pass through it (its rule for them matched only the
+  `/api/media?page=…` form the API stopped using in 3.0.0).
 - The API docs said `POST /tags/{id}/migrate` deletes the source tag; it keeps
   it (`DELETE /tags/{id}/migrate-to/{target_id}` deletes).
 

@@ -302,6 +302,7 @@ The plan as written before the cutover. What was done instead, and why, is in Ph
 
 - The vhost needs `AllowOverride All` on `public/` for Laravel's `.htaccess`.
 - Today's upload limits live in the old `.htaccess` (`upload_max_filesize 100M`, `post_max_size 105M`, `max_execution_time 120`). Copy them into `public/.htaccess` or the vhost, or uploads will fall back to PHP's defaults.
+- *After the cutover (2026-11-03):* the droplet moved from prefork with mod_php to the event MPM with PHP-FPM, for every site on it. Under prefork, each Apache process sat out the 5-second keep-alive after answering a Cloudflare connection, so thumbnails Cloudflare hadn't cached came at about 8 a second (120 took 15 s), and API requests waited behind them. Under event, 200 came in 1.9 s, with the API answering in 0.27 s meanwhile. The upload limits moved to `public/.user.ini`, which PHP-FPM reads. `.htaccess` keeps them for mod_php inside `<IfModule php_module>`: without mod_php, a bare `php_value` makes Apache answer every request with a 500. PHP's errors still go to each vhost's `ErrorLog`, now as `[proxy_fcgi:error] … AH01071: Got error 'PHP message: …'`, with one request's messages on one line, and a copy goes to `/var/log/php8.5-fpm.log`. The way back is in `backups/fpm-switch/ROLLBACK.txt`.
 - The workers and the scheduler must run as `www-data` so new thumbnails stay owned by Apache's user.
 
 ### Changes to deploy.ps1
@@ -353,7 +354,7 @@ Made after the cutover (2026-11-03), once nothing had to match the Slim app any 
 
 | API 4 | API 5 | Why |
 | --- | --- | --- |
-| No HTTP caching; the server cache's `X-Cache` only | The public reads send an `ETag` with `Cache-Control: no-cache, private` and answer `304` while unchanged (`cache.headers` middleware) | A revisit costs a status line instead of a body, and the service worker's revalidation gets cheap. |
+| No HTTP caching; the server cache's `X-Cache` only | The public reads send an `ETag` with `Cache-Control: no-cache, private` and answer `304` while unchanged (`cache.headers` middleware) | A revisit costs a status line instead of a body: the browser's own cache revalidates. (The service worker leaves the API alone; routing the listings through it made infinite scroll wait behind its thumbnail work.) |
 | The app fetched every tag at start and filtered them in the browser; `/tags/display` was every tag | `GET /tags?search=…&limit=…&exclude=…` (exact, prefix, then containing), `?names=` and `?ids=` lookups; `/tags/display` is a page with `search`, `sort`, `direction` and `ids` | Thousands of tags. The store keeps the tags it has seen, by id. |
 | An upload made thumbnails and asked Danbooru before answering | Both are queued; a file says `tags_status: "queued"` and `GET /media/tag-imports?ids=` reports the outcome (kept in the cache for a day) | A large batch with tags could outlast PHP's time limit, and one slow Danbooru reply held up every file. |
 | Logging out only forgot the token in the browser | `DELETE /auth/token` revokes it | A copied token stopped working only when it expired. |
@@ -383,7 +384,7 @@ Two smaller differences follow from using `HandleCors`, and the replay allows fo
 | Web requests, the scheduler and a queue worker contend for one SQLite file | WAL, `busy_timeout` 5000 and one worker. |
 | `config:cache` makes `env()` return `null` outside config files | All settings go through `config/gallery.php`; Larastan can flag stray `env()` calls. |
 | The droplet's PHP lacks an extension Laravel needs | Run `php -m` and check for Ctype, cURL, DOM, Fileinfo, Filter, Hash, Mbstring, OpenSSL, PCRE, PDO, Session, Tokenizer and XML before Phase 7. |
-| Upload limits fall back to PHP defaults after the move | Copy the `php_value` lines into `public/.htaccess` or the vhost. |
+| Upload limits fall back to PHP defaults after the move | Copy the `php_value` lines into `public/.htaccess` or the vhost (since the move to PHP-FPM: `public/.user.ini`). |
 
 ## Kickoff in Claude Code
 

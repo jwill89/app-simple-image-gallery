@@ -30,7 +30,7 @@ use Throwable;
  */
 final class UploadController extends Controller
 {
-    // PHP's upload_max_filesize (public/.htaccess); the upload page sends no larger file.
+    // PHP's upload_max_filesize (public/.user.ini); the upload page sends no larger file.
     private const int MAX_FILE_SIZE = 100 * 1024 * 1024;
 
     public function __construct(private readonly TagImports $imports) {}

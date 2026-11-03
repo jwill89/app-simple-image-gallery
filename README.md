@@ -106,10 +106,12 @@ duplicate detection, favorites, and admin-gated uploads.
    Copy `frontend/dist/*` into `backend/public/`, except `index.html`, which goes to
    `backend/resources/spa/index.html`, where the SPA shell reads it. The deploy script does this.
 
-5. **Serve** `backend/public/` with Apache (PHP 8.5, `AllowOverride All`, `FollowSymLinks`).
-   Its `.htaccess` serves real files (the built SPA, media) and sends everything else to Laravel:
-   `/api` to the API, and every other path to the SPA shell, which adds each page's link-preview
-   tags.
+5. **Serve** `backend/public/` with Apache (PHP 8.5, `AllowOverride All`, `FollowSymLinks`),
+   preferably the event MPM with PHP-FPM: under prefork, each process sits out a request's
+   keep-alive, and thumbnails queue. Its `.htaccess` serves real files (the built SPA, media) and
+   sends everything else to Laravel: `/api` to the API, and every other path to the SPA shell,
+   which adds each page's link-preview tags. PHP's upload limits are in `public/.user.ini`, which
+   PHP-FPM reads; `.htaccess` repeats them for mod_php.
 
 ## Background work
 
