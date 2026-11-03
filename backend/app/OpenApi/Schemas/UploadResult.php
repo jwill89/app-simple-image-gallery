@@ -31,4 +31,6 @@ class UploadResult
     public int $tags_applied = 0;
     #[OAS\Property(schema: new OAS\Schema(type: 'string', description: 'Danbooru lookup method used (md5/iqdb).'))]
     public string $tags_method = '';
+    #[OAS\Property(schema: new OAS\Schema(type: 'string', description: 'Why the Danbooru lookup failed, in place of tags_found, when Danbooru refused, blocked or did not answer (the file is still uploaded).'))]
+    public string $tags_error = '';
 }

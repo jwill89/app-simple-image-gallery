@@ -1,10 +1,9 @@
 # Gallery backend (Laravel)
 
-The gallery's API and SPA shell, as a Laravel 13 app. It is being rebuilt from the Slim app
-in `../backend-old/` on the `laravel-migration` branch; the plan, and how far it has got,
-is in [docs/laravel-migration.md](../docs/laravel-migration.md). It must answer every
-request the way the recordings in `../backend-old/tests/Fixtures/contract/` say the Slim
-app does.
+The gallery's API and SPA shell, as a Laravel 13 app, rebuilt from the Slim app on the
+`laravel-migration` branch; the plan, and how far it has got, is in
+[docs/laravel-migration.md](../docs/laravel-migration.md). It must answer every request
+the way the recordings in `tests/Fixtures/contract/` say the Slim app did.
 
 ## Local setup
 
@@ -14,7 +13,7 @@ composer setup            # install, create .env from .env.example, generate APP
 
 Then set `DB_DATABASE` in `.env` to an absolute path to a copy of the gallery database,
 never a database another app is using. `database/gallery.db` is gitignored for that
-purpose. Fill in the `GALLERY_*` and `DANBOORU_*` values as in `../backend-old/.env`.
+purpose. Fill in the `GALLERY_*` and `DANBOORU_*` values; `.env.example` says what each is.
 
 Every path outside `/api` is the SPA shell (`SpaController`): the built `index.html` with
 the page's link-preview tags. It reads `resources/spa/index.html`, which the deploy copies

@@ -176,7 +176,8 @@ final class UploadController extends Controller
 
     /**
      * Look a new item up on Danbooru and apply its tags. A failed lookup is
-     * reported on the file, not the upload.
+     * reported on the file, not the upload, with the reason: Danbooru failing
+     * (refused, blocked, unreachable) is not the same as it having no post.
      *
      * @return array{tags_found: bool, tags_applied: int, tags_method: string}|array{tags_error: string}
      */
@@ -188,6 +189,13 @@ final class UploadController extends Controller
             Log::warning('Danbooru tag import failed', ['media_id' => $mediaId, 'error' => $e->getMessage()]);
 
             return ['tags_error' => 'Tag fetch failed'];
+        }
+
+        $failure = $import->failureException();
+        if ($failure !== null) {
+            Log::warning('Danbooru tag import failed', ['media_id' => $mediaId, 'reason' => $import->failure?->name, 'ray' => $import->ray]);
+
+            return ['tags_error' => $failure->getMessage()];
         }
 
         return ['tags_found' => $import->found, 'tags_applied' => $import->tagsApplied, 'tags_method' => $import->method];

@@ -9,7 +9,7 @@ use Illuminate\Support\Env;
 | Gallery settings
 |--------------------------------------------------------------------------
 |
-| Every variable in backend-old/.env.example, read the way the Slim backend's
+| Every variable in the Slim backend's .env.example, read the way its
 | Gallery\Core\Configuration reads it: an empty value counts as unset. Code
 | reads these with config('gallery.…'), never env(), so they still resolve
 | after `php artisan config:cache`.
@@ -50,10 +50,13 @@ return [
     // FontAwesome kit id, injected into the SPA shell's <head>.
     'fontawesome_kit_id' => $raw('FONTAWESOME_KIT_ID'),
 
-    // Danbooru API credentials for tag imports; both are needed.
+    // Danbooru API credentials for tag imports; both are needed. The account's
+    // numeric user ID goes in the User-Agent ("…; user #123"), which Danbooru
+    // asks of API clients: its firewall blocks requests without one.
     'danbooru' => [
         'login' => $raw('DANBOORU_LOGIN'),
         'api_key' => $raw('DANBOORU_API_KEY'),
+        'user_id' => $raw('DANBOORU_USER_ID'),
     ],
 
     // Duplicate-scan tuning, as written: the largest Hamming distance reported
@@ -66,8 +69,8 @@ return [
     ],
 
     // Where media files (full/, thumbs/ and the ingest folder) and duplicate-scan
-    // reports live. On the droplet both sit in /var/www/gallery-data/, shared
-    // with the Slim app during the switch (docs/laravel-migration.md).
+    // reports live. On the droplet both sit beside the app in its folder, outside
+    // public/ (docs/laravel-migration.md, Deployment).
     'media_path' => $orDefault($raw('GALLERY_MEDIA_PATH'), storage_path('app/media')),
     'dupes_path' => $orDefault($raw('GALLERY_DUPES_PATH'), storage_path('app/dupes')),
 

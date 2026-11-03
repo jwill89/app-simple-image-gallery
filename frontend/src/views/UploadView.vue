@@ -4,6 +4,7 @@ import { useApi, getErrorMessage, hasAuthToken, setAuthToken } from '../composab
 import { useGalleryStore } from '../stores/gallery'
 import { useToastStore } from '../stores/toast'
 import { endpoints } from '../api/endpoints'
+import { UPLOAD_LIMITS, planUploadBatches } from '../constants/uploads'
 import type { LoginResponse } from '../types'
 import AppAlert from '../components/AppAlert.vue'
 import PageHeader from '../components/PageHeader.vue'
@@ -36,7 +37,23 @@ interface UploadResult {
   tags_error?: string
 }
 
+interface UploadResponse {
+  results: UploadResult[]
+  total_uploaded: number
+  total_duplicates: number
+  total_failed: number
+  total_tags_applied?: number
+}
+
+/** One per selected file, by position; empty until an upload starts. */
 const uploadResults = ref<UploadResult[]>([])
+/**
+ * Every file's result from the last upload. Only the failed files stay
+ * selected afterwards, so the list alone can't say what happened to the rest.
+ */
+const lastUploadResults = ref<UploadResult[]>([])
+
+const maxFileSizeLabel = `${UPLOAD_LIMITS.bytesPerFile / (1024 * 1024)} MB`
 
 const IMAGE_EXTENSIONS = [
   '.jpg',
@@ -64,10 +81,10 @@ const acceptString = ALL_EXTENSIONS.join(',')
  * case worth summarising.
  */
 const uploadSummary = computed(() => {
-  if (uploading.value || uploadResults.value.length === 0) return null
+  if (uploading.value || lastUploadResults.value.length === 0) return null
 
   const counts = { success: 0, duplicate: 0, error: 0 }
-  for (const r of uploadResults.value) {
+  for (const r of lastUploadResults.value) {
     if (r.status === 'success') counts.success++
     else if (r.status === 'duplicate') counts.duplicate++
     else if (r.status === 'error') counts.error++
@@ -231,83 +248,123 @@ function onFileInput(e: Event) {
 function removeFile(index: number) {
   animatedGifs.value.delete(fileKey(selectedFiles.value[index]))
   selectedFiles.value = selectedFiles.value.filter((_, i) => i !== index)
+  uploadResults.value = uploadResults.value.filter((_, i) => i !== index)
 }
 
 function clearFiles() {
   selectedFiles.value = []
   uploadResults.value = []
+  lastUploadResults.value = []
   animatedGifs.value = new Set()
 }
 
+/**
+ * Sends the selected files in as many requests as the server's limits need
+ * (constants/uploads.ts), one after another, and fills in each file's result
+ * as its request comes back. A file the server didn't answer for, or that was
+ * too large to send, fails with the reason instead of going missing.
+ */
 async function uploadFiles() {
   if (!hasFiles.value || uploading.value) return
 
   uploading.value = true
-  uploadResults.value = selectedFiles.value.map((f) => ({
-    file_name: f.name,
-    status: 'pending' as const,
-  }))
-
-  const formData = new FormData()
-  for (const file of selectedFiles.value) {
-    formData.append('files[]', file)
-  }
-  if (fetchTags.value) {
-    formData.append('fetch_tags', '1')
-  }
+  const files = selectedFiles.value
+  const failWith = (index: number, message: string): UploadResult => ({
+    file_name: files[index].name,
+    status: 'error',
+    message,
+  })
+  uploadResults.value = files.map((f) => ({ file_name: f.name, status: 'pending' as const }))
 
   try {
-    const result = await api.upload<{
-      results: UploadResult[]
-      total_uploaded: number
-      total_duplicates: number
-      total_failed: number
-      total_tags_applied?: number
-    }>(endpoints.media.upload, formData)
-    if (!result) throw new Error('No response from the upload request')
+    const plan = planUploadBatches(files)
+    for (const index of plan.tooLarge) {
+      uploadResults.value[index] = failWith(index, `Larger than ${maxFileSizeLabel}`)
+    }
 
-    uploadResults.value = result.results
+    let tagsApplied = 0
+    let requestError: string | null = null
+    for (const batch of plan.batches) {
+      const formData = new FormData()
+      for (const index of batch) {
+        formData.append('files[]', files[index])
+      }
+      if (fetchTags.value) {
+        formData.append('fetch_tags', '1')
+      }
 
-    if (result.total_uploaded > 0) {
-      let msg = `${result.total_uploaded} file(s) uploaded successfully.`
-      if (result.total_tags_applied != null && result.total_tags_applied > 0) {
-        msg += ` ${result.total_tags_applied} tags applied.`
+      try {
+        const result = await api.upload<UploadResponse>(endpoints.media.upload, formData)
+        if (!result) throw new Error('No response from the upload request')
+
+        batch.forEach((index, n) => {
+          uploadResults.value[index] =
+            n < result.results.length
+              ? result.results[n]
+              : failWith(index, 'The server did not receive this file')
+        })
+        tagsApplied += result.total_tags_applied ?? 0
+      } catch (e) {
+        const message = getErrorMessage(e, 'The upload request failed. Please try again.')
+        requestError ??= message
+        for (const index of batch) {
+          uploadResults.value[index] = failWith(index, message)
+        }
+      }
+    }
+
+    const results = uploadResults.value.slice(0, files.length)
+    const count = (status: UploadResult['status']) =>
+      results.filter((r) => r.status === status).length
+    const uploaded = count('success')
+    const duplicates = count('duplicate')
+    const failed = count('error')
+    // A file added without its Danbooru tags because the lookup failed, which
+    // isn't the same as Danbooru having no post for it.
+    const tagErrors = results.flatMap((r) => (r.tags_error ? [r.tags_error] : []))
+
+    // Keep only the failed files, with their results, for a retry; successes
+    // and duplicates are done. Files added while uploading stay too.
+    lastUploadResults.value = results
+    const keep = results.flatMap((r, index) => (r.status === 'error' ? [index] : []))
+    selectedFiles.value = [
+      ...keep.map((index) => files[index]),
+      ...selectedFiles.value.slice(files.length),
+    ]
+    uploadResults.value = keep.map((index) => results[index])
+
+    if (uploaded > 0) {
+      let msg = `${uploaded} file(s) uploaded successfully.`
+      if (tagsApplied > 0) {
+        msg += ` ${tagsApplied} tags applied.`
       }
       toastStore.success(msg, 4000, 'Upload Complete')
-      await store.refreshTotals()
-      await store.refreshTags()
     }
-    if (result.total_duplicates > 0) {
+    if (tagErrors.length > 0) {
       toastStore.warning(
-        `${result.total_duplicates} file(s) were skipped because they already exist in the gallery.`,
+        `Danbooru tags could not be fetched for ${tagErrors.length} file(s). ${tagErrors[0]}`,
+        12000,
+        'Tags Not Fetched',
+      )
+    }
+    if (duplicates > 0) {
+      toastStore.warning(
+        `${duplicates} file(s) were skipped because they already exist in the gallery.`,
         5000,
         'Duplicates Skipped',
       )
     }
-    if (result.total_failed > 0) {
+    if (failed > 0) {
       toastStore.error(
-        `${result.total_failed} file(s) could not be processed. Check the results below for details.`,
+        `${failed} file(s) could not be uploaded. ${requestError ?? 'Check the results below for details.'}`,
         8000,
         'Upload Failed',
       )
     }
-
-    // Clear the file list — keep only failed items (duplicates and successes are resolved)
-    const failedNames = new Set(
-      result.results.filter((r) => r.status === 'error').map((r) => r.file_name),
-    )
-    selectedFiles.value = selectedFiles.value.filter((f) => failedNames.has(f.name))
-  } catch (e) {
-    toastStore.error(
-      getErrorMessage(e, 'The upload request failed. Please try again.'),
-      8000,
-      'Upload Failed',
-    )
-    uploadResults.value = selectedFiles.value.map((f) => ({
-      file_name: f.name,
-      status: 'error' as const,
-      message: 'Upload request failed',
-    }))
+    if (uploaded > 0) {
+      await store.refreshTotals()
+      await store.refreshTags()
+    }
   } finally {
     uploading.value = false
   }
@@ -394,7 +451,9 @@ async function uploadFiles() {
             <p class="is-size-5 has-text-grey mt-3">
               Drag &amp; drop files here, or click to browse
             </p>
-            <p class="is-size-7 has-text-grey-light mt-1">Images, GIFs, and videos up to 500 MB</p>
+            <p class="is-size-7 has-text-grey-light mt-1">
+              Images, GIFs, and videos up to {{ maxFileSizeLabel }} each
+            </p>
           </div>
         </div>
 

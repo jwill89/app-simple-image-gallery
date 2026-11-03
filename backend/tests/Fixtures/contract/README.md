@@ -1,30 +1,36 @@
 # Recorded API contract
 
-What the Slim backend returns today, recorded for Phase 0 of
-[docs/laravel-migration.md](../../../../docs/laravel-migration.md). The Laravel backend is
-done when it gives the same answers to the same requests.
+What the Slim backend returned, recorded for Phase 0 of
+[docs/laravel-migration.md](../../../../docs/laravel-migration.md). The Laravel backend
+gives the same answers to the same requests, except where
+`tests/Feature/Contract/divergences.php` says it answers differently on purpose, and
+`tests/Feature/Contract/ContractTest.php` replays every case to keep it that way.
 
 One JSON file per case, grouped by resource. `index.json` lists every case under its route
 in the plan's endpoint inventory, so each of the 43 routes can be checked for coverage. The
 `spa/` cases are the SPA shell (`index.php`): the built `index.html` in `tests/Fixtures/spa/`
 with each page's link-preview tags, requested with `Host: gallery.test`.
 
+**These files are frozen.** The recorder ran the Slim app, which was kept in `backend-old/`
+during the migration and deleted in Phase 8, along with the recorder and its case list
+(`bin/record-contract.php`, `tests/Fixtures/contract-cases.php`,
+`tests/Support/Contract/StagedApp.php` and the Danbooru stub server). Edit a recording by
+hand only to correct it. To run the recorder again, check `backend-old/` out of the commit
+before the one that deleted it:
+
 ```bash
-php bin/record-contract.php                 # re-record everything (from backend-old/)
-php bin/record-contract.php --only=tags/    # re-record the cases whose id starts with tags/
-php bin/record-contract.php --check         # exit 1 if a fresh recording differs from these files
+git log -1 --diff-filter=D --format=%h -- backend-old/bin/record-contract.php   # the deleting commit
+git checkout <that commit>^ -- backend-old
 ```
 
-The cases themselves are in `tests/Fixtures/contract-cases.php`. A full run takes about 25
-seconds and never touches `backend-old/db`, `media`, `cache` or `logs`: the recorder copies the
-app code to a temporary directory and serves it there with `php -S`
-(`tests/Support/Contract/StagedApp.php`).
+The fixture paths below are relative to `backend/`. The production schema was the Slim app's
+`tests/Support/schema.sql`; the other files sit where they sat under `backend-old/`.
 
 ## The fixture
 
 Every case starts from a fresh copy of:
 
-- **Database:** `tests/Support/schema.sql` (the production schema), then
+- **Database:** `tests/Fixtures/schema.sql` (the production schema), then
   `tests/Fixtures/contract.sql` (data only), plus one admin token inserted at the start of
   the case. The comments in `contract.sql` say which rows exist for which case.
 - **Files:** `tests/Fixtures/media/thumbs/` (the `@2x` thumbnails the duplicate scan
@@ -35,11 +41,12 @@ Every case starts from a fresh copy of:
   `GALLERY_URL=https://gallery.test`, `DANBOORU_LOGIN=contract`,
   `DANBOORU_API_KEY=contract-key`, and the duplicate-scan settings unset (defaults). A case's
   `setup.env` overrides these.
-- **Danbooru:** `tests/Fixtures/danbooru-stub.php`, a stand-in for the three Danbooru calls,
-  answering by the MD5 in the request. The staged copy of `DanbooruTagger` points at it.
+- **Danbooru:** the recorder's stub server, a stand-in for the three Danbooru calls,
+  answering by the MD5 in the request. The staged copy of `DanbooruTagger` pointed at it;
+  `tests/Support/Contract/DanbooruStub.php` answers the same way in the Laravel tests.
 - **Upload files:** `tests/Fixtures/uploads/`. `duplicate.png`'s MD5 is media 2's `hash`,
   and `tiny.png`'s MD5 is the one the stub matches, so regenerating either image means
-  updating `contract.sql` or the stub to match.
+  updating `contract.sql` or `DanbooruStub.php` to match.
 - **Rate limits and response cache:** empty, so `X-RateLimit-Remaining` starts at 119 and
   the first cached read of a case is a `MISS`.
 
@@ -113,8 +120,9 @@ perceptual fingerprints of uploads included, is exact.
 
 ## Recorded behavior the plan doesn't assume
 
-These are how the app behaves today, so they're what the recordings hold. Before Phase 3,
-decide for each one whether Laravel keeps it or the recording changes on purpose.
+These are how the Slim app behaved, so they're what the recordings hold. Each was decided
+before Phase 3: the plan's "Contract changes" section and `divergences.php` list the ones
+Laravel answers differently, and Laravel keeps the rest.
 
 - **No route answers 404.** The OPTIONS catch-all `/{routes:.+}` matches every path, so an
   unmatched path gets **405 with `Allow: OPTIONS`** (`errors/unmatched-path`).

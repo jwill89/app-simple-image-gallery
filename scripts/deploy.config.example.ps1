@@ -18,4 +18,4 @@ param()
 $DeployVpsHost = "<your-droplet-ip-or-hostname>"
 $DeployVpsUser = "<ssh-user>"                        # e.g. root or a deploy user
 $DeployKeyPath = "<path-to-your-deploy-key.ppk>"
-$DeployAppRoot = "<laravel-app-folder-on-host>"     # e.g. /var/www/gallery-app (its public/ is the DocumentRoot)
+$DeployAppRoot = "<laravel-app-folder-on-host>"     # e.g. /var/www/gallery.mathdad.me (its public/ is the DocumentRoot)

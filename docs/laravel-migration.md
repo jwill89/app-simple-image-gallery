@@ -231,8 +231,8 @@ Follow the Deployment section below.
 
 How it went (2026-11-03), and where it differs from the Deployment section:
 
-- **Backed up first.** `/var/www/gallery-backups/20261103-042056/` holds the database (`VACUUM INTO`, integrity checked), the Slim webroot as a tarball, the media as hard links, and both gallery vhost files. `ROLLBACK.txt` there has the steps back.
-- **The data stayed where it was.** Laravel's `.env` points `DB_DATABASE`, `GALLERY_MEDIA_PATH` and `GALLERY_DUPES_PATH` at the Slim webroot's `db/`, `media/` and `dupes/`, so not one of the Slim app's files changed. Going back is the vhost change alone, and both apps read the same data. Moving it to `/var/www/gallery-data/` moved to Phase 8.
+- **Backed up first.** `/var/www/gallery-backups/20261103-042056/` (since moved to `/var/www/gallery.mathdad.me/backups/`) holds the database (`VACUUM INTO`, integrity checked), the Slim webroot as a tarball, the media as hard links, and both gallery vhost files.
+- **The data stayed where it was.** Laravel's `.env` points `DB_DATABASE`, `GALLERY_MEDIA_PATH` and `GALLERY_DUPES_PATH` at the Slim webroot's `db/`, `media/` and `dupes/`, so not one of the Slim app's files changed. Going back was the vhost change alone, and both apps read the same data. The app ran from `/var/www/gallery-app/` until Phase 8 moved it into the domain folder, around the data.
 - **A preview port, not a subdomain.** Before the switch the Laravel app was served on `127.0.0.1:8088`, reachable only from the droplet, so no DNS record or certificate was needed. It was removed after the switch.
 - **Checked before the switch**, on the droplet:
   - The same 50 requests went to both apps: API reads, error cases, writes refused for a missing token, Origin or wrong password, SPA pages with their OG tags, media files and static assets. 47 answered the same. Of the other three, two are the recorded divergences (an unknown `/api` path, a preflight). The third, `/media`, gets the same Apache 301 from both, differing only in the port named.
@@ -245,31 +245,49 @@ How it went (2026-11-03), and where it differs from the Deployment section:
 - **A guard on ingest.** `gallery:ingest` now refuses to remove anything when none of the gallery's files are in `media/full`, which is what a wrong `GALLERY_MEDIA_PATH` looks like. Without the guard it would delete every row.
 - **Logging:** an `ApiException` with a 4xx status is no longer reported. Only 5xx errors and uncaught exceptions reach the log.
 - **Logins:** Slim's tokens don't carry over to Sanctum, so anyone logged in at cutover logs in once more.
-- **Deploys** now go to `DEPLOY_APP_ROOT` (`scripts/deploy.ps1`). They snapshot the database into the Slim webroot's `db/.backups/`, where it still lives. There is no `cache:clear`: cached responses expire within 60 s anyway, and a clear would also drop the rate limiter's counts and the queue's unique locks.
+- **Deploys** now go to `DEPLOY_APP_ROOT` (`scripts/deploy.ps1`). They snapshot the database into `db/.backups/` beside it. There is no `cache:clear`: cached responses expire within 60 s anyway, and a clear would also drop the rate limiter's counts and the queue's unique locks.
 
 ### Phase 8: Clean up
 
-- Move the data into `/var/www/gallery-data/` (see Deployment, step 1), point the three `.env` paths and the `public/media` link at it, and leave the Slim webroot as the rollback copy until it is deleted.
+- Put the whole gallery in its domain folder, `/var/www/gallery.mathdad.me/`, with the Slim app kept in it as the rollback copy until it is deleted. (This replaced the plan's separate `/var/www/gallery-data/`: every folder in `/var/www` is named for its domain.)
 - Move the contract fixtures the Laravel tests read into `backend/tests/`, then delete `backend-old/`.
 - After a week live, add a migration that drops `auth_tokens`, `rate_limits` and `phinx_migrations`.
 - Update README, AGENTS.md, CONTRIBUTING.md and CHANGELOG, and bump the app version. The API version stays the same because the contract didn't change.
 
 **Done when:** the repo has one backend and its docs describe Laravel.
 
+Progress:
+
+- **`backend-old/` is gone** (2026-11-03). The fixtures the tests read moved, with their history, to `backend/tests/Fixtures/`: the recordings (`contract/`), `contract.sql`, the upload, thumbnail, SPA and dupes files, and the Slim app's `tests/Support/schema.sql` as `schema.sql`. The recordings are now frozen. Deleted with the rest of the Slim app: the recorder, its case list (`contract-cases.php`) and the Danbooru stub server. The contract README says how to check them out of git history to record again. The rest of the old tests went too; the Laravel suite and the replay cover what they checked.
+- A checkout may still hold the Slim app's untracked files in `backend-old/` (`.env`, a database copy, `vendor/`). The root `.gitignore` ignores the whole folder so they can't be committed.
+- **Everything is in `/var/www/gallery.mathdad.me/`** (2026-11-03), laid out as in Deployment below. The Laravel app moved in from `/var/www/gallery-app/`, the Slim code moved out of the folder's root into `slim-rollback/`, and the backups moved in from `/var/www/gallery-backups/`. The data didn't move, so the `.env` paths didn't change. A script did it in one pass on the droplet:
+  - It checked first that nothing would clash and that the queue was empty.
+  - It snapshotted the database, then moved the folders, with a link at the old path until the vhosts were switched.
+  - It repointed the vhosts, the `gallery-queue` unit and the scheduler's cron file, and rebuilt Laravel's caches for the new path.
+  - Checked afterwards: the live site answered, and `/.env`, the database, `composer.json`, `backups/` and `slim-rollback/` were not served. On a temporary local vhost, `slim-rollback/` still served the API, pages and media.
+
+  `backups/ROLLBACK.txt` has the steps back, and `backups/rollback-vhosts/` has vhost files ready to point at `slim-rollback/`. The original vhost copies, now `apache-before-cutover/`, serve the folder root, which is the Laravel app now, so they must not be restored as they are.
+- **Deploys narrowed their permissions.** They chown only the code, `vendor/` and `storage/` to `www-data`, never the data, `backups/` or `slim-rollback/`. The tarball, built on Windows, gave the code world-writable modes (`777`/`666`), which the old deploy kept too; the code is now `755`/`644`.
+- Still to do: delete `slim-rollback/` and drop the old tables after a week live, and the docs (AGENTS.md has a banner saying which parts are out of date).
+
 ## Deployment
 
-Laravel replaces the flat webroot with an app folder whose `public/` is the document root. So the data moves to its own folder first, and cutover is a one-line Apache change you can reverse.
+Laravel replaces the flat webroot with an app folder whose `public/` is the document root. Everything for the gallery lives in its domain folder, as every site in `/var/www` does, and only `public/` is served.
 
-### Target layout on the droplet
+### Layout on the droplet
 
-| Path | Holds |
+| Path in `/var/www/gallery.mathdad.me/` | Holds |
 | --- | --- |
-| `/var/www/gallery-data/` | `db/gallery.db`, `media/` and `dupes/`, shared by both apps during the switch |
-| `/var/www/gallery-app/` | The Laravel app and its `.env` |
-| `/var/www/gallery-app/public/` | Apache DocumentRoot: `index.php`, the built SPA assets, and a `media` link into the data folder |
-| Today's webroot | The old app, kept untouched for rollback |
+| `app/`, `bootstrap/`, `config/`, `database/`, `resources/`, `routes/`, `vendor/`, `artisan`, `composer.*`, `openapi.json` | The Laravel app's code, replaced by each deploy |
+| `public/` | Apache's DocumentRoot: `index.php`, the built SPA assets, and the `media` link |
+| `.env`, `storage/` | Config and Laravel's runtime files, kept across deploys |
+| `db/`, `media/`, `dupes/` | The data: `gallery.db` (with `.backups/` snapshots), the media files and the ingest folder, the scan reports |
+| `backups/` | The pre-cutover backup, `ROLLBACK.txt` and the vhost files for a rollback; root-only |
+| `slim-rollback/` | The Slim app as it last ran, with links to `../db`, `../media` and `../dupes`, until Phase 8 deletes it |
 
 ### First cutover
+
+The plan as written before the cutover. What was done instead, and why, is in Phase 7's notes and Phase 8's progress; the layout above is the result.
 
 1. **Move the data.** Snapshot the database with `VACUUM INTO`, then move `gallery.db` (with its `-wal` and `-shm` files), `media/` and `dupes/` into `/var/www/gallery-data/`. Leave symlinks in the old webroot so the old app keeps working, and confirm it still does.
 2. **Deploy Laravel to `/var/www/gallery-app/`.** In `.env`, point `DB_DATABASE` and the media and dupes paths at the data folder. Run `php artisan storage:link` once to create `public/media`.
@@ -289,7 +307,7 @@ Laravel replaces the flat webroot with an app folder whose `public/` is the docu
 - **Payload:** Laravel's `app/`, `bootstrap/`, `config/`, `database/`, `public/`, `resources/`, `routes/`, `artisan`, `composer.json`, `composer.lock` and `openapi.json`. Copy `frontend/dist` into `public/`, except `index.html`, which goes to `resources/spa/index.html`, where `SpaController` reads it.
 - **Never shipped:** `.env`, `storage/` contents, `vendor/` and `bootstrap/cache/`.
 - **Composer:** `composer install --no-dev --optimize-autoloader`. Dev dependencies are no longer needed on the server, since Phinx is gone.
-- **Remote steps:** snapshot the database (in the folder that holds it), `php artisan migrate --force`, `php artisan storage:link`, `php artisan optimize --except=views` (there are no Blade views to cache), `php artisan queue:restart`, `chown` the app to `www-data`, then the same health check on `/api/media/count`.
+- **Remote steps:** snapshot the database (in the folder that holds it), `php artisan migrate --force`, `php artisan storage:link`, `php artisan optimize --except=views` (there are no Blade views to cache), `php artisan queue:restart`, `chown` the code, `vendor/` and `storage/` to `www-data` (never the data or backups), then the same health check on `/api/media/count`.
 - **Keep:** the code backup and rollback, the no-auto-restore rule for the database, and the two-connection limit for `ufw limit ssh`.
 - **Dropped:** the `cache/api/*.cache` cleanup, with no `cache:clear` in its place (see Phase 7).
 
@@ -326,6 +344,8 @@ Decided before Phase 3. The Laravel app answers these differently from the recor
 One change to the OpenAPI document, decided in Phase 4: each operation has a readable `operationId` (`listTags`, `uploadMedia`, …) where swagger-php had hashed the Slim controller's class and method. Moving the methods would have changed every hash anyway. Nothing else in `openapi.json` changed. The frontend's `api.generated.ts` changed only in its `operations` keys, which no app code reads.
 
 When a request has more than one problem, Laravel may report a different one first. A Form Request checks the body before the controller looks up the id in the path, and it checks fields in the order its rules list them. For example, a bad name sent to an unknown tag id is now a 400 for the name, where the Slim app answered 404. The recordings only exercise one problem at a time.
+
+Added after the cutover (2026-11-03), when Danbooru's Cloudflare firewall began blocking the droplet. Both apps reported that block as `500 DanbooruAuthFailed`, telling you to check credentials that were never even checked. A 403 whose body isn't JSON (the firewall's block page; the API itself refuses in JSON) is now `503 DanbooruBlocked`. Its message says so and quotes Cloudflare's Ray ID for Danbooru's admins. An upload with `fetch_tags` now gives each file whose lookup failed a `tags_error` with that reason, where it used to say `tags_found: false`, as if Danbooru simply had no post for it. The recordings are unchanged: their stub only ever refuses in JSON. The cause turned out to be the User-Agent: Danbooru asks API clients to name the account in it (`GalleryTagImporter/1.0; user #123`), and its firewall blocks requests that don't. The account's numeric ID is now the `DANBOORU_USER_ID` setting, and a block with it unset says to set it.
 
 The SPA shell's pages now carry `X-Frame-Options: SAMEORIGIN` and `X-Content-Type-Options: nosniff`, which the Slim app set only on API responses. They come from the same global middleware, and keep the gallery from being framed by another site.
 

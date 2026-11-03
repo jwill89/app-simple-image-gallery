@@ -4,18 +4,20 @@ Operational guide for AI coding agents (and humans) working in this repository.
 Read this before making changes. It describes the architecture, conventions,
 data model, commands, and the non-obvious gotchas that will bite you.
 
-> **Laravel migration in progress** (branch `laravel-migration`): the backend is being
-> rebuilt as a pure Laravel app without changing the API contract. The plan, its phases
-> and each phase's "Done when" line are in [docs/laravel-migration.md](docs/laravel-migration.md).
+> **Laravel migration** (branch `laravel-migration`): the backend was rebuilt as a pure
+> Laravel app without changing the API contract, and has served the live site since
+> 2026-11-03. The plan, its phases and each phase's "Done when" line are in
+> [docs/laravel-migration.md](docs/laravel-migration.md).
 >
 > - **`backend/` is the Laravel app** (its README covers setup and checks; CI runs it).
-> - **`backend-old/` is the Slim app**, kept only as reference and for testing: the contract
->   the Laravel app must match is recorded from it into `backend-old/tests/Fixtures/contract/`
->   (`php backend-old/bin/record-contract.php` re-records it). It is deleted when the
->   migration is done. Don't port its code wholesale; port behavior, the Laravel way.
+> - **The Slim app has been removed.** The contract recorded from it is frozen in
+>   `backend/tests/Fixtures/contract/` and replayed by the tests; that folder's README says
+>   how to get the Slim code and its recorder back from git history.
 >
-> Until the plan's Phase 8, the rest of this file still describes the Slim app, so read its
-> `backend/` paths as `backend-old/`.
+> Until the plan's Phase 8 is finished, the rest of this file still describes the Slim app.
+> Its backend paths (`api/`, `includes/Gallery/`, Phinx, `scripts/*.php`) no longer exist:
+> for the backend, go by `backend/README.md`, the plan and the code. The frontend sections
+> still hold.
 
 ---
 
@@ -241,6 +243,7 @@ GALLERY_URL                # public base URL, required for Danbooru IQDB fallbac
 GALLERY_ALLOWED_ORIGINS    # comma-separated CORS allowlist
 DANBOORU_LOGIN             # Danbooru API username
 DANBOORU_API_KEY           # Danbooru API key
+DANBOORU_USER_ID           # the account's numeric ID, sent in the User-Agent; Danbooru's firewall blocks clients without it
 FONTAWESOME_KIT_ID         # FA kit id (injected into <head> by index.php)
 DUPLICATE_MAX_DISTANCE     # duplicate scan: largest Hamming distance reported, 0-16 (default 6)
 DUPLICATE_MAX_REGION_DIFF  # duplicate scan: largest worst-region difference, 0-255 or off (default 36)
@@ -420,7 +423,8 @@ which is fine given the token's entropy.
   `style.css` and the SFC style blocks, and holds the palette rule: no hex, and no `rgb()`/`hsl()`
   other than neutral white/black, outside the `:root` token blocks in `style.css` (fenced by
   `stylelint-disable`/`enable` comments). **Knip** (`knip.ts`, `npm run knip`) fails on unused
-  files, exports and dependencies; `@vue/test-utils` is kept deliberately for component specs.
+  files, exports and dependencies. Component specs mount a view with `@vue/test-utils` and fake
+  the server by mocking `useApi` (`UploadView.spec.ts`).
 - **Data-fetching composables**: `useGalleryData` (paginated lists), `useMediaTags` (detail + tag
   add/remove). Reuse them rather than re-implementing fetch logic.
 - **Routing**: lazy-loaded views in `router/index.ts`; page title from `meta.title`.
@@ -524,9 +528,13 @@ which is fine given the token's entropy.
 - **Schema source of truth = Phinx** (`db/migrations/`). `db/setup.php` is now just a bootstrap that
   ensures `db/gallery.db` exists and runs migrations — no hand-written DDL. Change the schema by
   **adding a migration**, never by editing `setup.php`.
-- **Upload size limits disagree**: `.htaccess` sets `upload_max_filesize 100M` / `post_max_size 105M`,
-  but `UploadController::MAX_FILE_SIZE` is **500 MB** and the UI advertises 500 MB. Files >100 MB are
-  rejected by PHP before reaching the controller. Reconcile if you touch uploads. *(Still open.)*
+- **PHP's upload limits fail quietly, so the upload page works within them.** `backend/public/.htaccess`
+  sets `upload_max_filesize 100M` / `post_max_size 105M`, and `php.ini` keeps PHP's default
+  `max_file_uploads = 20`. Past 20 files PHP drops the rest of a request, and past `post_max_size`
+  the whole body, before the app sees it. So the upload page sends files in batches of at most
+  20 files and 100 MB, and doesn't send a file over 100 MB at all (`constants/uploads.ts`, mirroring
+  those settings: change both together). `UploadController::MAX_FILE_SIZE` still says 500 MB, but
+  PHP's 100 MB applies first.
 - **`ffmpeg` must be on PATH** for thumbnail generation; **GD** (with WebP, ideally AVIF) is required
   for the duplicate scan's thumbnail comparison. On hosts where `exec()` is disabled, thumbnails silently won't generate. (Note:
   `php-ffmpeg/php-ffmpeg` was removed from `composer.json` — thumbnails shell out to `ffmpeg` directly.)

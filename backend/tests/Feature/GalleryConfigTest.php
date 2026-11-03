@@ -42,13 +42,14 @@ function galleryConfig(array $vars): array
     return $config;
 }
 
-it('reads every variable in the Slim backend\'s .env.example', function (): void {
+it('reads every gallery variable in .env.example', function (): void {
     $config = galleryConfig([
         'GALLERY_ADMIN_PASSWORD' => 'secret',
         'GALLERY_URL' => 'https://gallery.test',
         'GALLERY_ALLOWED_ORIGINS' => 'https://gallery.test',
         'DANBOORU_LOGIN' => 'someone',
         'DANBOORU_API_KEY' => 'key',
+        'DANBOORU_USER_ID' => '123',
         'FONTAWESOME_KIT_ID' => 'kit',
         'DUPLICATE_MAX_DISTANCE' => '8',
         'DUPLICATE_MAX_REGION_DIFF' => 'off',
@@ -63,7 +64,7 @@ it('reads every variable in the Slim backend\'s .env.example', function (): void
         'url' => 'https://gallery.test',
         'allowed_origins' => ['https://gallery.test'],
         'fontawesome_kit_id' => 'kit',
-        'danbooru' => ['login' => 'someone', 'api_key' => 'key'],
+        'danbooru' => ['login' => 'someone', 'api_key' => 'key', 'user_id' => '123'],
         'duplicates' => ['max_distance' => '8', 'max_region_diff' => 'off'],
         'media_path' => '/data/media',
         'dupes_path' => '/data/dupes',

@@ -18,7 +18,7 @@ use function Pest\Laravel\seed;
 
 // The queued Danbooru import and gallery:import-tags, against the contract's
 // Danbooru stub: media 1 is found by MD5 (post 1001), and media 16 is answered
-// 429 (see backend-old/tests/Fixtures/contract.sql).
+// 429 (see tests/Fixtures/contract.sql).
 
 beforeEach(function (): void {
     seed(ContractFixtureSeeder::class);

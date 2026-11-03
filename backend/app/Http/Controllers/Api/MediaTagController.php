@@ -151,7 +151,7 @@ final class MediaTagController extends Controller
             new OAS\Response(response: 404, description: 'MediaDoesNotExist / NotFoundOnDanbooru', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
             new OAS\Response(response: 429, description: 'DanbooruRateLimited', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
             new OAS\Response(response: 500, description: 'DanbooruNotConfigured / DanbooruAuthFailed', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 503, description: 'DanbooruUnreachable / DanbooruUnavailable', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 503, description: 'DanbooruUnreachable / DanbooruUnavailable / DanbooruBlocked', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ],
     )]
     public function importFromDanbooru(Request $request, DanbooruTagger $tagger, string $mediaId): JsonResponse
@@ -167,9 +167,9 @@ final class MediaTagController extends Controller
 
         if (!$import->found) {
             if ($import->failure !== null) {
-                Log::warning('Danbooru lookup failed', ['media_id' => $media->media_id, 'reason' => $import->failure->name]);
+                Log::warning('Danbooru lookup failed', ['media_id' => $media->media_id, 'reason' => $import->failure->name, 'ray' => $import->ray]);
 
-                throw $import->failure->exception();
+                throw $import->failure->exception($import->ray);
             }
 
             throw new ApiException('NotFoundOnDanbooru', 404, $postId > 0

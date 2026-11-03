@@ -873,6 +873,8 @@ export interface components {
             tags_applied?: number;
             /** @description Danbooru lookup method used (md5/iqdb). */
             tags_method?: string;
+            /** @description Why the Danbooru lookup failed, in place of tags_found, when Danbooru refused, blocked or did not answer (the file is still uploaded). */
+            tags_error?: string;
         };
         /** @description Aggregate upload result. */
         UploadSummary: {
@@ -1731,7 +1733,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description DanbooruUnreachable / DanbooruUnavailable */
+            /** @description DanbooruUnreachable / DanbooruUnavailable / DanbooruBlocked */
             503: {
                 headers: {
                     [name: string]: unknown;

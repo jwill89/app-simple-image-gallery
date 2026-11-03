@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\Http;
 use Tests\Support\ContractFixture;
 
 /**
- * The Danbooru API the recordings were made against
- * (backend-old/tests/Fixtures/danbooru-stub.php), as an Http::fake(). It
+ * The Danbooru API the recordings were made against (the recorder's stub
+ * server, gone with the Slim app), as an Http::fake(). It
  * answers the same three calls the same way, refuses other credentials with
  * 401, and logs each call as the stub did, without credentials, so a step can
  * be checked for the calls it made.

@@ -10,8 +10,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The Laravel backend. backend-old/ (the Slim app) is reference only and has no
-  # job: nothing ships from it, and the contract recordings guard what it did.
+  # The Laravel backend. The contract recorded from the Slim app it replaced
+  # (tests/Fixtures/contract/) is replayed by its tests.
   backend:
     name: Backend (PHP / Laravel)
     runs-on: ubuntu-latest

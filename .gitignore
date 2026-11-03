@@ -14,22 +14,11 @@
 # backend/.gitignore and backend/database/.gitignore cover the app itself.
 /backend/coverage/
 
-# ── Old backend (Slim, reference only until the Laravel migration is done) ────
-# Dependencies are reinstalled via composer; composer.lock IS tracked (reproducible installs).
-/backend-old/vendor/
-# Secrets and runtime / generated data — never commit.
-/backend-old/.env
-/backend-old/db/gallery.db*
-# Pre-migrate snapshots taken by scripts/deploy.ps1 (created on the host).
-/backend-old/db/.backups/
-/backend-old/cache/
-/backend-old/logs/
-/backend-old/dupes/
-/backend-old/media/
-# Test artifacts and tool caches.
-/backend-old/.phpunit.cache/
-/backend-old/.php-cs-fixer.cache
-/backend-old/coverage/
+# ── Old backend (Slim) ────────────────────────────────────────────────────────
+# Removed from the repo in the Laravel migration's Phase 8. A checkout may still
+# hold its untracked files (.env, a database copy, vendor/), which must never be
+# committed.
+/backend-old/
 
 # ── Frontend (Vite) ───────────────────────────────────────────────────────────
 # Dependencies are reinstalled via npm ci; package-lock.json IS tracked.

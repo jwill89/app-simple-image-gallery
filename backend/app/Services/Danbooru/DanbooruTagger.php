@@ -36,6 +36,9 @@ final class DanbooruTagger
     /** Why the last API call failed, or null when it succeeded or simply missed. */
     private ?DanbooruFailure $lastFailure = null;
 
+    /** Cloudflare's Ray ID for the last call, when the failure was a block. */
+    private ?string $lastRay = null;
+
     public static function isConfigured(): bool
     {
         return config()->string('gallery.danbooru.login') !== '' && config()->string('gallery.danbooru.api_key') !== '';
@@ -45,6 +48,7 @@ final class DanbooruTagger
     public function importForMedia(Media $media): DanbooruImport
     {
         $this->lastFailure = null;
+        $this->lastRay = null;
 
         $posts = $this->apiGet('/posts.json', ['tags' => 'md5:' . $media->hash]);
         $post = is_array($posts[0] ?? null) ? $posts[0] : null;
@@ -55,7 +59,7 @@ final class DanbooruTagger
             $method = 'iqdb';
         }
         if ($post === null) {
-            return new DanbooruImport(found: false, failure: $this->lastFailure);
+            return new DanbooruImport(found: false, failure: $this->lastFailure, ray: $this->lastRay);
         }
 
         return $this->applyPostTags($media, $post, $method);
@@ -65,10 +69,11 @@ final class DanbooruTagger
     public function importFromPost(Media $media, int $postId): DanbooruImport
     {
         $this->lastFailure = null;
+        $this->lastRay = null;
 
         $post = $this->apiGet("/posts/{$postId}.json");
         if ($post === null || !is_int($post['id'] ?? null)) {
-            return new DanbooruImport(found: false, failure: $this->lastFailure);
+            return new DanbooruImport(found: false, failure: $this->lastFailure, ray: $this->lastRay);
         }
 
         return $this->applyPostTags($media, $post, 'post_id');
@@ -186,12 +191,16 @@ final class DanbooruTagger
 
         if ($response->status() === 200) {
             $this->lastFailure = null;
+            $this->lastRay = null;
             $data = $response->json();
 
             return is_array($data) ? $data : null;
         }
 
         $this->lastFailure = self::failureFor($response);
+        $this->lastRay = $this->lastFailure === DanbooruFailure::Blocked && $response->header('CF-Ray') !== ''
+            ? $response->header('CF-Ray')
+            : null;
         Log::debug('Danbooru request refused', ['path' => $path, 'status' => $response->status()]);
 
         return null;
@@ -200,6 +209,8 @@ final class DanbooruTagger
     private static function failureFor(Response $response): ?DanbooruFailure
     {
         return match (true) {
+            // The API refuses in JSON; an HTML 403 is the firewall's block page.
+            $response->status() === 403 && !is_array($response->json()) => DanbooruFailure::Blocked,
             in_array($response->status(), [401, 403], true) => DanbooruFailure::Auth,
             $response->status() === 429 => DanbooruFailure::RateLimit,
             $response->serverError() => DanbooruFailure::Upstream,
@@ -207,9 +218,21 @@ final class DanbooruTagger
         };
     }
 
+    /**
+     * Who is asking, as Danbooru asks API clients to say: the app, and the
+     * account's user ID when it is set ("GalleryTagImporter/1.0; user #123").
+     * Its firewall blocks requests that don't.
+     */
+    public static function userAgent(): string
+    {
+        $userId = config()->string('gallery.danbooru.user_id');
+
+        return 'GalleryTagImporter/1.0' . ($userId !== '' ? "; user #{$userId}" : '');
+    }
+
     private function request(int $timeout): PendingRequest
     {
-        return Http::baseUrl(self::API_BASE)->withUserAgent('GalleryTagImporter/1.0')->acceptJson()->timeout($timeout);
+        return Http::baseUrl(self::API_BASE)->withUserAgent(self::userAgent())->acceptJson()->timeout($timeout);
     }
 
     /** @return array{login: string, api_key: string} */

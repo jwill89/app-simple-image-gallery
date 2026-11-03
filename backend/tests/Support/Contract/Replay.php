@@ -21,8 +21,8 @@ use function Pest\Laravel\call;
 use function Pest\Laravel\seed;
 
 /**
- * Replays the Slim app's recorded contract (backend-old/tests/Fixtures/contract/,
- * format in its README) against this app, in the setup it was recorded in.
+ * Replays the Slim app's recorded contract (tests/Fixtures/contract/, format
+ * in its README) against this app, in the setup it was recorded in.
  *
  * A case runs step by step while its routes exist here. A step whose path
  * belongs to an inventory route that isn't ported yet stops the case, and
@@ -32,7 +32,7 @@ use function Pest\Laravel\seed;
  */
 final class Replay
 {
-    /** The recorder's tokens (backend-old/tests/Support/Contract/StagedApp.php). */
+    /** The tokens the recorder put in the database for each case. */
     public const string ADMIN_TOKEN = 'c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00c0ffee00';
 
     public const string EXPIRED_TOKEN = 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef';

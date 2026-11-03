@@ -11,8 +11,9 @@ use Illuminate\Support\Facades\Schema;
  * The baseline: the gallery's tables as production has them, each created only
  * where it is missing. On a fresh database this builds the schema; on the live
  * one, which the Slim app's Phinx migrations built, it does nothing. Columns,
- * keys, collations and index names follow backend-old/tests/Support/schema.sql,
- * which tests/Feature/Database/SchemaTest.php compares the result against.
+ * keys, collations and index names follow tests/Fixtures/schema.sql, the
+ * Slim app's, which tests/Feature/Database/SchemaTest.php compares the result
+ * against.
  *
  * auth_tokens and rate_limits are left out: Sanctum's personal_access_tokens
  * and Laravel's rate limiter replace them. Production keeps its copies for the

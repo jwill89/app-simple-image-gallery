@@ -4,9 +4,11 @@
     Build and deploy the Gallery (Laravel backend + Vue SPA) to the DigitalOcean droplet.
 
 .DESCRIPTION
-    The droplet runs the Laravel app from its own folder (AppRoot), whose public/
-    is Apache's DocumentRoot. The database, media and duplicate reports live
-    outside it, at the paths its .env names, so a deploy ships code only.
+    The droplet runs the Laravel app from the gallery's domain folder (AppRoot),
+    whose public/ is Apache's DocumentRoot. The database, media and duplicate
+    reports sit beside the code in that folder (db/, media/, dupes/, at the paths
+    its .env names), as do backups/ and slim-rollback/. A deploy ships and
+    replaces code only, and never touches those.
 
     Steps:
       1. Build the frontend (vue-tsc + vite) -> frontend/dist  (skip with -SkipBuild).
@@ -26,7 +28,8 @@
              keeping the five most recent                  (skip with -NoBackup),
            - php artisan migrate --force                   (skip with -SkipMigrate),
            - storage:link (public/media), optimize, queue:restart,
-           - give storage/ and bootstrap/cache/ to www-data, and health-check the API.
+           - give the code, vendor/ and storage/ to www-data (the code read-only to
+             everyone else), and health-check the API.
          If a step fails, the previous CODE is restored automatically. The database
          is NOT rolled back automatically: the failure trap fires on any non-zero
          exit, including after a migration has already succeeded, so reverting data
@@ -221,6 +224,9 @@ if [ ! -f .env ]; then echo "ERROR: {{APPROOT}}/.env is missing. Create it befor
 if [ ! -f "{{TARBALL}}" ]; then echo "ERROR: {{TARBALL}} not found (upload failed?)" >&2; exit 3; fi
 export COMPOSER_ALLOW_SUPERUSER=1
 CODE="app bootstrap/app.php bootstrap/providers.php config database public resources routes artisan composer.json composer.lock openapi.json"
+# What a deploy gives to www-data. Not the whole folder: the data, backups/ and
+# slim-rollback/ sit beside the code and keep their own owners.
+OWNED="$CODE bootstrap vendor storage"
 SUCCESS=0
 '@
 
@@ -243,7 +249,7 @@ restore() {
   for p in $CODE; do rm -rf "$p"; done
   cp -a "$BACKUP/." ./ 2>/dev/null || true
   php artisan optimize:clear >/dev/null 2>&1 || true
-  chown -R www-data:www-data . 2>/dev/null || true
+  chown -R www-data:www-data $OWNED 2>/dev/null || true
   exit $rc
 }
 trap restore EXIT
@@ -257,6 +263,8 @@ echo "==> replacing the code (.env and storage/ untouched)"
 for p in $CODE; do rm -rf "$p"; done
 tar xzf "{{TARBALL}}"
 rm -f "{{TARBALL}}"
+# The tarball is built on Windows, whose modes come through as 777/666.
+chmod -R u=rwX,go=rX $CODE bootstrap
 mkdir -p storage/app storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 rm -f bootstrap/cache/*.php
 '@
@@ -327,7 +335,7 @@ php artisan storage:link --no-interaction
 # Config, routes and events; the app has no Blade views to cache.
 php artisan optimize --except=views
 php artisan queue:restart
-chown -R www-data:www-data .
+chown -R www-data:www-data $OWNED
 SUCCESS=1
 code=$(curl -s -o /dev/null -w "%{http_code}" "{{HEALTHURL}}" 2>/dev/null || echo "000")
 echo "==> health check: GET {{HEALTHURL}} -> HTTP $code"
