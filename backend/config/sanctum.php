@@ -49,7 +49,8 @@ return [
     |
     */
 
-    'guard' => ['web'],
+    // Bearer tokens only: no session guard is tried first.
+    'guard' => [],
 
     /*
     |--------------------------------------------------------------------------
@@ -62,7 +63,8 @@ return [
     |
     */
 
-    'expiration' => null,
+    // 24 hours, as the Slim app's tokens lasted.
+    'expiration' => 1440,
 
     /*
     |--------------------------------------------------------------------------

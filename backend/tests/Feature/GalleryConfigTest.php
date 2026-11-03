@@ -57,6 +57,8 @@ it('reads every variable in the Slim backend\'s .env.example', function (): void
     ]);
 
     expect($config)->toBe([
+        'version' => '4.0.0',
+        'api_version' => '4.0.0',
         'admin_password' => 'secret',
         'url' => 'https://gallery.test',
         'allowed_origins' => ['https://gallery.test'],

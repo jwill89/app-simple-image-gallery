@@ -35,7 +35,7 @@ Every hand-built piece of the backend has a Laravel home; only the duplicate-det
 | Route groups in `api/index.php` | `routes/api.php` from `php artisan install:api`, which adds the `/api` prefix. Slim's `[/{per_page}]` becomes `{per_page?}`. |
 | `$authMiddleware` and its public-write allowlist | `auth:sanctum` on protected routes only. The three public writes (`POST /media/by-ids`, `PATCH /media/{id}/tags`, `DELETE /media/{id}/tags/{tag_id}`) simply don't get it. |
 | `auth_tokens` table and `AuthController::login` | Sanctum tokens on one seeded admin `User`. Login still checks `GALLERY_ADMIN_PASSWORD` with `hash_equals()` and returns `{ token }`. Tokens expire after 1,440 minutes. |
-| `RateLimiter` on the `rate_limits` table | `RateLimiter::for('api')` at 120 per minute per IP, and `RateLimiter::for('login')` at 10 per 5 minutes. Each uses `->response()` to return today's 429 body. |
+| `RateLimiter` on the `rate_limits` table | `RateLimiter::for('api')` at 120 per minute per IP, with `->response()` returning today's 429 body. Login's 10 per 5 minutes is checked in `AuthController` with the `RateLimiter` facade, so `X-RateLimit-Remaining` stays the API limit's, as recorded. |
 | CSRF origin-check closure | A `VerifyOrigin` middleware on the `api` group, same logic. |
 | CORS closure and OPTIONS catch-all | Built-in `HandleCors`, set up in `config/cors.php` from `GALLERY_ALLOWED_ORIGINS`. |
 | Security-header closure | A small `SecurityHeaders` middleware. |
@@ -88,7 +88,7 @@ The API has 43 routes under `/api`. Every GET is public, and every write needs a
 | GET | `/version` | Public |  | `SystemController@version` |
 | GET | `/openapi.json` | Public |  | `SystemController@openapi` |
 | GET | `/docs` | Public |  | `SystemController@docs` |
-| POST | `/auth/login` | Public, `throttle:login` |  | `AuthController@login` |
+| POST | `/auth/login` | Public, login limit |  | `AuthController@login` |
 | GET | `/media/page/{page}/{per_page?}` | Public | 30 s | `MediaController@index` |
 | GET | `/media/untagged/{page}/{per_page?}` | Public | 30 s | `MediaController@untagged` |
 | GET | `/media/with-tags/{tag_list}/{page}/{per_page?}` | Public | 30 s | `MediaController@search` |
@@ -176,7 +176,7 @@ Controllers are untested today by design, so record what they return before touc
 - Add an `ApiException` (code, status, message) and exception rendering that turns 404, 405, 429 and 500 into `{ error, message }`.
 - Add a base `ApiRequest` whose `failedValidation()` returns each endpoint's current error code and status. Laravel's default 422 with `{ message, errors }` would break the contract; this is the easiest trap to miss.
 - Add the `VerifyOrigin` and `SecurityHeaders` middleware, the CORS config, and both rate limiters with today's 429 body.
-- Port login: `throttle:login`, `hash_equals()` against `config('gallery.admin_password')`, 503 `AdminNotConfigured` when unset, and a Sanctum token on the seeded admin user with a 1,440-minute expiry.
+- Port login: 10 attempts per 5 minutes per IP through the `RateLimiter` facade (a second throttle middleware would report its own `X-RateLimit-Remaining`), `hash_equals()` against `config('gallery.admin_password')`, 503 `AdminNotConfigured` when unset, and a 64-hex Sanctum token, the recorded format, on the admin user (created at first login) with a 1,440-minute expiry.
 - Write a small cache helper: `remember(group, key, ttl, fn)` with a version number per group in the key, `bump(...groups)` for writes, and the `X-Cache` header.
 
 **Done when:** the recordings for 401, 403, 429, CORS preflight and login all match.
@@ -273,6 +273,21 @@ The plan assumes the recommendations below; change any of them before Phase 1 st
 | Test framework | Pest 5 | Built on PHPUnit 13 and needs PHP 8.4 or newer, which the droplet's 8.5.12 meets. Pest is common in Laravel shops, and its Drift plugin converts the existing tests. |
 | API docs | Keep swagger-php | The spec diff is the finish line; Scramble would generate a different spec. |
 | Repo layout | Laravel in `backend/`, the Slim app in `backend-old/` on a branch | The Slim app stays runnable as reference and for recording the contract, and is deleted at the end. Laravel is the only backend that ships from the branch. |
+
+### Contract changes
+
+Decided before Phase 3. The Laravel app answers these differently from the recordings on purpose, and `backend/tests/Feature/Contract/divergences.php` holds the expected responses the contract replay checks instead. Everything else recorded stays as recorded, quirks included: 400 for non-numeric ids, `PUT` resetting omitted fields, 200 or 204 for ids that don't exist, `POST /tags/{id}/migrate` keeping the source tag, and tag search accepting page 0.
+
+| Recorded | Laravel | Why |
+| --- | --- | --- |
+| Every unmatched `/api` path is 405 with `Allow: OPTIONS` (Slim's OPTIONS catch-all) | 404 `NotFound` | The path doesn't exist; the method was never the problem. |
+| Slim renders 405 and 500 as an HTML page, or `{ message }` for JSON | 405 `MethodNotAllowed` (with `Allow`) and 500 `ServerError`, as `{ error, message }` | One error shape for every failure, which the frontend already parses. |
+| A CORS preflight is 200 | 204, from `HandleCors` | Laravel's built-in CORS handling. In production the SPA is same-origin and never preflights. |
+| The login limit is about 10 per minute (the global limiter's cleanup deletes older rows) | 10 per 5 minutes | What the old code intended. |
+| Renaming a tag onto an existing name is a 500 (UNIQUE constraint) | 400 `TagAlreadyExists` | What creating one already returns. |
+| Dismissing a pair with an unknown media id is a 500 (foreign key) | 404 `MediaNotFound` | A missing resource, not a server fault. |
+
+Two smaller differences follow from using `HandleCors`, and the replay allows for both on every response: `Access-Control-Allow-Headers`, `-Methods` and `-Max-Age` are sent only on preflights, where browsers read them, and with exactly one allowed origin, every `/api` response names it in `Access-Control-Allow-Origin`. A response the Slim app sent without `Cache-Control` may also carry Symfony's default `no-cache, private`.
 
 ### Risks
 

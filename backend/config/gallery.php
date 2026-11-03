@@ -26,6 +26,12 @@ $origins = $raw('GALLERY_ALLOWED_ORIGINS');
 
 return [
 
+    // The application release (SemVer, as frontend/package.json, which CI tags
+    // releases from) and the HTTP API contract version, which moves only when
+    // the API surface changes. Both are served by GET /api/version.
+    'version' => '4.0.0',
+    'api_version' => '4.0.0',
+
     // Admin password for the protected endpoints. Login is refused while it is
     // empty, so no default password can ever grant access.
     'admin_password' => $raw('GALLERY_ADMIN_PASSWORD'),
