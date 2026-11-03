@@ -1,0 +1,49 @@
+# Uploads of images and videos up to 100 MB, as the Slim app allowed. PHP-FPM,
+# which the droplet runs, reads these from .user.ini; php_value only exists
+# under mod_php, and without the guard Apache answers every request with a 500.
+<IfModule php_module>
+    php_value upload_max_filesize 100M
+    php_value post_max_size 105M
+    php_value max_execution_time 120
+</IfModule>
+
+# .user.ini is PHP's settings, not a page.
+<Files ".user.ini">
+    Require all denied
+</Files>
+
+# Browsers find a new service worker by fetching /sw.js again, so no cache may
+# keep it: Cloudflare caches .js files, and served a deploy's old worker for up
+# to two hours. With no-cache, Cloudflare checks with the server every time.
+<IfModule mod_headers.c>
+    <Files "sw.js">
+        Header set Cache-Control "no-cache"
+    </Files>
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # Handle Authorization Header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Handle X-XSRF-Token Header
+    RewriteCond %{HTTP:x-xsrf-token} .
+    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
+
+    # Redirect Trailing Slashes If Not A Folder...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # Send Requests To Front Controller... Only real files are served as they
+    # are (the built SPA, and media/ through its link), never a folder:
+    # /media is the gallery page, not the media folder.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>

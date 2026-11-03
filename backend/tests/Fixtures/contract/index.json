@@ -1,0 +1,1837 @@
+{
+    "about": "Recorded by bin/record-contract.php; see README.md. Each route lists the cases that exercise it.",
+    "routes": {
+        "GET /version": [
+            "system/version",
+            "cors/read-origins",
+            "rate-limit/remaining",
+            "rate-limit/exceeded"
+        ],
+        "GET /openapi.json": [
+            "system/openapi",
+            "system/openapi-missing"
+        ],
+        "GET /docs": [
+            "system/docs"
+        ],
+        "POST /auth/login": [
+            "auth/login",
+            "auth/login-wrong-password",
+            "auth/login-missing-password",
+            "auth/login-not-configured",
+            "auth/login-throttled",
+            "auth/login-foreign-origin"
+        ],
+        "GET /media/page/{page}/{per_page?}": [
+            "media/page-default",
+            "media/page-per-page",
+            "media/page-last",
+            "media/page-past-end",
+            "media/page-zero",
+            "media/page-not-a-number",
+            "media/page-per-page-clamped-low",
+            "media/page-per-page-clamped-high",
+            "media/page-cached",
+            "media/page-empty-gallery"
+        ],
+        "GET /media/untagged/{page}/{per_page?}": [
+            "media/untagged",
+            "media/untagged-paged",
+            "media/untagged-zero",
+            "media/untagged-none"
+        ],
+        "GET /media/with-tags/{tag_list}/{page}/{per_page?}": [
+            "media/with-tags",
+            "media/with-tags-all-of",
+            "media/with-tags-raw-comma",
+            "media/with-tags-exclude",
+            "media/with-tags-exclude-only",
+            "media/with-tags-case-insensitive",
+            "media/with-tags-unknown-skipped",
+            "media/with-tags-none-valid",
+            "media/with-tags-separators-only",
+            "media/with-tags-plus",
+            "media/with-tags-punctuation",
+            "media/with-tags-unicode",
+            "media/with-tags-whitespace",
+            "media/with-tags-paged",
+            "media/with-tags-page-zero",
+            "media/with-tags-cached"
+        ],
+        "GET /media/random": [
+            "media/random",
+            "media/random-empty"
+        ],
+        "GET /media/count": [
+            "media/count"
+        ],
+        "POST /media/by-ids": [
+            "media/by-ids",
+            "media/by-ids-empty",
+            "media/by-ids-not-a-list",
+            "media/by-ids-none-valid",
+            "media/by-ids-foreign-origin"
+        ],
+        "POST /media/bulk-delete": [
+            "media/bulk-delete",
+            "media/bulk-delete-none-found",
+            "media/bulk-delete-empty",
+            "media/bulk-delete-no-token"
+        ],
+        "POST /media": [
+            "media/upload",
+            "media/upload-mixed",
+            "media/upload-same-name",
+            "media/upload-unsafe-name",
+            "media/upload-duplicate-only",
+            "media/upload-fetch-tags",
+            "media/upload-fetch-tags-not-configured",
+            "media/upload-too-large",
+            "media/upload-no-files",
+            "media/upload-no-token"
+        ],
+        "GET /media/{media_id}": [
+            "media/show",
+            "media/show-not-found",
+            "media/show-invalid-id"
+        ],
+        "DELETE /media/{media_id}": [
+            "media/delete",
+            "media/delete-not-found",
+            "media/delete-invalid-id",
+            "media/delete-no-token"
+        ],
+        "GET /media/{media_id}/tags": [
+            "media/tags",
+            "media/tags-untagged",
+            "media/tags-not-found"
+        ],
+        "PATCH /media/{media_id}/tags": [
+            "media/tags-add",
+            "media/tags-add-existing",
+            "media/tags-add-scalar",
+            "media/tags-add-invalid",
+            "media/tags-add-media-not-found",
+            "media/tags-add-foreign-origin"
+        ],
+        "DELETE /media/{media_id}/tags/{tag_id}": [
+            "media/tags-remove",
+            "media/tags-remove-not-applied",
+            "media/tags-remove-not-found",
+            "media/tags-remove-invalid-id",
+            "media/tags-remove-foreign-origin"
+        ],
+        "POST /media/{media_id}/danbooru-tags": [
+            "media/danbooru-md5",
+            "media/danbooru-iqdb",
+            "media/danbooru-post-id",
+            "media/danbooru-not-found",
+            "media/danbooru-post-not-found",
+            "media/danbooru-upstream-failures",
+            "media/danbooru-unreachable",
+            "media/danbooru-not-configured",
+            "media/danbooru-media-not-found",
+            "media/danbooru-no-token"
+        ],
+        "GET /tags": [
+            "tags/index"
+        ],
+        "GET /tags/display": [
+            "tags/display"
+        ],
+        "GET /tags/{tag_id}": [
+            "tags/show",
+            "tags/show-not-found"
+        ],
+        "POST /tags": [
+            "tags/create",
+            "tags/create-default-category",
+            "tags/create-sanitized",
+            "tags/create-form-encoded",
+            "tags/create-invalid-name",
+            "tags/create-invalid-category",
+            "tags/create-exists",
+            "tags/create-unauthorized",
+            "tags/create-origin-check",
+            "tags/create-referer-fallback",
+            "tags/create-dev-origin"
+        ],
+        "PUT /tags/{tag_id}": [
+            "tags/update",
+            "tags/update-default-category",
+            "tags/update-name-taken",
+            "tags/update-not-found",
+            "tags/update-invalid",
+            "tags/update-no-token"
+        ],
+        "DELETE /tags/{tag_id}": [
+            "tags/delete",
+            "tags/delete-not-found",
+            "tags/delete-no-token"
+        ],
+        "DELETE /tags/{tag_id}/migrate-to/{target_tag_id}": [
+            "tags/delete-migrate",
+            "tags/delete-migrate-to-zero",
+            "tags/delete-migrate-invalid",
+            "tags/delete-migrate-no-token"
+        ],
+        "POST /tags/{tag_id}/migrate": [
+            "tags/migrate",
+            "tags/migrate-invalid",
+            "tags/migrate-no-token"
+        ],
+        "GET /tag-categories": [
+            "tag-categories/index"
+        ],
+        "POST /tag-categories": [
+            "tag-categories/create",
+            "tag-categories/create-default-color",
+            "tag-categories/create-invalid",
+            "tag-categories/create-no-token"
+        ],
+        "PUT /tag-categories/{category_id}": [
+            "tag-categories/update",
+            "tag-categories/update-partial",
+            "tag-categories/update-invalid",
+            "tag-categories/update-no-token"
+        ],
+        "DELETE /tag-categories/{category_id}": [
+            "tag-categories/delete",
+            "tag-categories/delete-in-use",
+            "tag-categories/delete-not-found",
+            "tag-categories/delete-no-token"
+        ],
+        "GET /tag-implications": [
+            "tag-implications/index"
+        ],
+        "POST /tag-implications": [
+            "tag-implications/create",
+            "tag-implications/create-existing",
+            "tag-implications/create-invalid",
+            "tag-implications/create-no-token"
+        ],
+        "DELETE /tag-implications/{tag_id}/{implied_tag_id}": [
+            "tag-implications/delete",
+            "tag-implications/delete-absent",
+            "tag-implications/delete-no-token"
+        ],
+        "GET /danbooru/category-mappings": [
+            "danbooru/category-mappings"
+        ],
+        "POST /danbooru/category-mappings": [
+            "danbooru/category-mapping-create",
+            "danbooru/category-mapping-replace",
+            "danbooru/category-mapping-create-invalid",
+            "danbooru/category-mapping-create-no-token"
+        ],
+        "DELETE /danbooru/category-mappings/{danbooru_category_id}": [
+            "danbooru/category-mapping-delete",
+            "danbooru/category-mapping-delete-no-token"
+        ],
+        "GET /danbooru/tag-mappings": [
+            "danbooru/tag-mappings"
+        ],
+        "POST /danbooru/tag-mappings": [
+            "danbooru/tag-mapping-create",
+            "danbooru/tag-mapping-create-invalid",
+            "danbooru/tag-mapping-create-no-token"
+        ],
+        "PUT /danbooru/tag-mappings/{id}": [
+            "danbooru/tag-mapping-update",
+            "danbooru/tag-mapping-update-absent",
+            "danbooru/tag-mapping-update-invalid",
+            "danbooru/tag-mapping-update-no-token"
+        ],
+        "DELETE /danbooru/tag-mappings/{id}": [
+            "danbooru/tag-mapping-delete",
+            "danbooru/tag-mapping-delete-no-token"
+        ],
+        "GET /duplicates/report": [
+            "duplicates/report",
+            "duplicates/report-missing",
+            "duplicates/report-none",
+            "duplicates/report-corrupt"
+        ],
+        "POST /duplicates/scan": [
+            "duplicates/scan",
+            "duplicates/scan-region-check-off",
+            "duplicates/scan-wider-cutoff",
+            "duplicates/scan-no-token"
+        ],
+        "POST /duplicates/dismissals": [
+            "duplicates/dismiss",
+            "duplicates/dismiss-invalid",
+            "duplicates/dismiss-unknown-media",
+            "duplicates/dismiss-no-token"
+        ],
+        "ANY /{unmatched}": [
+            "errors/unmatched-path",
+            "errors/method-not-allowed"
+        ],
+        "OPTIONS /{any}": [
+            "cors/preflight"
+        ],
+        "GET /{spa}": [
+            "spa/default",
+            "spa/gallery",
+            "spa/media",
+            "spa/media-other",
+            "spa/media-file-name",
+            "spa/with-tags",
+            "spa/escaped",
+            "spa/tags",
+            "spa/favorites",
+            "spa/fontawesome",
+            "spa/index-missing"
+        ]
+    },
+    "cases": [
+        {
+            "id": "system/version",
+            "route": "GET /version",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "system/openapi",
+            "route": "GET /openapi.json",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "system/openapi-missing",
+            "route": "GET /openapi.json",
+            "statuses": [
+                404
+            ]
+        },
+        {
+            "id": "system/docs",
+            "route": "GET /docs",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "auth/login",
+            "route": "POST /auth/login",
+            "statuses": [
+                200,
+                201
+            ]
+        },
+        {
+            "id": "auth/login-wrong-password",
+            "route": "POST /auth/login",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "auth/login-missing-password",
+            "route": "POST /auth/login",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "auth/login-not-configured",
+            "route": "POST /auth/login",
+            "statuses": [
+                503
+            ]
+        },
+        {
+            "id": "auth/login-throttled",
+            "route": "POST /auth/login",
+            "statuses": [
+                401,
+                429,
+                429
+            ]
+        },
+        {
+            "id": "auth/login-foreign-origin",
+            "route": "POST /auth/login",
+            "statuses": [
+                403
+            ]
+        },
+        {
+            "id": "media/page-default",
+            "route": "GET /media/page/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/page-per-page",
+            "route": "GET /media/page/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/page-last",
+            "route": "GET /media/page/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/page-past-end",
+            "route": "GET /media/page/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/page-zero",
+            "route": "GET /media/page/{page}/{per_page?}",
+            "statuses": [
+                400
+            ]
+        },
+        {
+            "id": "media/page-not-a-number",
+            "route": "GET /media/page/{page}/{per_page?}",
+            "statuses": [
+                400
+            ]
+        },
+        {
+            "id": "media/page-per-page-clamped-low",
+            "route": "GET /media/page/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/page-per-page-clamped-high",
+            "route": "GET /media/page/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/page-cached",
+            "route": "GET /media/page/{page}/{per_page?}",
+            "statuses": [
+                200,
+                200
+            ]
+        },
+        {
+            "id": "media/page-empty-gallery",
+            "route": "GET /media/page/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/untagged",
+            "route": "GET /media/untagged/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/untagged-paged",
+            "route": "GET /media/untagged/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/untagged-zero",
+            "route": "GET /media/untagged/{page}/{per_page?}",
+            "statuses": [
+                400
+            ]
+        },
+        {
+            "id": "media/untagged-none",
+            "route": "GET /media/untagged/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/with-tags",
+            "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/with-tags-all-of",
+            "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/with-tags-raw-comma",
+            "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/with-tags-exclude",
+            "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/with-tags-exclude-only",
+            "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/with-tags-case-insensitive",
+            "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/with-tags-unknown-skipped",
+            "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/with-tags-none-valid",
+            "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+            "statuses": [
+                404
+            ]
+        },
+        {
+            "id": "media/with-tags-separators-only",
+            "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+            "statuses": [
+                404,
+                404
+            ]
+        },
+        {
+            "id": "media/with-tags-plus",
+            "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+            "statuses": [
+                200,
+                200
+            ]
+        },
+        {
+            "id": "media/with-tags-punctuation",
+            "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/with-tags-unicode",
+            "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/with-tags-whitespace",
+            "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/with-tags-paged",
+            "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/with-tags-page-zero",
+            "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/with-tags-cached",
+            "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+            "statuses": [
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "media/random",
+            "route": "GET /media/random",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/random-empty",
+            "route": "GET /media/random",
+            "statuses": [
+                404
+            ]
+        },
+        {
+            "id": "media/count",
+            "route": "GET /media/count",
+            "statuses": [
+                200,
+                200
+            ]
+        },
+        {
+            "id": "media/by-ids",
+            "route": "POST /media/by-ids",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/by-ids-empty",
+            "route": "POST /media/by-ids",
+            "statuses": [
+                400
+            ]
+        },
+        {
+            "id": "media/by-ids-not-a-list",
+            "route": "POST /media/by-ids",
+            "statuses": [
+                400,
+                400
+            ]
+        },
+        {
+            "id": "media/by-ids-none-valid",
+            "route": "POST /media/by-ids",
+            "statuses": [
+                400
+            ]
+        },
+        {
+            "id": "media/by-ids-foreign-origin",
+            "route": "POST /media/by-ids",
+            "statuses": [
+                403
+            ]
+        },
+        {
+            "id": "media/bulk-delete",
+            "route": "POST /media/bulk-delete",
+            "statuses": [
+                200,
+                200,
+                200,
+                404,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "media/bulk-delete-none-found",
+            "route": "POST /media/bulk-delete",
+            "statuses": [
+                200,
+                200,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "media/bulk-delete-empty",
+            "route": "POST /media/bulk-delete",
+            "statuses": [
+                400
+            ]
+        },
+        {
+            "id": "media/bulk-delete-no-token",
+            "route": "POST /media/bulk-delete",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "media/upload",
+            "route": "POST /media",
+            "statuses": [
+                200,
+                200,
+                201,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "media/upload-mixed",
+            "route": "POST /media",
+            "statuses": [
+                201,
+                200
+            ]
+        },
+        {
+            "id": "media/upload-same-name",
+            "route": "POST /media",
+            "statuses": [
+                201
+            ]
+        },
+        {
+            "id": "media/upload-unsafe-name",
+            "route": "POST /media",
+            "statuses": [
+                201
+            ]
+        },
+        {
+            "id": "media/upload-duplicate-only",
+            "route": "POST /media",
+            "statuses": [
+                200,
+                200,
+                201,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "media/upload-fetch-tags",
+            "route": "POST /media",
+            "statuses": [
+                200,
+                200,
+                201,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "media/upload-fetch-tags-not-configured",
+            "route": "POST /media",
+            "statuses": [
+                201
+            ]
+        },
+        {
+            "id": "media/upload-too-large",
+            "route": "POST /media",
+            "statuses": [
+                201
+            ]
+        },
+        {
+            "id": "media/upload-no-files",
+            "route": "POST /media",
+            "statuses": [
+                400
+            ]
+        },
+        {
+            "id": "media/upload-no-token",
+            "route": "POST /media",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "media/show",
+            "route": "GET /media/{media_id}",
+            "statuses": [
+                200,
+                200
+            ]
+        },
+        {
+            "id": "media/show-not-found",
+            "route": "GET /media/{media_id}",
+            "statuses": [
+                404
+            ]
+        },
+        {
+            "id": "media/show-invalid-id",
+            "route": "GET /media/{media_id}",
+            "statuses": [
+                400,
+                400,
+                400
+            ]
+        },
+        {
+            "id": "media/delete",
+            "route": "DELETE /media/{media_id}",
+            "statuses": [
+                200,
+                200,
+                204,
+                404,
+                404,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "media/delete-not-found",
+            "route": "DELETE /media/{media_id}",
+            "statuses": [
+                404
+            ]
+        },
+        {
+            "id": "media/delete-invalid-id",
+            "route": "DELETE /media/{media_id}",
+            "statuses": [
+                400
+            ]
+        },
+        {
+            "id": "media/delete-no-token",
+            "route": "DELETE /media/{media_id}",
+            "statuses": [
+                401,
+                401
+            ]
+        },
+        {
+            "id": "media/tags",
+            "route": "GET /media/{media_id}/tags",
+            "statuses": [
+                200,
+                200
+            ]
+        },
+        {
+            "id": "media/tags-untagged",
+            "route": "GET /media/{media_id}/tags",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/tags-not-found",
+            "route": "GET /media/{media_id}/tags",
+            "statuses": [
+                404,
+                400
+            ]
+        },
+        {
+            "id": "media/tags-add",
+            "route": "PATCH /media/{media_id}/tags",
+            "statuses": [
+                200,
+                200,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "media/tags-add-existing",
+            "route": "PATCH /media/{media_id}/tags",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/tags-add-scalar",
+            "route": "PATCH /media/{media_id}/tags",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/tags-add-invalid",
+            "route": "PATCH /media/{media_id}/tags",
+            "statuses": [
+                400,
+                404,
+                200
+            ]
+        },
+        {
+            "id": "media/tags-add-media-not-found",
+            "route": "PATCH /media/{media_id}/tags",
+            "statuses": [
+                404,
+                400
+            ]
+        },
+        {
+            "id": "media/tags-add-foreign-origin",
+            "route": "PATCH /media/{media_id}/tags",
+            "statuses": [
+                403
+            ]
+        },
+        {
+            "id": "media/tags-remove",
+            "route": "DELETE /media/{media_id}/tags/{tag_id}",
+            "statuses": [
+                200,
+                200,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "media/tags-remove-not-applied",
+            "route": "DELETE /media/{media_id}/tags/{tag_id}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/tags-remove-not-found",
+            "route": "DELETE /media/{media_id}/tags/{tag_id}",
+            "statuses": [
+                404,
+                404
+            ]
+        },
+        {
+            "id": "media/tags-remove-invalid-id",
+            "route": "DELETE /media/{media_id}/tags/{tag_id}",
+            "statuses": [
+                400,
+                400
+            ]
+        },
+        {
+            "id": "media/tags-remove-foreign-origin",
+            "route": "DELETE /media/{media_id}/tags/{tag_id}",
+            "statuses": [
+                403
+            ]
+        },
+        {
+            "id": "media/danbooru-md5",
+            "route": "POST /media/{media_id}/danbooru-tags",
+            "statuses": [
+                200,
+                200,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "media/danbooru-iqdb",
+            "route": "POST /media/{media_id}/danbooru-tags",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/danbooru-post-id",
+            "route": "POST /media/{media_id}/danbooru-tags",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "media/danbooru-not-found",
+            "route": "POST /media/{media_id}/danbooru-tags",
+            "statuses": [
+                404,
+                404
+            ]
+        },
+        {
+            "id": "media/danbooru-post-not-found",
+            "route": "POST /media/{media_id}/danbooru-tags",
+            "statuses": [
+                404
+            ]
+        },
+        {
+            "id": "media/danbooru-upstream-failures",
+            "route": "POST /media/{media_id}/danbooru-tags",
+            "statuses": [
+                500,
+                429,
+                503
+            ]
+        },
+        {
+            "id": "media/danbooru-unreachable",
+            "route": "POST /media/{media_id}/danbooru-tags",
+            "statuses": [
+                503
+            ]
+        },
+        {
+            "id": "media/danbooru-not-configured",
+            "route": "POST /media/{media_id}/danbooru-tags",
+            "statuses": [
+                500
+            ]
+        },
+        {
+            "id": "media/danbooru-media-not-found",
+            "route": "POST /media/{media_id}/danbooru-tags",
+            "statuses": [
+                404,
+                400
+            ]
+        },
+        {
+            "id": "media/danbooru-no-token",
+            "route": "POST /media/{media_id}/danbooru-tags",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "tags/index",
+            "route": "GET /tags",
+            "statuses": [
+                200,
+                200
+            ]
+        },
+        {
+            "id": "tags/display",
+            "route": "GET /tags/display",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "tags/show",
+            "route": "GET /tags/{tag_id}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "tags/show-not-found",
+            "route": "GET /tags/{tag_id}",
+            "statuses": [
+                404,
+                400,
+                400
+            ]
+        },
+        {
+            "id": "tags/create",
+            "route": "POST /tags",
+            "statuses": [
+                200,
+                200,
+                201,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "tags/create-default-category",
+            "route": "POST /tags",
+            "statuses": [
+                201
+            ]
+        },
+        {
+            "id": "tags/create-sanitized",
+            "route": "POST /tags",
+            "statuses": [
+                201
+            ]
+        },
+        {
+            "id": "tags/create-form-encoded",
+            "route": "POST /tags",
+            "statuses": [
+                201
+            ]
+        },
+        {
+            "id": "tags/create-invalid-name",
+            "route": "POST /tags",
+            "statuses": [
+                400,
+                400,
+                400,
+                400
+            ]
+        },
+        {
+            "id": "tags/create-invalid-category",
+            "route": "POST /tags",
+            "statuses": [
+                400
+            ]
+        },
+        {
+            "id": "tags/create-exists",
+            "route": "POST /tags",
+            "statuses": [
+                400
+            ]
+        },
+        {
+            "id": "tags/create-unauthorized",
+            "route": "POST /tags",
+            "statuses": [
+                401,
+                401,
+                401
+            ]
+        },
+        {
+            "id": "tags/create-origin-check",
+            "route": "POST /tags",
+            "statuses": [
+                403,
+                403,
+                403,
+                403
+            ]
+        },
+        {
+            "id": "tags/create-referer-fallback",
+            "route": "POST /tags",
+            "statuses": [
+                201,
+                201
+            ]
+        },
+        {
+            "id": "tags/create-dev-origin",
+            "route": "POST /tags",
+            "statuses": [
+                201
+            ]
+        },
+        {
+            "id": "tags/update",
+            "route": "PUT /tags/{tag_id}",
+            "statuses": [
+                200,
+                200,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "tags/update-default-category",
+            "route": "PUT /tags/{tag_id}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "tags/update-name-taken",
+            "route": "PUT /tags/{tag_id}",
+            "statuses": [
+                500
+            ]
+        },
+        {
+            "id": "tags/update-not-found",
+            "route": "PUT /tags/{tag_id}",
+            "statuses": [
+                404,
+                400
+            ]
+        },
+        {
+            "id": "tags/update-invalid",
+            "route": "PUT /tags/{tag_id}",
+            "statuses": [
+                400,
+                400
+            ]
+        },
+        {
+            "id": "tags/update-no-token",
+            "route": "PUT /tags/{tag_id}",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "tags/delete",
+            "route": "DELETE /tags/{tag_id}",
+            "statuses": [
+                200,
+                200,
+                204,
+                404,
+                200,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "tags/delete-not-found",
+            "route": "DELETE /tags/{tag_id}",
+            "statuses": [
+                404,
+                400
+            ]
+        },
+        {
+            "id": "tags/delete-no-token",
+            "route": "DELETE /tags/{tag_id}",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "tags/delete-migrate",
+            "route": "DELETE /tags/{tag_id}/migrate-to/{target_tag_id}",
+            "statuses": [
+                200,
+                200,
+                204,
+                200,
+                404,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "tags/delete-migrate-to-zero",
+            "route": "DELETE /tags/{tag_id}/migrate-to/{target_tag_id}",
+            "statuses": [
+                204,
+                404
+            ]
+        },
+        {
+            "id": "tags/delete-migrate-invalid",
+            "route": "DELETE /tags/{tag_id}/migrate-to/{target_tag_id}",
+            "statuses": [
+                400,
+                404,
+                404,
+                200
+            ]
+        },
+        {
+            "id": "tags/delete-migrate-no-token",
+            "route": "DELETE /tags/{tag_id}/migrate-to/{target_tag_id}",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "tags/migrate",
+            "route": "POST /tags/{tag_id}/migrate",
+            "statuses": [
+                200,
+                200,
+                200,
+                200,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "tags/migrate-invalid",
+            "route": "POST /tags/{tag_id}/migrate",
+            "statuses": [
+                400,
+                400,
+                404,
+                404
+            ]
+        },
+        {
+            "id": "tags/migrate-no-token",
+            "route": "POST /tags/{tag_id}/migrate",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "tag-categories/index",
+            "route": "GET /tag-categories",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "tag-categories/create",
+            "route": "POST /tag-categories",
+            "statuses": [
+                200,
+                200,
+                201,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "tag-categories/create-default-color",
+            "route": "POST /tag-categories",
+            "statuses": [
+                400
+            ]
+        },
+        {
+            "id": "tag-categories/create-invalid",
+            "route": "POST /tag-categories",
+            "statuses": [
+                400,
+                400,
+                400,
+                400
+            ]
+        },
+        {
+            "id": "tag-categories/create-no-token",
+            "route": "POST /tag-categories",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "tag-categories/update",
+            "route": "PUT /tag-categories/{category_id}",
+            "statuses": [
+                200,
+                200,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "tag-categories/update-partial",
+            "route": "PUT /tag-categories/{category_id}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "tag-categories/update-invalid",
+            "route": "PUT /tag-categories/{category_id}",
+            "statuses": [
+                400,
+                400,
+                404,
+                400
+            ]
+        },
+        {
+            "id": "tag-categories/update-no-token",
+            "route": "PUT /tag-categories/{category_id}",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "tag-categories/delete",
+            "route": "DELETE /tag-categories/{category_id}",
+            "statuses": [
+                200,
+                200,
+                204,
+                200,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "tag-categories/delete-in-use",
+            "route": "DELETE /tag-categories/{category_id}",
+            "statuses": [
+                400
+            ]
+        },
+        {
+            "id": "tag-categories/delete-not-found",
+            "route": "DELETE /tag-categories/{category_id}",
+            "statuses": [
+                404,
+                400
+            ]
+        },
+        {
+            "id": "tag-categories/delete-no-token",
+            "route": "DELETE /tag-categories/{category_id}",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "tag-implications/index",
+            "route": "GET /tag-implications",
+            "statuses": [
+                200,
+                200
+            ]
+        },
+        {
+            "id": "tag-implications/create",
+            "route": "POST /tag-implications",
+            "statuses": [
+                200,
+                200,
+                201,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "tag-implications/create-existing",
+            "route": "POST /tag-implications",
+            "statuses": [
+                201
+            ]
+        },
+        {
+            "id": "tag-implications/create-invalid",
+            "route": "POST /tag-implications",
+            "statuses": [
+                400,
+                400,
+                404,
+                400
+            ]
+        },
+        {
+            "id": "tag-implications/create-no-token",
+            "route": "POST /tag-implications",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "tag-implications/delete",
+            "route": "DELETE /tag-implications/{tag_id}/{implied_tag_id}",
+            "statuses": [
+                200,
+                200,
+                204,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "tag-implications/delete-absent",
+            "route": "DELETE /tag-implications/{tag_id}/{implied_tag_id}",
+            "statuses": [
+                204,
+                400
+            ]
+        },
+        {
+            "id": "tag-implications/delete-no-token",
+            "route": "DELETE /tag-implications/{tag_id}/{implied_tag_id}",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "danbooru/category-mappings",
+            "route": "GET /danbooru/category-mappings",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "danbooru/category-mapping-create",
+            "route": "POST /danbooru/category-mappings",
+            "statuses": [
+                200,
+                200,
+                201,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "danbooru/category-mapping-replace",
+            "route": "POST /danbooru/category-mappings",
+            "statuses": [
+                201,
+                200
+            ]
+        },
+        {
+            "id": "danbooru/category-mapping-create-invalid",
+            "route": "POST /danbooru/category-mappings",
+            "statuses": [
+                400,
+                400,
+                400,
+                404
+            ]
+        },
+        {
+            "id": "danbooru/category-mapping-create-no-token",
+            "route": "POST /danbooru/category-mappings",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "danbooru/category-mapping-delete",
+            "route": "DELETE /danbooru/category-mappings/{danbooru_category_id}",
+            "statuses": [
+                204,
+                204,
+                400,
+                200
+            ]
+        },
+        {
+            "id": "danbooru/category-mapping-delete-no-token",
+            "route": "DELETE /danbooru/category-mappings/{danbooru_category_id}",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "danbooru/tag-mappings",
+            "route": "GET /danbooru/tag-mappings",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "danbooru/tag-mapping-create",
+            "route": "POST /danbooru/tag-mappings",
+            "statuses": [
+                201,
+                200
+            ]
+        },
+        {
+            "id": "danbooru/tag-mapping-create-invalid",
+            "route": "POST /danbooru/tag-mappings",
+            "statuses": [
+                400,
+                400,
+                400
+            ]
+        },
+        {
+            "id": "danbooru/tag-mapping-create-no-token",
+            "route": "POST /danbooru/tag-mappings",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "danbooru/tag-mapping-update",
+            "route": "PUT /danbooru/tag-mappings/{id}",
+            "statuses": [
+                200,
+                200
+            ]
+        },
+        {
+            "id": "danbooru/tag-mapping-update-absent",
+            "route": "PUT /danbooru/tag-mappings/{id}",
+            "statuses": [
+                200,
+                200
+            ]
+        },
+        {
+            "id": "danbooru/tag-mapping-update-invalid",
+            "route": "PUT /danbooru/tag-mappings/{id}",
+            "statuses": [
+                400,
+                400,
+                400
+            ]
+        },
+        {
+            "id": "danbooru/tag-mapping-update-no-token",
+            "route": "PUT /danbooru/tag-mappings/{id}",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "danbooru/tag-mapping-delete",
+            "route": "DELETE /danbooru/tag-mappings/{id}",
+            "statuses": [
+                204,
+                204,
+                400,
+                200
+            ]
+        },
+        {
+            "id": "danbooru/tag-mapping-delete-no-token",
+            "route": "DELETE /danbooru/tag-mappings/{id}",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "duplicates/report",
+            "route": "GET /duplicates/report",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "duplicates/report-missing",
+            "route": "GET /duplicates/report",
+            "statuses": [
+                404
+            ]
+        },
+        {
+            "id": "duplicates/report-none",
+            "route": "GET /duplicates/report",
+            "statuses": [
+                404
+            ]
+        },
+        {
+            "id": "duplicates/report-corrupt",
+            "route": "GET /duplicates/report",
+            "statuses": [
+                500
+            ]
+        },
+        {
+            "id": "duplicates/scan",
+            "route": "POST /duplicates/scan",
+            "statuses": [
+                200,
+                200,
+                200,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "duplicates/scan-region-check-off",
+            "route": "POST /duplicates/scan",
+            "statuses": [
+                200,
+                200
+            ]
+        },
+        {
+            "id": "duplicates/scan-wider-cutoff",
+            "route": "POST /duplicates/scan",
+            "statuses": [
+                200,
+                200
+            ]
+        },
+        {
+            "id": "duplicates/scan-no-token",
+            "route": "POST /duplicates/scan",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "duplicates/dismiss",
+            "route": "POST /duplicates/dismissals",
+            "statuses": [
+                201,
+                200,
+                201
+            ]
+        },
+        {
+            "id": "duplicates/dismiss-invalid",
+            "route": "POST /duplicates/dismissals",
+            "statuses": [
+                400,
+                400
+            ]
+        },
+        {
+            "id": "duplicates/dismiss-unknown-media",
+            "route": "POST /duplicates/dismissals",
+            "statuses": [
+                500
+            ]
+        },
+        {
+            "id": "duplicates/dismiss-no-token",
+            "route": "POST /duplicates/dismissals",
+            "statuses": [
+                401
+            ]
+        },
+        {
+            "id": "cors/read-origins",
+            "route": "GET /version",
+            "statuses": [
+                200,
+                200
+            ]
+        },
+        {
+            "id": "cors/preflight",
+            "route": "OPTIONS /{any}",
+            "statuses": [
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "rate-limit/remaining",
+            "route": "GET /version",
+            "statuses": [
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "rate-limit/exceeded",
+            "route": "GET /version",
+            "statuses": [
+                200,
+                429,
+                429,
+                200,
+                403
+            ]
+        },
+        {
+            "id": "errors/unmatched-path",
+            "route": "ANY /{unmatched}",
+            "statuses": [
+                405,
+                405,
+                405,
+                405
+            ]
+        },
+        {
+            "id": "errors/method-not-allowed",
+            "route": "ANY /{unmatched}",
+            "statuses": [
+                405,
+                405,
+                405
+            ]
+        },
+        {
+            "id": "spa/default",
+            "route": "GET /{spa}",
+            "statuses": [
+                200,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "spa/gallery",
+            "route": "GET /{spa}",
+            "statuses": [
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "spa/media",
+            "route": "GET /{spa}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "spa/media-other",
+            "route": "GET /{spa}",
+            "statuses": [
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "spa/media-file-name",
+            "route": "GET /{spa}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "spa/with-tags",
+            "route": "GET /{spa}",
+            "statuses": [
+                200,
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "spa/escaped",
+            "route": "GET /{spa}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "spa/tags",
+            "route": "GET /{spa}",
+            "statuses": [
+                200,
+                200,
+                200
+            ]
+        },
+        {
+            "id": "spa/favorites",
+            "route": "GET /{spa}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "spa/fontawesome",
+            "route": "GET /{spa}",
+            "statuses": [
+                200
+            ]
+        },
+        {
+            "id": "spa/index-missing",
+            "route": "GET /{spa}",
+            "statuses": [
+                500
+            ]
+        }
+    ]
+}

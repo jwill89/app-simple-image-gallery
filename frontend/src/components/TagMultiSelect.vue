@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue'
 import {
   ComboboxRoot,
   ComboboxAnchor,
@@ -44,36 +44,64 @@ const emit = defineEmits<{
 
 const store = useGalleryStore()
 
+/** Matches shown at once; more come from typing more. */
+const RESULT_LIMIT = 20
+/** Wait this long after a keystroke before asking the server. */
+const SEARCH_DELAY_MS = 150
+
 const searchTerm = ref('')
 const open = ref(false)
+/** The part of ComboboxRoot's exposed API this uses. */
+const combobox = useTemplateRef<{ highlightFirstItem?: () => void }>('combobox')
 
 /** A leading `-` in the input means "add the next pick as an exclusion". */
 const negating = computed(() => searchTerm.value.trimStart().startsWith('-'))
 
-const filteredTags = computed(() => {
-  let query = searchTerm.value.toLowerCase().trim()
+/**
+ * The server's best matches for what's typed (exact, then prefix, then
+ * containing), leaving out tags already picked. The gallery has thousands of
+ * tags, so the picker searches rather than filtering a list of them all.
+ */
+const filteredTags = ref<Tag[]>([])
+let searchSeq = 0
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+
+async function search() {
+  let query = searchTerm.value.trim()
   if (query.startsWith('-')) query = query.substring(1).trim()
+  const usedIds = [...props.excludeTagIds, ...props.modelValue.map((id) => Math.abs(id))]
 
-  const usedIds = new Set([...props.excludeTagIds, ...props.modelValue.map((id) => Math.abs(id))])
-  let results = store.allTags.filter((tag) => !usedIds.has(tag.tag_id))
-
-  if (query.length > 0) {
-    results = results
-      .filter((tag) => tag.tag_name.toLowerCase().includes(query))
-      .sort((a, b) => {
-        const aName = a.tag_name.toLowerCase()
-        const bName = b.tag_name.toLowerCase()
-        const aExact = aName === query
-        const bExact = bName === query
-        if (aExact !== bExact) return aExact ? -1 : 1
-        const aPrefix = aName.startsWith(query)
-        const bPrefix = bName.startsWith(query)
-        if (aPrefix !== bPrefix) return aPrefix ? -1 : 1
-        return aName.localeCompare(bName)
-      })
+  // Only the latest search's answer counts; an earlier one may arrive later.
+  const seq = ++searchSeq
+  try {
+    const tags = await store.searchTags(query, usedIds, RESULT_LIMIT)
+    if (seq !== searchSeq) return
+    filteredTags.value = tags
+    // Enter picks the best match for what's typed. Reka highlights the first
+    // item only when the list goes from empty to not, and these arrive after
+    // the keystroke, replacing the last ones, so highlight it here.
+    if (query !== '') {
+      await nextTick()
+      combobox.value?.highlightFirstItem?.()
+    }
+  } catch {
+    if (seq === searchSeq) filteredTags.value = []
   }
+}
 
-  return results.slice(0, 20)
+function searchSoon() {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => void search(), SEARCH_DELAY_MS)
+}
+
+// By content: a parent may hand over an equal array anew (TagSearchInput's
+// computed does whenever a lookup adds tags), and that is no reason to search.
+watch([searchTerm, () => props.modelValue.join(), () => props.excludeTagIds.join()], searchSoon)
+watch(open, (isOpen) => {
+  if (isOpen) void search()
+})
+onBeforeUnmount(() => {
+  clearTimeout(searchTimer)
 })
 
 /** Represents a selected tag, either included or excluded. */
@@ -81,11 +109,18 @@ interface SelectedTag extends Tag {
   negated: boolean
 }
 
+// A chip needs its tag's name and category: look up any not seen yet.
+watch(
+  () => props.modelValue.join(),
+  () => void store.loadTagsById(props.modelValue.map((id) => Math.abs(id))),
+  { immediate: true },
+)
+
 const selectedTagObjects = computed<SelectedTag[]>(() =>
   props.modelValue
     .map((id) => {
       const negated = id < 0
-      const tag = store.allTags.find((t) => t.tag_id === Math.abs(id))
+      const tag = store.tagById(Math.abs(id))
       return tag ? { ...tag, negated } : undefined
     })
     .filter((t): t is SelectedTag => t !== undefined),
@@ -137,6 +172,7 @@ function onBackspace() {
              raw tag_id next to the chip. The filter text is bound on
              ComboboxInput — ComboboxRoot has no `searchTerm` prop in Reka 2.x. -->
         <ComboboxRoot
+          ref="combobox"
           v-model:open="open"
           :model-value="null"
           ignore-filter
@@ -203,7 +239,7 @@ function onBackspace() {
 
                 <ComboboxEmpty class="tag-dropdown-footer">No matching tags</ComboboxEmpty>
 
-                <div v-if="filteredTags.length === 20" class="tag-dropdown-footer">
+                <div v-if="filteredTags.length === RESULT_LIMIT" class="tag-dropdown-footer">
                   Type to filter more results…
                 </div>
               </ComboboxViewport>

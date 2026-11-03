@@ -1,0 +1,29 @@
+{
+    "id": "media/tags-remove-foreign-origin",
+    "route": "DELETE /media/{media_id}/tags/{tag_id}",
+    "about": "Public, but the CSRF origin check still applies.",
+    "steps": [
+        {
+            "request": {
+                "method": "DELETE",
+                "path": "/api/media/1/tags/3",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://evil.example"
+                }
+            },
+            "response": {
+                "status": 403,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN"
+                },
+                "json": {
+                    "error": "ForbiddenOrigin",
+                    "message": "The request origin is not allowed."
+                }
+            }
+        }
+    ]
+}

@@ -28,7 +28,8 @@ app.config.errorHandler = (err, _instance, info) => {
 
 app.mount('#app')
 
-// Register the service worker for thumbnail caching and prefetch.
+// Register the service worker for thumbnail caching and prefetch (src/sw,
+// built to /sw.js by vite.config.ts).
 //
 // Production only. Registering it against the dev server means a worker that
 // caches `/assets/*` cache-first sits in front of Vite, so what you see after an

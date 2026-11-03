@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useGalleryStore } from '../stores/gallery'
 import TagMultiSelect from './TagMultiSelect.vue'
 
@@ -15,13 +15,20 @@ const emit = defineEmits<{
 
 const store = useGalleryStore()
 
+// The search arrives as names (from the URL): look up any tag not seen yet.
+watch(
+  () => props.modelValue.join(),
+  () => void store.loadTagsByName(props.modelValue.map((name) => name.replace(/^-/, ''))),
+  { immediate: true },
+)
+
 const selectedIds = computed({
   get: () => {
     return props.modelValue
       .map((name) => {
         const negated = name.startsWith('-')
         const cleanName = negated ? name.substring(1) : name
-        const tag = store.allTags.find((t) => t.tag_name.toLowerCase() === cleanName.toLowerCase())
+        const tag = store.tagByName(cleanName)
         if (!tag) return undefined
         return negated ? -tag.tag_id : tag.tag_id
       })
@@ -31,7 +38,7 @@ const selectedIds = computed({
     const names = ids
       .map((id) => {
         const negated = id < 0
-        const tag = store.allTags.find((t) => t.tag_id === Math.abs(id))
+        const tag = store.tagById(Math.abs(id))
         if (!tag) return undefined
         return negated ? `-${tag.tag_name}` : tag.tag_name
       })

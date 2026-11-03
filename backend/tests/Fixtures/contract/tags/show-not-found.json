@@ -1,0 +1,73 @@
+{
+    "id": "tags/show-not-found",
+    "route": "GET /tags/{tag_id}",
+    "about": "An unknown id: 404 TagDoesNotExist. Zero and non-numeric ids: 400 InvalidTagID.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/tags/999",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 404,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "TagDoesNotExist",
+                    "message": "The requested tag could not be found."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/tags/0",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "error": "InvalidTagID",
+                    "message": "The tag ID must be a positive number."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/tags/abc",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "117"
+                },
+                "json": {
+                    "error": "InvalidTagID",
+                    "message": "The tag ID must be a positive number."
+                }
+            }
+        }
+    ]
+}

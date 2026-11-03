@@ -1,0 +1,62 @@
+{
+    "id": "tag-categories/index",
+    "route": "GET /tag-categories",
+    "about": "All categories by sort_order, then name. Not cached.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/tag-categories",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": [
+                    {
+                        "category_id": 1,
+                        "category_name": "General",
+                        "color": "neutral",
+                        "description": "General terms that describe features.",
+                        "sort_order": 0
+                    },
+                    {
+                        "category_id": 2,
+                        "category_name": "Artist",
+                        "color": "rose",
+                        "description": "The artist who created this specific piece.",
+                        "sort_order": 1
+                    },
+                    {
+                        "category_id": 3,
+                        "category_name": "Character",
+                        "color": "emerald",
+                        "description": "Character name, in <First Name> <Last Name> order or Name (Series Name).",
+                        "sort_order": 2
+                    },
+                    {
+                        "category_id": 4,
+                        "category_name": "Source",
+                        "color": "amber",
+                        "description": "Source material (movie, game, anime, etc.).",
+                        "sort_order": 3
+                    },
+                    {
+                        "category_id": 5,
+                        "category_name": "Personal List",
+                        "color": "sky",
+                        "description": "Personal lists for individuals to record favorites.",
+                        "sort_order": 4
+                    }
+                ]
+            }
+        }
+    ]
+}

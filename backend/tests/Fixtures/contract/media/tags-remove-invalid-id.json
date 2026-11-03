@@ -1,0 +1,63 @@
+{
+    "id": "media/tags-remove-invalid-id",
+    "route": "DELETE /media/{media_id}/tags/{tag_id}",
+    "about": "Tag id 0: 400 InvalidTagID. Media id 0: 400 InvalidMediaID.",
+    "steps": [
+        {
+            "request": {
+                "method": "DELETE",
+                "path": "/api/media/1/tags/0",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test"
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "InvalidTagID",
+                    "message": "The tag ID must be a positive number."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "DELETE",
+                "path": "/api/media/0/tags/3",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test"
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "error": "InvalidMediaID",
+                    "message": "The media ID must be a positive number."
+                }
+            }
+        }
+    ]
+}

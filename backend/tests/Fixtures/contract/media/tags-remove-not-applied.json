@@ -1,0 +1,58 @@
+{
+    "id": "media/tags-remove-not-applied",
+    "route": "DELETE /media/{media_id}/tags/{tag_id}",
+    "about": "A tag the item does not have: 200, unchanged.",
+    "steps": [
+        {
+            "request": {
+                "method": "DELETE",
+                "path": "/api/media/1/tags/12",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": [
+                    {
+                        "tag_id": 1,
+                        "category_id": 1,
+                        "tag_name": "animal"
+                    },
+                    {
+                        "tag_id": 3,
+                        "category_id": 1,
+                        "tag_name": "cat"
+                    },
+                    {
+                        "tag_id": 7,
+                        "category_id": 1,
+                        "tag_name": "outdoors"
+                    },
+                    {
+                        "tag_id": 13,
+                        "category_id": 2,
+                        "tag_name": "artist one"
+                    },
+                    {
+                        "tag_id": 15,
+                        "category_id": 3,
+                        "tag_name": "hero"
+                    }
+                ]
+            }
+        }
+    ]
+}

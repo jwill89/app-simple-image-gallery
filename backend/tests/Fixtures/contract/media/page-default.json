@@ -1,0 +1,392 @@
+{
+    "id": "media/page-default",
+    "route": "GET /media/page/{page}/{per_page?}",
+    "about": "Page 1 at the default 40 per page: all 30 items, newest first, ties broken by media_id descending.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/page/1",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "items": [
+                        {
+                            "media_id": 30,
+                            "media_type": "image",
+                            "file_name": "filler-30.avif",
+                            "file_time": 1767322800,
+                            "hash": "eb31856e995a2034c53f60bc4ab96be9",
+                            "bits_fingerprint": "1011100001011010100001000011110110111000000100111001011011011101",
+                            "width": 1500,
+                            "height": 1000,
+                            "duration": 0,
+                            "file_size": 60000
+                        },
+                        {
+                            "media_id": 29,
+                            "media_type": "image",
+                            "file_name": "filler-29.jpg",
+                            "file_time": 1767319200,
+                            "hash": "8f4d5a90bd43a527c94538dbb857af04",
+                            "bits_fingerprint": "0111110101001110110100101100010111100011100011011111010110110010",
+                            "width": 1024,
+                            "height": 1024,
+                            "duration": 0,
+                            "file_size": 130001
+                        },
+                        {
+                            "media_id": 28,
+                            "media_type": "image",
+                            "file_name": "filler-28.png",
+                            "file_time": 1767315600,
+                            "hash": "37d82f8ca0db17120ee738304b750a8f",
+                            "bits_fingerprint": "1011111100110001100011001100001001111101110101101011111101010000",
+                            "width": 1024,
+                            "height": 1024,
+                            "duration": 0,
+                            "file_size": 130000
+                        },
+                        {
+                            "media_id": 27,
+                            "media_type": "image",
+                            "file_name": "filler-27.jpg",
+                            "file_time": 1767312000,
+                            "hash": "f9a373b5195c09ab708086a1321ed958",
+                            "bits_fingerprint": "1111001111111101011000100000011110001001101100101000010011101010",
+                            "width": 900,
+                            "height": 1200,
+                            "duration": 0,
+                            "file_size": 99001
+                        },
+                        {
+                            "media_id": 26,
+                            "media_type": "image",
+                            "file_name": "filler-26.jpg",
+                            "file_time": 1767308400,
+                            "hash": "1a6b1d7c908b75776f42e4ad9fcd48e2",
+                            "bits_fingerprint": "0100110110100100010011100011100110110001011111111101000110000110",
+                            "width": 900,
+                            "height": 1200,
+                            "duration": 0,
+                            "file_size": 99000
+                        },
+                        {
+                            "media_id": 25,
+                            "media_type": "video",
+                            "file_name": "filler-25.mp4",
+                            "file_time": 1767304800,
+                            "hash": "08ff94c665d1f6a79f207dbf9a645c38",
+                            "bits_fingerprint": "",
+                            "width": 1280,
+                            "height": 720,
+                            "duration": 8.25,
+                            "file_size": 3000000
+                        },
+                        {
+                            "media_id": 24,
+                            "media_type": "image",
+                            "file_name": "filler-24.webp",
+                            "file_time": 1767301200,
+                            "hash": "461342e0499b7fa6883509501ff53d90",
+                            "bits_fingerprint": "0001100010000100110111111111101001010101110101111000000010100010",
+                            "width": 1600,
+                            "height": 900,
+                            "duration": 0,
+                            "file_size": 120000
+                        },
+                        {
+                            "media_id": 23,
+                            "media_type": "image",
+                            "file_name": "filler-23.png",
+                            "file_time": 1767297600,
+                            "hash": "5d07306e40098b84767bcefce854c8ff",
+                            "bits_fingerprint": "0010000001010110000010010111010111000011100111011100101011000010",
+                            "width": 700,
+                            "height": 700,
+                            "duration": 0,
+                            "file_size": 91000
+                        },
+                        {
+                            "media_id": 22,
+                            "media_type": "image",
+                            "file_name": "filler-22.jpg",
+                            "file_time": 1767294000,
+                            "hash": "8f04fd5098bba75daa534cd36ecc1d0a",
+                            "bits_fingerprint": "1001001010110010110001110010010101110000101001000000000100010101",
+                            "width": 800,
+                            "height": 600,
+                            "duration": 0,
+                            "file_size": 81001
+                        },
+                        {
+                            "media_id": 21,
+                            "media_type": "image",
+                            "file_name": "filler-21.jpg",
+                            "file_time": 1767294000,
+                            "hash": "b0990b5951e762b14ba25e793a41f2a0",
+                            "bits_fingerprint": "0110011100011100111111110110010000000111111110000110010011011000",
+                            "width": 800,
+                            "height": 600,
+                            "duration": 0,
+                            "file_size": 81000
+                        },
+                        {
+                            "media_id": 20,
+                            "media_type": "image",
+                            "file_name": "edge-e2.png",
+                            "file_time": 1767290400,
+                            "hash": "1f339c46e92a346653aa384ad407a9cb",
+                            "bits_fingerprint": "0011000101001001111100110000011110110101111011000110111010110110",
+                            "width": 600,
+                            "height": 800,
+                            "duration": 0,
+                            "file_size": 70002
+                        },
+                        {
+                            "media_id": 19,
+                            "media_type": "image",
+                            "file_name": "edge-e1.png",
+                            "file_time": 1767286800,
+                            "hash": "38cb8f45021334ec89f0d6a3e7d1745a",
+                            "bits_fingerprint": "0111000101101001111000110000111110110001111011100110111110110110",
+                            "width": 600,
+                            "height": 800,
+                            "duration": 0,
+                            "file_size": 70001
+                        },
+                        {
+                            "media_id": 18,
+                            "media_type": "image",
+                            "file_name": "far-01.png",
+                            "file_time": 1767283200,
+                            "hash": "d4be7aa685c4260621cdfbdbc5779542",
+                            "bits_fingerprint": "0011101100110000110110100110101001011101100011101111101010011101",
+                            "width": 600,
+                            "height": 800,
+                            "duration": 0,
+                            "file_size": 70000
+                        },
+                        {
+                            "media_id": 17,
+                            "media_type": "video",
+                            "file_name": "clip-02.webm",
+                            "file_time": 1767279600,
+                            "hash": "e4342c57f4952177b994edfc2af3c128",
+                            "bits_fingerprint": "",
+                            "width": 1280,
+                            "height": 720,
+                            "duration": 30,
+                            "file_size": 8000000
+                        },
+                        {
+                            "media_id": 16,
+                            "media_type": "image",
+                            "file_name": "cafe-01.jpg",
+                            "file_time": 1767276000,
+                            "hash": "e1ba93cdd6aafa770dce1eec4888d974",
+                            "bits_fingerprint": "0111101111110110111111001000010000100001000001111011101111011000",
+                            "width": 1280,
+                            "height": 720,
+                            "duration": 0,
+                            "file_size": 150001
+                        },
+                        {
+                            "media_id": 15,
+                            "media_type": "image",
+                            "file_name": "kon-01.jpg",
+                            "file_time": 1767272400,
+                            "hash": "60e9012826556d079bc1cd341165875b",
+                            "bits_fingerprint": "1100100110010001100100100100110110000101111000001011101001101100",
+                            "width": 1280,
+                            "height": 720,
+                            "duration": 0,
+                            "file_size": 150000
+                        },
+                        {
+                            "media_id": 14,
+                            "media_type": "image",
+                            "file_name": "static-01.gif",
+                            "file_time": 1767268800,
+                            "hash": "1df71dcfd6a481cb422ad140b6fbd3a1",
+                            "bits_fingerprint": "1100000101101101000000101110010011001110110011010101000110100000",
+                            "width": 320,
+                            "height": 240,
+                            "duration": 0,
+                            "file_size": 12000
+                        },
+                        {
+                            "media_id": 13,
+                            "media_type": "image",
+                            "file_name": "dismissed-d2.png",
+                            "file_time": 1767265200,
+                            "hash": "611597c56916b8f389c7c5c7f3ce7b1d",
+                            "bits_fingerprint": "0110101101111100101111001001111101100111110100011011110011001100",
+                            "width": 500,
+                            "height": 500,
+                            "duration": 0,
+                            "file_size": 50001
+                        },
+                        {
+                            "media_id": 12,
+                            "media_type": "image",
+                            "file_name": "dismissed-d1.png",
+                            "file_time": 1767261600,
+                            "hash": "c8e119812ba8425a63642b880ce60791",
+                            "bits_fingerprint": "0110101101111100101111001001111100100111110100011011110011001100",
+                            "width": 500,
+                            "height": 500,
+                            "duration": 0,
+                            "file_size": 50000
+                        },
+                        {
+                            "media_id": 11,
+                            "media_type": "image",
+                            "file_name": "near-c2.jpg",
+                            "file_time": 1767258000,
+                            "hash": "d04b2c9a2a550a2dfa1063dfb8eaa39f",
+                            "bits_fingerprint": "0110001000010011110100100100111010010010011111010101110100100111",
+                            "width": 640,
+                            "height": 480,
+                            "duration": 0,
+                            "file_size": 64100
+                        },
+                        {
+                            "media_id": 10,
+                            "media_type": "image",
+                            "file_name": "near-c1.jpg",
+                            "file_time": 1767254400,
+                            "hash": "24c6b612fe2b4700d5bdd39d81c76b1f",
+                            "bits_fingerprint": "0110001001010011110100100100111010010010011111010111110100100111",
+                            "width": 640,
+                            "height": 480,
+                            "duration": 0,
+                            "file_size": 64000
+                        },
+                        {
+                            "media_id": 9,
+                            "media_type": "video",
+                            "file_name": "anim-01.gif",
+                            "file_time": 1767250800,
+                            "hash": "2bb4eebb9aab7feb545a040954f65c3e",
+                            "bits_fingerprint": "",
+                            "width": 480,
+                            "height": 270,
+                            "duration": 2.4,
+                            "file_size": 990000
+                        },
+                        {
+                            "media_id": 8,
+                            "media_type": "image",
+                            "file_name": "variant-b2.png",
+                            "file_time": 1767247200,
+                            "hash": "ddb0732bc98e86304708c10d4912bb0a",
+                            "bits_fingerprint": "1001010101000100110011110110000001110010011110010100001101011001",
+                            "width": 1000,
+                            "height": 1400,
+                            "duration": 0,
+                            "file_size": 350200
+                        },
+                        {
+                            "media_id": 7,
+                            "media_type": "image",
+                            "file_name": "variant-b1.png",
+                            "file_time": 1767243600,
+                            "hash": "7e07cd4e5550601cead4f151c07ac1e9",
+                            "bits_fingerprint": "1001000101000100110001110110000001110010001110010100001101011001",
+                            "width": 1000,
+                            "height": 1400,
+                            "duration": 0,
+                            "file_size": 350100
+                        },
+                        {
+                            "media_id": 6,
+                            "media_type": "image",
+                            "file_name": "dog-01.webp",
+                            "file_time": 1767240000,
+                            "hash": "a35748317a7addf46898c1a400384d87",
+                            "bits_fingerprint": "1110011110111011000110111110101110011101010010001111110100101100",
+                            "width": 1024,
+                            "height": 768,
+                            "duration": 0,
+                            "file_size": 88000
+                        },
+                        {
+                            "media_id": 5,
+                            "media_type": "video",
+                            "file_name": "clip-01.mp4",
+                            "file_time": 1767236400,
+                            "hash": "d5d460c9701f5c80fefa578102766445",
+                            "bits_fingerprint": "",
+                            "width": 1920,
+                            "height": 1080,
+                            "duration": 12.5,
+                            "file_size": 5242880
+                        },
+                        {
+                            "media_id": 4,
+                            "media_type": "image",
+                            "file_name": "dupe-a2.jpg",
+                            "file_time": 1767232800,
+                            "hash": "fddc55a3d180b2f6dbb1763e03f383ac",
+                            "bits_fingerprint": "0010110011000100011000101111001010100000101011101110101001011110",
+                            "width": 900,
+                            "height": 1260,
+                            "duration": 0,
+                            "file_size": 180000
+                        },
+                        {
+                            "media_id": 3,
+                            "media_type": "image",
+                            "file_name": "dupe-a1.png",
+                            "file_time": 1767232800,
+                            "hash": "5c49a87a1439b12632cbc5178fbc8e29",
+                            "bits_fingerprint": "0010110011000100011000101111001010100000101011101110101001011110",
+                            "width": 1000,
+                            "height": 1400,
+                            "duration": 0,
+                            "file_size": 350000
+                        },
+                        {
+                            "media_id": 2,
+                            "media_type": "image",
+                            "file_name": "cat-02.png",
+                            "file_time": 1767229200,
+                            "hash": "280ac0254c400465415e5686f6dc97de",
+                            "bits_fingerprint": "1010110101101111101100010001100001011010000011010110001100001111",
+                            "width": 800,
+                            "height": 800,
+                            "duration": 0,
+                            "file_size": 102400
+                        },
+                        {
+                            "media_id": 1,
+                            "media_type": "image",
+                            "file_name": "cat-01.jpg",
+                            "file_time": 1767225600,
+                            "hash": "dc5d38c939e8d8814795082b8c3a3e34",
+                            "bits_fingerprint": "1000001101110111010101011011101111001110111000011010010000001101",
+                            "width": 1200,
+                            "height": 1600,
+                            "duration": 0,
+                            "file_size": 245760
+                        }
+                    ],
+                    "total_pages": 1,
+                    "current_page": 1
+                }
+            }
+        }
+    ]
+}

@@ -97,7 +97,7 @@ async function submitForm() {
     }
 
     if (formMode.value === 'edit') {
-      await api.put<TagCategory>(endpoints.tagCategories.byId(formId.value), payload)
+      await api.patch<TagCategory>(endpoints.tagCategories.byId(formId.value), payload)
     } else {
       await api.post<TagCategory>(endpoints.tagCategories.list, payload)
     }

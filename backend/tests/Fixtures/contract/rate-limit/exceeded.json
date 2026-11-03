@@ -1,0 +1,143 @@
+{
+    "id": "rate-limit/exceeded",
+    "route": "GET /version",
+    "about": "120 requests a minute per IP are allowed; the 121st is 429 RateLimitExceeded with retry_after and Retry-After. A preflight is still answered, and a write from a foreign origin is still refused by the origin check, which runs first.",
+    "steps": [
+        {
+            "repeat": 120,
+            "statuses": {
+                "200": 120
+            },
+            "request": {
+                "method": "GET",
+                "path": "/api/version",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "0"
+                },
+                "json": {
+                    "version": "4.0.0",
+                    "api_version": "4.0.0"
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/version",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 429,
+                "headers": {
+                    "content-type": "application/json",
+                    "retry-after": "<seconds>",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "0"
+                },
+                "json": {
+                    "error": "RateLimitExceeded",
+                    "message": "Too many requests. Please wait a moment and try again.",
+                    "retry_after": "<seconds>"
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "tag_name": "x"
+                }
+            },
+            "response": {
+                "status": 429,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "retry-after": "<seconds>",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "0"
+                },
+                "json": {
+                    "error": "RateLimitExceeded",
+                    "message": "Too many requests. Please wait a moment and try again.",
+                    "retry_after": "<seconds>"
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "OPTIONS",
+                "path": "/api/tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Access-Control-Request-Method": "POST"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN"
+                },
+                "text": ""
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://evil.example",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "tag_name": "x"
+                }
+            },
+            "response": {
+                "status": 403,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN"
+                },
+                "json": {
+                    "error": "ForbiddenOrigin",
+                    "message": "The request origin is not allowed."
+                }
+            }
+        }
+    ]
+}

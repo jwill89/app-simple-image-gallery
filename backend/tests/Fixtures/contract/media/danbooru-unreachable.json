@@ -1,0 +1,39 @@
+{
+    "id": "media/danbooru-unreachable",
+    "route": "POST /media/{media_id}/danbooru-tags",
+    "about": "Danbooru unreachable (stub stopped): 503 DanbooruUnreachable.",
+    "setup": {
+        "danbooru": "down"
+    },
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/media/1/danbooru-tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>"
+                }
+            },
+            "response": {
+                "status": 503,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "DanbooruUnreachable",
+                    "message": "Could not reach Danbooru from the server — DNS, outbound HTTPS or the TLS certificate bundle."
+                }
+            }
+        }
+    ]
+}

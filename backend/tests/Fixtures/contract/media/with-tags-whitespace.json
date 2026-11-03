@@ -1,0 +1,92 @@
+{
+    "id": "media/with-tags-whitespace",
+    "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+    "about": "Spaces around names and after a - are trimmed.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/with-tags/%20cat%20%2C%20-%20kitten%20/1",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "items": [
+                        {
+                            "media_id": 30,
+                            "media_type": "image",
+                            "file_name": "filler-30.avif",
+                            "file_time": 1767322800,
+                            "hash": "eb31856e995a2034c53f60bc4ab96be9",
+                            "bits_fingerprint": "1011100001011010100001000011110110111000000100111001011011011101",
+                            "width": 1500,
+                            "height": 1000,
+                            "duration": 0,
+                            "file_size": 60000
+                        },
+                        {
+                            "media_id": 21,
+                            "media_type": "image",
+                            "file_name": "filler-21.jpg",
+                            "file_time": 1767294000,
+                            "hash": "b0990b5951e762b14ba25e793a41f2a0",
+                            "bits_fingerprint": "0110011100011100111111110110010000000111111110000110010011011000",
+                            "width": 800,
+                            "height": 600,
+                            "duration": 0,
+                            "file_size": 81000
+                        },
+                        {
+                            "media_id": 13,
+                            "media_type": "image",
+                            "file_name": "dismissed-d2.png",
+                            "file_time": 1767265200,
+                            "hash": "611597c56916b8f389c7c5c7f3ce7b1d",
+                            "bits_fingerprint": "0110101101111100101111001001111101100111110100011011110011001100",
+                            "width": 500,
+                            "height": 500,
+                            "duration": 0,
+                            "file_size": 50001
+                        },
+                        {
+                            "media_id": 12,
+                            "media_type": "image",
+                            "file_name": "dismissed-d1.png",
+                            "file_time": 1767261600,
+                            "hash": "c8e119812ba8425a63642b880ce60791",
+                            "bits_fingerprint": "0110101101111100101111001001111100100111110100011011110011001100",
+                            "width": 500,
+                            "height": 500,
+                            "duration": 0,
+                            "file_size": 50000
+                        },
+                        {
+                            "media_id": 1,
+                            "media_type": "image",
+                            "file_name": "cat-01.jpg",
+                            "file_time": 1767225600,
+                            "hash": "dc5d38c939e8d8814795082b8c3a3e34",
+                            "bits_fingerprint": "1000001101110111010101011011101111001110111000011010010000001101",
+                            "width": 1200,
+                            "height": 1600,
+                            "duration": 0,
+                            "file_size": 245760
+                        }
+                    ],
+                    "total_pages": 1,
+                    "current_page": 1
+                }
+            }
+        }
+    ]
+}

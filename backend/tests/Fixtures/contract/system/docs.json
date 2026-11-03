@@ -1,0 +1,26 @@
+{
+    "id": "system/docs",
+    "route": "GET /docs",
+    "about": "The Scalar reference page, pointed at /api/openapi.json.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/docs",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "text/html; charset=utf-8",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "text": "<!doctype html>\n<html>\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>Gallery — API Reference</title>\n  </head>\n  <body>\n    <script id=\"api-reference\" data-url=\"/api/openapi.json\"></script>\n    <script src=\"https://cdn.jsdelivr.net/npm/@scalar/api-reference\"></script>\n  </body>\n</html>"
+            }
+        }
+    ]
+}

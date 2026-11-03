@@ -6,10 +6,10 @@ include/exclude tag search, automatic tag importing from Danbooru, perceptual
 duplicate detection, favorites, and admin-gated uploads.
 
 > - **[AGENTS.md](AGENTS.md)** — in-depth architecture, data model, and conventions.
-> - **[backend/API.md](backend/API.md)** — HTTP API reference. The live contract is the
->   OpenAPI 3.1 spec at `/api/openapi.json`, browsable at **`/api/docs`** (Scalar).
+> - **API reference** — the live contract is the OpenAPI 3.1 spec at `/api/openapi.json`
+>   ([backend/openapi.json](backend/openapi.json) in the repo), browsable at **`/api/docs`** (Scalar).
 > - **[CONTRIBUTING.md](CONTRIBUTING.md)** — local setup, coding standards, and PR flow.
-> - **[CHANGELOG.md](CHANGELOG.md)** — release history (current version: **3.0.0**).
+> - **[CHANGELOG.md](CHANGELOG.md)** — release history (current version: **5.0.0**).
 
 ---
 
@@ -23,39 +23,47 @@ duplicate detection, favorites, and admin-gated uploads.
 - **Danbooru import** — auto-fetch tags by MD5 hash with an IQDB visual-similarity
   fallback; import rules are editable in the UI.
 - **Duplicate detection** — perceptual hashing (LSH → Hamming), then a worst-region comparison that tells re-saved copies from variants.
+- **Uploads** — any number of files at once (sent in batches the server accepts), with the
+  outcome of each file and of its Danbooru lookup.
+- **Nightly ingest** — files dropped into the media folder are added every night.
 - **Favorites** — stored locally in the browser.
 - **Admin actions** — password-gated uploads and deletes via a bearer token.
 - **PWA caching** — a service worker caches thumbnails and prefetches the next page.
 
 ## Tech stack
 
-- **Backend:** PHP 8.5, [Slim 4](https://www.slimframework.com/), SQLite (WAL),
-  [Phinx](https://phinx.org/) migrations, Monolog.
+- **Backend:** PHP 8.5, [Laravel 13](https://laravel.com/) (Eloquent, Sanctum, the database
+  queue and scheduler), SQLite (WAL).
 - **Frontend:** Vue 3 + TypeScript, Pinia, Vue Router, Vite, Bulma.
-- **Media tooling:** `ffmpeg` (thumbnails), PHP GD + `intervention/imagehash`
-  (fingerprinting / duplicate detection).
+- **Media tooling:** `ffmpeg`/`ffprobe` (thumbnails, video metadata), PHP GD +
+  `intervention/imagehash` (fingerprinting / duplicate detection).
 
 ## Requirements
 
 - PHP **8.5+** with `pdo_sqlite`, `curl`, `fileinfo`, `mbstring`, and **GD** (WebP, ideally AVIF)
   extensions. `composer install` refuses to run without them.
-- `ffmpeg` available on the system `PATH` (used for thumbnail generation).
-- Apache with `mod_rewrite` (the included `.htaccess` files drive routing).
+- `ffmpeg` and `ffprobe` on the system `PATH` (thumbnails and video metadata).
+- Apache with `mod_rewrite`, serving the app's `public/` folder.
+- A queue worker and a cron entry for the scheduler (see [Background work](#background-work)).
 - [Composer](https://getcomposer.org/) and [Node.js](https://nodejs.org/) **26+** (for building the frontend).
 
 ## Setup
 
-1. **Install backend dependencies** (the PHP app lives in `backend/`)
+1. **Install the backend** (the Laravel app lives in `backend/`)
 
    ```bash
    cd backend
-   composer install
+   composer setup           # composer install, .env from .env.example, APP_KEY
    ```
 
-2. **Configure the environment** — copy `backend/.env.example` to `backend/.env` and fill it in:
+2. **Configure the environment** — fill in `backend/.env` (every key is described in
+   `.env.example`):
 
    ```dotenv
-   # Required: admin password for uploads/deletes. Login is refused if this is unset.
+   # The SQLite database: an absolute path.
+   DB_DATABASE=/var/www/gallery.example.com/db/gallery.db
+
+   # Required: admin password for uploads/deletes. Login is refused while it is empty.
    GALLERY_ADMIN_PASSWORD=your-strong-password
 
    # Comma-separated list of allowed origins (CORS + CSRF check).
@@ -64,22 +72,27 @@ duplicate detection, favorites, and admin-gated uploads.
    # Public base URL — required for the Danbooru IQDB fallback.
    GALLERY_URL=https://gallery.example.com
 
-   # Optional: Danbooru API credentials for automatic tag importing.
+   # Where the media files and duplicate reports live (defaults: under storage/app).
+   GALLERY_MEDIA_PATH=/var/www/gallery.example.com/media
+   GALLERY_DUPES_PATH=/var/www/gallery.example.com/dupes
+
+   # Optional: Danbooru API credentials for automatic tag importing. Danbooru asks API
+   # clients to name the account in their User-Agent, so the user ID is needed too.
    DANBOORU_LOGIN=your-danbooru-username
    DANBOORU_API_KEY=your-danbooru-api-key
+   DANBOORU_USER_ID=123456
 
    # Optional: FontAwesome kit ID (injected into <head>).
    FONTAWESOME_KIT_ID=abcdef1234
    ```
 
-   Explicit OS/Docker environment variables take precedence over `.env`.
+   Real environment variables take precedence over `.env`.
 
-3. **Create the database** — Phinx migrations are the source of truth for the schema (run from `backend/`):
+3. **Create the database** (from `backend/`):
 
    ```bash
-   php db/setup.php          # creates db/gallery.db (if needed) and runs all migrations
-   # or, equivalently:
-   php vendor/bin/phinx migrate
+   php artisan migrate
+   php artisan storage:link   # public/media → GALLERY_MEDIA_PATH
    ```
 
 4. **Build the frontend**
@@ -87,23 +100,43 @@ duplicate detection, favorites, and admin-gated uploads.
    ```bash
    cd frontend
    npm install
-   npm run build            # outputs to frontend/dist, which index.php serves
+   npm run build            # outputs to frontend/dist
    ```
 
-5. **Serve** `backend/` with Apache (PHP 8.5) — it is the app root (the deploy
-   flattens it onto the droplet's webroot). The bundled `.htaccess` serves built
-   assets and real files, routes `/api` to the Slim app, and falls back to
-   `index.php` for the SPA (which also injects Open Graph meta tags).
+   Copy `frontend/dist/*` into `backend/public/`, except `index.html`, which goes to
+   `backend/resources/spa/index.html`, where the SPA shell reads it. The deploy script does this.
+
+5. **Serve** `backend/public/` with Apache (PHP 8.5, `AllowOverride All`, `FollowSymLinks`),
+   preferably the event MPM with PHP-FPM: under prefork, each process sits out a request's
+   keep-alive, and thumbnails queue. Its `.htaccess` serves real files (the built SPA, media) and
+   sends everything else to Laravel: `/api` to the API, and every other path to the SPA shell,
+   which adds each page's link-preview tags. PHP's upload limits are in `public/.user.ini`, which
+   PHP-FPM reads; `.htaccess` repeats them for mod_php.
+
+## Background work
+
+- **Queue worker** — ingests, Danbooru imports and rebuilds run as queued jobs. Keep one worker
+  running as the web server's user, under systemd or Supervisor:
+
+  ```bash
+  php artisan queue:work --tries=3 --max-time=3600
+  ```
+
+- **Scheduler** — the nightly ingest and token pruning. Add a cron entry for the same user:
+
+  ```
+  * * * * * cd /path/to/backend && php artisan schedule:run >> /dev/null 2>&1
+  ```
 
 ## Development
 
-Run the Vite dev server (proxies `/api` and `/media` to `http://localhost`, where
-your PHP backend must be running):
-
 ```bash
-cd frontend
-npm run dev              # http://localhost:5173
+cd backend && composer dev     # php artisan serve, http://localhost:8000
+cd frontend && npm run dev     # Vite, http://localhost:5173
 ```
+
+The Vite dev server proxies `/api` and `/media` to `http://localhost`
+(`frontend/vite.config.ts`), so serve the backend there, or point the proxy at `:8000`.
 
 ### API contract & generated types
 
@@ -113,7 +146,7 @@ changing any backend route or response shape, regenerate the spec and the fronte
 types and commit both (CI enforces they stay in sync):
 
 ```bash
-cd backend  && composer docs      # → backend/openapi.json (needs zircote/swagger-php)
+cd backend  && composer docs      # → backend/openapi.json
 cd frontend && npm run gen:types  # → frontend/src/types/api.generated.ts (openapi-typescript)
 ```
 
@@ -123,67 +156,66 @@ from `frontend/src/api/endpoints.ts` — never the generated file directly.
 ## Deploying
 
 The app is deployed to the DigitalOcean droplet with [`scripts/deploy.ps1`](scripts/deploy.ps1)
-(PowerShell + PuTTY `pscp`/`plink`, using the DigitalOcean `.ppk` key):
+(PowerShell + PuTTY `pscp`/`plink`, using the DigitalOcean `.ppk` key; host, user, key and app
+folder come from the untracked `scripts/deploy.config.ps1`):
 
 ```powershell
-.\scripts\deploy.ps1                              # build SPA, push code, composer install, migrate
-.\scripts\deploy.ps1 -SkipBuild                   # redeploy current dist without rebuilding
+.\scripts\deploy.ps1                              # build the SPA, push the code, composer install, migrate
+.\scripts\deploy.ps1 -SkipBuild                   # redeploy the current dist without rebuilding
 .\scripts\deploy.ps1 -SkipComposer -SkipMigrate   # code-only push
 ```
 
-It builds the frontend, then ships a tarball that **flattens `backend/` + `frontend/dist`** onto the
-droplet's webroot — code only (never the database, `.env`, `vendor/`, or `media/`) — then on the host
-runs `composer install` and database migrations (via `db/setup.php`,
-which baselines a pre-Phinx database before applying pending migrations), restores ownership to
-`www-data`, clears the API cache, and health-checks the API. A `.deploy-backup/` rollback copy is
-kept on the host unless `-NoBackup` is passed. If a passphrase-protected key is used, load it into
-Pageant first (`pageant.exe <key>`).
+It ships the code only — never `.env`, `storage/`, `vendor/`, the database or the media. On
+the host it:
+
+1. builds the new code beside the live one (`composer install --no-dev` included), then swaps it
+   in by renames, so the site never runs a half-replaced folder; the previous code goes to
+   `.deploy-backup/`, put back if a later step fails (kept afterwards unless `-NoBackup`);
+2. snapshots the database with `VACUUM INTO` and runs the migrations;
+3. links the media folder and caches the config, routes and events;
+4. restarts the queue worker and health-checks the API.
+
+If a passphrase-protected key is used, load it into Pageant first (`pageant.exe <key>`).
 
 ## Adding & maintaining media
 
-Drop new files into the `backend/media/` input folder and run the ingest pipeline:
+Drop new files into the media folder's root (`GALLERY_MEDIA_PATH`); the scheduler ingests them
+at midnight. To ingest now, or run the other maintenance commands (from `backend/`, as the web
+server's user):
 
 ```bash
-php backend/scripts/cron.php     # ingests media/ → media/full/, builds thumbnails + fingerprints,
-                                 # and prunes DB rows whose files were deleted
+php artisan gallery:ingest                 # add dropped files, remove items whose files are gone
+php artisan gallery:ingest --import-tags   # … and import each new image's Danbooru tags
+php artisan gallery:import-tags [id]       # import Danbooru tags for every item, or one
+php artisan gallery:dupes                  # scan for duplicates → dupes/dupes-YYYY-MM-DD.json
+php artisan gallery:dupes --tune --max-distance=8 --max-region-diff=off  # calibrate the scan
+php artisan gallery:regenerate thumbnails  # or fingerprints, or metadata: rebuild from the files
 ```
 
-Other maintenance scripts (run from anywhere; they `chdir` to the app root):
-
-```bash
-php backend/scripts/dupes.php                    # scan for duplicates → dupes/dupes-YYYY-MM-DD.json
-php backend/scripts/dupes.php --tune --max-distance=8 --max-region-diff=off  # calibrate the scan (--help)
-php backend/scripts/regenerate-thumbnails.php    # rebuild all thumbnails
-php backend/scripts/regenerate-fingerprints.php  # rebuild perceptual fingerprints
-php backend/scripts/regenerate-metadata.php      # backfill dimensions/duration/file size on existing media
-php backend/scripts/tag_imports.php              # bulk Danbooru tag import
-```
-
-Schedule `cron.php` (and optionally `dupes.php`) via cron/Task Scheduler to
-automatically ingest newly added files.
+The commands queue their work; the queue worker does it.
 
 ## Database migrations
 
-The schema lives entirely in `backend/db/migrations/`. To change it (run from `backend/`):
+The schema lives in `backend/database/migrations/`. To change it (from `backend/`):
 
 ```bash
-php vendor/bin/phinx create AddSomethingUseful   # scaffold a migration
-php vendor/bin/phinx migrate                      # apply
-php vendor/bin/phinx rollback                      # revert the last migration
+php artisan make:migration add_something_useful   # scaffold a migration
+php artisan migrate                               # apply
+php artisan migrate:rollback                      # revert the last batch
 ```
 
-Do **not** hand-edit the schema elsewhere — add a migration.
+Do **not** edit a migration that has already run in production — add a new one.
 
 ## Security notes
 
-- Set a strong `GALLERY_ADMIN_PASSWORD`. With it unset, login is refused (the
-  insecure `changeme` default can never grant access).
+- Set a strong `GALLERY_ADMIN_PASSWORD`. With it empty, login is refused, so no default
+  password can ever grant access.
 - Keep `GALLERY_ALLOWED_ORIGINS` tight — it backs both CORS and the CSRF
   origin check. State-changing requests with no `Origin`/`Referer` are rejected.
 - Login is rate-limited (10 attempts / 5 minutes per IP) on top of the global
-  request limiter.
-- `backend/.env`, `backend/db/gallery.db`, `backend/logs/`, `backend/cache/`, and
-  `backend/dupes/` are gitignored and must never be committed.
+  request limiter (120 a minute per IP). Login tokens are stored hashed and expire after 24 hours.
+- Serve only `backend/public/`; the `.env`, the code and the data sit outside it.
+- `backend/.env` and the database are gitignored and must never be committed.
 
 ## License
 

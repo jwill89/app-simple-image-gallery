@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, clearAuthToken, hasAuthToken, setAuthToken, useApi } from '../composables/useApi'
+import {
+  ApiError,
+  clearAuthToken,
+  getFieldError,
+  hasAuthToken,
+  setAuthToken,
+  useApi,
+} from '../composables/useApi'
 
 interface MockResponse {
   ok?: boolean
@@ -76,6 +83,25 @@ describe('useApi', () => {
       code: 'MediaNotFound',
       message: 'no media',
     })
+  })
+
+  it('keeps the messages of a failed validation by field', async () => {
+    mockFetch({
+      ok: false,
+      status: 400,
+      jsonData: {
+        error: 'ValidationFailed',
+        message: 'The tag name has already been taken.',
+        errors: { tag_name: ['The tag name has already been taken.'] },
+      },
+    })
+
+    const error: unknown = await useApi()
+      .post('/tags', { tag_name: 'x' })
+      .catch((e: unknown) => e)
+    expect(getFieldError(error, 'tag_name')).toBe('The tag name has already been taken.')
+    expect(getFieldError(error, 'category_id')).toBe('')
+    expect(getFieldError(new Error('plain'), 'tag_name')).toBe('')
   })
 
   it('falls back to a status-based message when the body has none', async () => {

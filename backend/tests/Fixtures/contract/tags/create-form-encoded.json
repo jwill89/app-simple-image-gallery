@@ -1,0 +1,42 @@
+{
+    "id": "tags/create-form-encoded",
+    "route": "POST /tags",
+    "about": "A form-encoded body works as well as JSON.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                "form": {
+                    "tag_name": "formed",
+                    "category_id": "3"
+                }
+            },
+            "response": {
+                "status": 201,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "tag_id": 17,
+                    "category_id": 3,
+                    "tag_name": "formed"
+                }
+            }
+        }
+    ]
+}

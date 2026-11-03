@@ -1,0 +1,304 @@
+{
+    "id": "media/upload-duplicate-only",
+    "route": "POST /media",
+    "about": "Only a duplicate: 201 with total_uploaded 0, and no cache group invalidated.",
+    "steps": [
+        {
+            "probe": true,
+            "request": {
+                "method": "GET",
+                "path": "/api/media/count",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "count": 30
+                }
+            }
+        },
+        {
+            "probe": true,
+            "request": {
+                "method": "GET",
+                "path": "/api/tags",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": [
+                    {
+                        "tag_id": 1,
+                        "category_id": 1,
+                        "tag_name": "animal"
+                    },
+                    {
+                        "tag_id": 13,
+                        "category_id": 2,
+                        "tag_name": "artist one"
+                    },
+                    {
+                        "tag_id": 14,
+                        "category_id": 2,
+                        "tag_name": "artist two"
+                    },
+                    {
+                        "tag_id": 2,
+                        "category_id": 1,
+                        "tag_name": "blue sky"
+                    },
+                    {
+                        "tag_id": 9,
+                        "category_id": 1,
+                        "tag_name": "c++"
+                    },
+                    {
+                        "tag_id": 11,
+                        "category_id": 1,
+                        "tag_name": "café"
+                    },
+                    {
+                        "tag_id": 3,
+                        "category_id": 1,
+                        "tag_name": "cat"
+                    },
+                    {
+                        "tag_id": 4,
+                        "category_id": 1,
+                        "tag_name": "dog"
+                    },
+                    {
+                        "tag_id": 15,
+                        "category_id": 3,
+                        "tag_name": "hero"
+                    },
+                    {
+                        "tag_id": 10,
+                        "category_id": 1,
+                        "tag_name": "k-on!"
+                    },
+                    {
+                        "tag_id": 5,
+                        "category_id": 1,
+                        "tag_name": "kitten"
+                    },
+                    {
+                        "tag_id": 6,
+                        "category_id": 1,
+                        "tag_name": "night"
+                    },
+                    {
+                        "tag_id": 7,
+                        "category_id": 1,
+                        "tag_name": "outdoors"
+                    },
+                    {
+                        "tag_id": 16,
+                        "category_id": 3,
+                        "tag_name": "sidekick"
+                    },
+                    {
+                        "tag_id": 8,
+                        "category_id": 1,
+                        "tag_name": "smile"
+                    },
+                    {
+                        "tag_id": 12,
+                        "category_id": 1,
+                        "tag_name": "unused tag"
+                    }
+                ]
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/media",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "multipart/form-data"
+                },
+                "multipart": [
+                    {
+                        "name": "files[]",
+                        "filename": "duplicate.png",
+                        "type": "image/png",
+                        "file": "uploads/duplicate.png"
+                    }
+                ]
+            },
+            "response": {
+                "status": 201,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "117"
+                },
+                "json": {
+                    "results": [
+                        {
+                            "file_name": "duplicate.png",
+                            "status": "duplicate",
+                            "existing_id": 2,
+                            "hash": "280ac0254c400465415e5686f6dc97de"
+                        }
+                    ],
+                    "total_uploaded": 0,
+                    "total_duplicates": 1,
+                    "total_failed": 0
+                }
+            }
+        },
+        {
+            "probe": true,
+            "request": {
+                "method": "GET",
+                "path": "/api/media/count",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "HIT",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "116"
+                },
+                "json": {
+                    "count": 30
+                }
+            }
+        },
+        {
+            "probe": true,
+            "request": {
+                "method": "GET",
+                "path": "/api/tags",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "HIT",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "115"
+                },
+                "json": [
+                    {
+                        "tag_id": 1,
+                        "category_id": 1,
+                        "tag_name": "animal"
+                    },
+                    {
+                        "tag_id": 13,
+                        "category_id": 2,
+                        "tag_name": "artist one"
+                    },
+                    {
+                        "tag_id": 14,
+                        "category_id": 2,
+                        "tag_name": "artist two"
+                    },
+                    {
+                        "tag_id": 2,
+                        "category_id": 1,
+                        "tag_name": "blue sky"
+                    },
+                    {
+                        "tag_id": 9,
+                        "category_id": 1,
+                        "tag_name": "c++"
+                    },
+                    {
+                        "tag_id": 11,
+                        "category_id": 1,
+                        "tag_name": "café"
+                    },
+                    {
+                        "tag_id": 3,
+                        "category_id": 1,
+                        "tag_name": "cat"
+                    },
+                    {
+                        "tag_id": 4,
+                        "category_id": 1,
+                        "tag_name": "dog"
+                    },
+                    {
+                        "tag_id": 15,
+                        "category_id": 3,
+                        "tag_name": "hero"
+                    },
+                    {
+                        "tag_id": 10,
+                        "category_id": 1,
+                        "tag_name": "k-on!"
+                    },
+                    {
+                        "tag_id": 5,
+                        "category_id": 1,
+                        "tag_name": "kitten"
+                    },
+                    {
+                        "tag_id": 6,
+                        "category_id": 1,
+                        "tag_name": "night"
+                    },
+                    {
+                        "tag_id": 7,
+                        "category_id": 1,
+                        "tag_name": "outdoors"
+                    },
+                    {
+                        "tag_id": 16,
+                        "category_id": 3,
+                        "tag_name": "sidekick"
+                    },
+                    {
+                        "tag_id": 8,
+                        "category_id": 1,
+                        "tag_name": "smile"
+                    },
+                    {
+                        "tag_id": 12,
+                        "category_id": 1,
+                        "tag_name": "unused tag"
+                    }
+                ]
+            }
+        }
+    ]
+}

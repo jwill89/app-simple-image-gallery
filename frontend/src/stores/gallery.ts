@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useApi } from '../composables/useApi'
 import { endpoints } from '../api/endpoints'
 import type { Tag, TagCategory, Count } from '../types'
@@ -8,12 +8,20 @@ import type { Tag, TagCategory, Count } from '../types'
 // across the app so existing `from '../stores/gallery'` imports keep working.
 export type { Tag, TagCategory, MediaItem } from '../types'
 
+/** The most tags one ?ids= or ?names= lookup asks for (the API's limit). */
+const LOOKUP_BATCH = 200
+
 export const useGalleryStore = defineStore('gallery', () => {
   const api = useApi()
 
   // State
   const pageTitle = ref('Gallery')
-  const allTags = ref<Tag[]>([])
+  /**
+   * The tags seen so far, by id: whatever searches and lookups returned. The
+   * gallery has thousands of tags, so the app never loads them all; a picker
+   * searches the server, and a chip looks its tag up here.
+   */
+  const knownTags = ref(new Map<number, Tag>())
   const categories = ref<TagCategory[]>([])
   const totalMedia = ref(0)
   const blurThumbnails = ref(localStorage.getItem('blurThumbnails') === 'true')
@@ -40,21 +48,16 @@ export const useGalleryStore = defineStore('gallery', () => {
     localStorage.setItem('infiniteScroll', String(val))
   })
 
-  // Getters
-  const tagNames = computed(() => allTags.value.map((t) => t.tag_name))
-
   // Actions
   async function initialize() {
     if (initialized.value) return
     initialized.value = true
 
     try {
-      const [tags, total, cats] = await Promise.all([
-        api.get<Tag[]>(endpoints.tags.list),
+      const [total, cats] = await Promise.all([
         api.get<Count>(endpoints.media.count),
         api.get<TagCategory[]>(endpoints.tagCategories.list),
       ])
-      allTags.value = tags ?? []
       totalMedia.value = total?.count ?? 0
       categories.value = cats ?? []
     } catch (e) {
@@ -64,14 +67,73 @@ export const useGalleryStore = defineStore('gallery', () => {
     }
   }
 
+  function rememberTags(tags: readonly Tag[]) {
+    for (const tag of tags) {
+      const known = knownTags.value.get(tag.tag_id)
+      // A tag already known as it is stays put: replacing it with an equal
+      // copy would wake everything that reads the map, for nothing.
+      if (known?.tag_name !== tag.tag_name || known.category_id !== tag.category_id) {
+        knownTags.value.set(tag.tag_id, tag)
+      }
+    }
+  }
+
+  function tagById(id: number): Tag | undefined {
+    return knownTags.value.get(id)
+  }
+
+  /** A known tag by name, without regard to case (as tag names are compared). */
+  function tagByName(name: string): Tag | undefined {
+    const wanted = name.toLowerCase()
+    for (const tag of knownTags.value.values()) {
+      if (tag.tag_name.toLowerCase() === wanted) return tag
+    }
+    return undefined
+  }
+
+  /** The best matches for a name (exact, then prefix, then containing), remembered. */
+  async function searchTags(term: string, exclude: readonly number[] = [], limit = 20) {
+    const tags = (await api.get<Tag[]>(endpoints.tags.search(term, limit, exclude))) ?? []
+    rememberTags(tags)
+    return tags
+  }
+
+  /** Look up the tags with these ids that aren't known yet. */
+  async function loadTagsById(ids: readonly number[]) {
+    const missing = [...new Set(ids)].filter((id) => !knownTags.value.has(id))
+    for (let i = 0; i < missing.length; i += LOOKUP_BATCH) {
+      rememberTags(
+        (await api.get<Tag[]>(endpoints.tags.byIds(missing.slice(i, i + LOOKUP_BATCH)))) ?? [],
+      )
+    }
+  }
+
+  /** Look up the tags with these names (any case) that aren't known yet. */
+  async function loadTagsByName(names: readonly string[]) {
+    const missing = [...new Set(names)].filter((name) => tagByName(name) === undefined)
+    for (let i = 0; i < missing.length; i += LOOKUP_BATCH) {
+      rememberTags(
+        (await api.get<Tag[]>(endpoints.tags.byNames(missing.slice(i, i + LOOKUP_BATCH)))) ?? [],
+      )
+    }
+  }
+
+  /**
+   * After tags change (renamed, recategorized, deleted) or categories do:
+   * reload the categories, and the known tags as they now are.
+   */
   async function refreshTags() {
     try {
-      const [tags, cats] = await Promise.all([
-        api.get<Tag[]>(endpoints.tags.list),
+      const ids = [...knownTags.value.keys()]
+      const [cats, ...batches] = await Promise.all([
         api.get<TagCategory[]>(endpoints.tagCategories.list),
+        ...Array.from({ length: Math.ceil(ids.length / LOOKUP_BATCH) }, (_, n) =>
+          api.get<Tag[]>(endpoints.tags.byIds(ids.slice(n * LOOKUP_BATCH, (n + 1) * LOOKUP_BATCH))),
+        ),
       ])
-      allTags.value = tags ?? []
       categories.value = cats ?? []
+      knownTags.value = new Map()
+      for (const batch of batches) rememberTags(batch ?? [])
     } catch (e) {
       console.error('Error refreshing tags:', e)
     }
@@ -96,7 +158,7 @@ export const useGalleryStore = defineStore('gallery', () => {
 
   return {
     pageTitle,
-    allTags,
+    knownTags,
     categories,
     totalMedia,
     blurThumbnails,
@@ -105,8 +167,13 @@ export const useGalleryStore = defineStore('gallery', () => {
     error,
     lastViewedItemIds,
     galleryResetSeq,
-    tagNames,
     initialize,
+    rememberTags,
+    tagById,
+    tagByName,
+    searchTags,
+    loadTagsById,
+    loadTagsByName,
     refreshTags,
     refreshTotals,
     toggleBlur,

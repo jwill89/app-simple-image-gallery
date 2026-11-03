@@ -10,5 +10,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "src/vite-env.d.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "src/vite-env.d.ts"],
+  // The service worker's entry needs a worker's globals (tsconfig.sw.json).
+  "exclude": ["src/sw/sw.ts"]
 }

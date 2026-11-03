@@ -1,0 +1,58 @@
+{
+    "id": "cors/read-origins",
+    "route": "GET /version",
+    "about": "A read from an allowed origin gets the CORS headers; one from a foreign origin is still answered, without them. Every response carries X-Frame-Options and X-Content-Type-Options.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/version",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "http://localhost:5173"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "http://localhost:5173",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "version": "4.0.0",
+                    "api_version": "4.0.0"
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/version",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://evil.example"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "version": "4.0.0",
+                    "api_version": "4.0.0"
+                }
+            }
+        }
+    ]
+}

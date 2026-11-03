@@ -1,0 +1,65 @@
+{
+    "id": "tags/create-referer-fallback",
+    "route": "POST /tags",
+    "about": "With no Origin, an allowed Referer passes the CSRF check, including one with a port, path and query.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Referer": "https://gallery.test/tags",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "tag_name": "via referer"
+                }
+            },
+            "response": {
+                "status": 201,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "tag_id": 17,
+                    "category_id": 1,
+                    "tag_name": "via referer"
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Referer": "http://localhost:5173/tags?page=2",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "tag_name": "via dev referer"
+                }
+            },
+            "response": {
+                "status": 201,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "tag_id": 18,
+                    "category_id": 1,
+                    "tag_name": "via dev referer"
+                }
+            }
+        }
+    ]
+}

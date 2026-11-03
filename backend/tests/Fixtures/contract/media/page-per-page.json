@@ -1,0 +1,152 @@
+{
+    "id": "media/page-per-page",
+    "route": "GET /media/page/{page}/{per_page?}",
+    "about": "10 per page: 3 pages.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/page/1/10",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "items": [
+                        {
+                            "media_id": 30,
+                            "media_type": "image",
+                            "file_name": "filler-30.avif",
+                            "file_time": 1767322800,
+                            "hash": "eb31856e995a2034c53f60bc4ab96be9",
+                            "bits_fingerprint": "1011100001011010100001000011110110111000000100111001011011011101",
+                            "width": 1500,
+                            "height": 1000,
+                            "duration": 0,
+                            "file_size": 60000
+                        },
+                        {
+                            "media_id": 29,
+                            "media_type": "image",
+                            "file_name": "filler-29.jpg",
+                            "file_time": 1767319200,
+                            "hash": "8f4d5a90bd43a527c94538dbb857af04",
+                            "bits_fingerprint": "0111110101001110110100101100010111100011100011011111010110110010",
+                            "width": 1024,
+                            "height": 1024,
+                            "duration": 0,
+                            "file_size": 130001
+                        },
+                        {
+                            "media_id": 28,
+                            "media_type": "image",
+                            "file_name": "filler-28.png",
+                            "file_time": 1767315600,
+                            "hash": "37d82f8ca0db17120ee738304b750a8f",
+                            "bits_fingerprint": "1011111100110001100011001100001001111101110101101011111101010000",
+                            "width": 1024,
+                            "height": 1024,
+                            "duration": 0,
+                            "file_size": 130000
+                        },
+                        {
+                            "media_id": 27,
+                            "media_type": "image",
+                            "file_name": "filler-27.jpg",
+                            "file_time": 1767312000,
+                            "hash": "f9a373b5195c09ab708086a1321ed958",
+                            "bits_fingerprint": "1111001111111101011000100000011110001001101100101000010011101010",
+                            "width": 900,
+                            "height": 1200,
+                            "duration": 0,
+                            "file_size": 99001
+                        },
+                        {
+                            "media_id": 26,
+                            "media_type": "image",
+                            "file_name": "filler-26.jpg",
+                            "file_time": 1767308400,
+                            "hash": "1a6b1d7c908b75776f42e4ad9fcd48e2",
+                            "bits_fingerprint": "0100110110100100010011100011100110110001011111111101000110000110",
+                            "width": 900,
+                            "height": 1200,
+                            "duration": 0,
+                            "file_size": 99000
+                        },
+                        {
+                            "media_id": 25,
+                            "media_type": "video",
+                            "file_name": "filler-25.mp4",
+                            "file_time": 1767304800,
+                            "hash": "08ff94c665d1f6a79f207dbf9a645c38",
+                            "bits_fingerprint": "",
+                            "width": 1280,
+                            "height": 720,
+                            "duration": 8.25,
+                            "file_size": 3000000
+                        },
+                        {
+                            "media_id": 24,
+                            "media_type": "image",
+                            "file_name": "filler-24.webp",
+                            "file_time": 1767301200,
+                            "hash": "461342e0499b7fa6883509501ff53d90",
+                            "bits_fingerprint": "0001100010000100110111111111101001010101110101111000000010100010",
+                            "width": 1600,
+                            "height": 900,
+                            "duration": 0,
+                            "file_size": 120000
+                        },
+                        {
+                            "media_id": 23,
+                            "media_type": "image",
+                            "file_name": "filler-23.png",
+                            "file_time": 1767297600,
+                            "hash": "5d07306e40098b84767bcefce854c8ff",
+                            "bits_fingerprint": "0010000001010110000010010111010111000011100111011100101011000010",
+                            "width": 700,
+                            "height": 700,
+                            "duration": 0,
+                            "file_size": 91000
+                        },
+                        {
+                            "media_id": 22,
+                            "media_type": "image",
+                            "file_name": "filler-22.jpg",
+                            "file_time": 1767294000,
+                            "hash": "8f04fd5098bba75daa534cd36ecc1d0a",
+                            "bits_fingerprint": "1001001010110010110001110010010101110000101001000000000100010101",
+                            "width": 800,
+                            "height": 600,
+                            "duration": 0,
+                            "file_size": 81001
+                        },
+                        {
+                            "media_id": 21,
+                            "media_type": "image",
+                            "file_name": "filler-21.jpg",
+                            "file_time": 1767294000,
+                            "hash": "b0990b5951e762b14ba25e793a41f2a0",
+                            "bits_fingerprint": "0110011100011100111111110110010000000111111110000110010011011000",
+                            "width": 800,
+                            "height": 600,
+                            "duration": 0,
+                            "file_size": 81000
+                        }
+                    ],
+                    "total_pages": 3,
+                    "current_page": 1
+                }
+            }
+        }
+    ]
+}

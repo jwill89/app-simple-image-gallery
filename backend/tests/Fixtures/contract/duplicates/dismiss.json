@@ -1,0 +1,131 @@
+{
+    "id": "duplicates/dismiss",
+    "route": "POST /duplicates/dismissals",
+    "about": "201 with the pair stored smaller id first; the pair drops out of the report. Dismissing again is also 201.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/duplicates/dismissals",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "media_id_1": 4,
+                    "media_id_2": 3
+                }
+            },
+            "response": {
+                "status": 201,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "dismissed": true,
+                    "media_id_1": 3,
+                    "media_id_2": 4
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/duplicates/report",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "report_file": "dupes-2026-10-30.json",
+                    "generated_at": "2026-10-30 03:00:00",
+                    "images_compared": 26,
+                    "duplicates_found": 2,
+                    "matches": [
+                        {
+                            "media_1": {
+                                "media_id": 10,
+                                "file_name": "near-c1.jpg",
+                                "hash": "24c6b612fe2b4700d5bdd39d81c76b1f"
+                            },
+                            "media_2": {
+                                "media_id": 11,
+                                "file_name": "near-c2.jpg",
+                                "hash": "d04b2c9a2a550a2dfa1063dfb8eaa39f"
+                            },
+                            "distance": 2,
+                            "ssim": null
+                        },
+                        {
+                            "media_1": {
+                                "media_id": 21,
+                                "file_name": "filler-21.jpg",
+                                "hash": "b0990b5951e762b14ba25e793a41f2a0"
+                            },
+                            "media_2": {
+                                "media_id": 22,
+                                "file_name": "filler-22.jpg",
+                                "hash": "8f04fd5098bba75daa534cd36ecc1d0a"
+                            },
+                            "distance": 5,
+                            "ssim": null
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/duplicates/dismissals",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "media_id_1": 3,
+                    "media_id_2": 4
+                }
+            },
+            "response": {
+                "status": 201,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "117"
+                },
+                "json": {
+                    "dismissed": true,
+                    "media_id_1": 3,
+                    "media_id_2": 4
+                }
+            }
+        }
+    ]
+}

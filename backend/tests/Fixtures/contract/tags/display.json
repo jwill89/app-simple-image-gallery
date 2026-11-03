@@ -1,0 +1,156 @@
+{
+    "id": "tags/display",
+    "route": "GET /tags/display",
+    "about": "Tags with category and usage/implication counts, by category sort_order then name.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/tags/display",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": [
+                    {
+                        "tag_id": 1,
+                        "tag_name": "animal",
+                        "category_id": 1,
+                        "category_name": "General",
+                        "media_count": 11,
+                        "implication_count": 0
+                    },
+                    {
+                        "tag_id": 2,
+                        "tag_name": "blue sky",
+                        "category_id": 1,
+                        "category_name": "General",
+                        "media_count": 3,
+                        "implication_count": 1
+                    },
+                    {
+                        "tag_id": 9,
+                        "tag_name": "c++",
+                        "category_id": 1,
+                        "category_name": "General",
+                        "media_count": 1,
+                        "implication_count": 0
+                    },
+                    {
+                        "tag_id": 11,
+                        "tag_name": "café",
+                        "category_id": 1,
+                        "category_name": "General",
+                        "media_count": 1,
+                        "implication_count": 0
+                    },
+                    {
+                        "tag_id": 3,
+                        "tag_name": "cat",
+                        "category_id": 1,
+                        "category_name": "General",
+                        "media_count": 7,
+                        "implication_count": 1
+                    },
+                    {
+                        "tag_id": 4,
+                        "tag_name": "dog",
+                        "category_id": 1,
+                        "category_name": "General",
+                        "media_count": 4,
+                        "implication_count": 1
+                    },
+                    {
+                        "tag_id": 10,
+                        "tag_name": "k-on!",
+                        "category_id": 1,
+                        "category_name": "General",
+                        "media_count": 1,
+                        "implication_count": 0
+                    },
+                    {
+                        "tag_id": 5,
+                        "tag_name": "kitten",
+                        "category_id": 1,
+                        "category_name": "General",
+                        "media_count": 2,
+                        "implication_count": 1
+                    },
+                    {
+                        "tag_id": 6,
+                        "tag_name": "night",
+                        "category_id": 1,
+                        "category_name": "General",
+                        "media_count": 5,
+                        "implication_count": 0
+                    },
+                    {
+                        "tag_id": 7,
+                        "tag_name": "outdoors",
+                        "category_id": 1,
+                        "category_name": "General",
+                        "media_count": 6,
+                        "implication_count": 0
+                    },
+                    {
+                        "tag_id": 8,
+                        "tag_name": "smile",
+                        "category_id": 1,
+                        "category_name": "General",
+                        "media_count": 6,
+                        "implication_count": 0
+                    },
+                    {
+                        "tag_id": 12,
+                        "tag_name": "unused tag",
+                        "category_id": 1,
+                        "category_name": "General",
+                        "media_count": 0,
+                        "implication_count": 0
+                    },
+                    {
+                        "tag_id": 13,
+                        "tag_name": "artist one",
+                        "category_id": 2,
+                        "category_name": "Artist",
+                        "media_count": 3,
+                        "implication_count": 0
+                    },
+                    {
+                        "tag_id": 14,
+                        "tag_name": "artist two",
+                        "category_id": 2,
+                        "category_name": "Artist",
+                        "media_count": 2,
+                        "implication_count": 0
+                    },
+                    {
+                        "tag_id": 15,
+                        "tag_name": "hero",
+                        "category_id": 3,
+                        "category_name": "Character",
+                        "media_count": 5,
+                        "implication_count": 0
+                    },
+                    {
+                        "tag_id": 16,
+                        "tag_name": "sidekick",
+                        "category_id": 3,
+                        "category_name": "Character",
+                        "media_count": 3,
+                        "implication_count": 0
+                    }
+                ]
+            }
+        }
+    ]
+}

@@ -1,0 +1,42 @@
+{
+    "id": "danbooru/tag-mappings",
+    "route": "GET /danbooru/tag-mappings",
+    "about": "All tag-name mappings by Danbooru tag.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/danbooru/tag-mappings",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": [
+                    {
+                        "id": 1,
+                        "danbooru_tag": "1girl",
+                        "gallery_tag": "one woman"
+                    },
+                    {
+                        "id": 2,
+                        "danbooru_tag": "cat_ears",
+                        "gallery_tag": "cat"
+                    },
+                    {
+                        "id": 3,
+                        "danbooru_tag": "smiling",
+                        "gallery_tag": "smile"
+                    }
+                ]
+            }
+        }
+    ]
+}

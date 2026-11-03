@@ -1,0 +1,31 @@
+{
+    "id": "media/page-past-end",
+    "route": "GET /media/page/{page}/{per_page?}",
+    "about": "A page past the end: 200 with no items.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/page/4/10",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "items": [],
+                    "total_pages": 3,
+                    "current_page": 4
+                }
+            }
+        }
+    ]
+}

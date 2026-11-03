@@ -4,7 +4,8 @@ import { useApi, getErrorMessage, hasAuthToken, setAuthToken } from '../composab
 import { useGalleryStore } from '../stores/gallery'
 import { useToastStore } from '../stores/toast'
 import { endpoints } from '../api/endpoints'
-import type { LoginResponse } from '../types'
+import { UPLOAD_LIMITS, planUploadBatches } from '../constants/uploads'
+import type { LoginResponse, TagImportStatus } from '../types'
 import AppAlert from '../components/AppAlert.vue'
 import PageHeader from '../components/PageHeader.vue'
 
@@ -31,12 +32,42 @@ interface UploadResult {
   existing_id?: number
   hash?: string
   message?: string
-  tags_found?: boolean
+  /**
+   * Where the file's Danbooru lookup stands: queued by the upload, then as
+   * GET /media/tag-imports reports it once the queue has run it.
+   */
+  tags_status?: 'queued' | 'applied' | 'not_found' | 'failed'
   tags_applied?: number
+  /** Why the file has no Danbooru tags: not set up on the server, or the lookup failed. */
   tags_error?: string
 }
 
+interface UploadResponse {
+  results: UploadResult[]
+  total_uploaded: number
+  total_duplicates: number
+  total_failed: number
+}
+
+/** How often to ask how the queued Danbooru lookups went, and for how long at most. */
+const TAG_POLL_INTERVAL_MS = 2000
+const TAG_POLL_TIMEOUT_MS = 5 * 60 * 1000
+/** The most items one GET /media/tag-imports asks about (the API's limit). */
+const TAG_POLL_BATCH = 200
+
+/** One per selected file, by position; empty until an upload starts. */
 const uploadResults = ref<UploadResult[]>([])
+/**
+ * Every file's result from the last upload. Only the failed files stay
+ * selected afterwards, so the list alone can't say what happened to the rest.
+ */
+const lastUploadResults = ref<UploadResult[]>([])
+/** True while the last upload's Danbooru lookups are still being waited on. */
+const fetchingTags = ref(false)
+/** Which upload is the latest; a poll for an earlier one leaves the summary alone. */
+let uploadRun = 0
+
+const maxFileSizeLabel = `${UPLOAD_LIMITS.bytesPerFile / (1024 * 1024)} MB`
 
 const IMAGE_EXTENSIONS = [
   '.jpg',
@@ -64,13 +95,18 @@ const acceptString = ALL_EXTENSIONS.join(',')
  * case worth summarising.
  */
 const uploadSummary = computed(() => {
-  if (uploading.value || uploadResults.value.length === 0) return null
+  if (uploading.value || lastUploadResults.value.length === 0) return null
 
-  const counts = { success: 0, duplicate: 0, error: 0 }
-  for (const r of uploadResults.value) {
+  const counts = { success: 0, duplicate: 0, error: 0, tagsFailed: 0, noPost: 0, fetching: 0 }
+  for (const r of lastUploadResults.value) {
     if (r.status === 'success') counts.success++
     else if (r.status === 'duplicate') counts.duplicate++
     else if (r.status === 'error') counts.error++
+    if (r.status === 'success' && r.tags_error) counts.tagsFailed++
+    if (r.status === 'success' && r.tags_status === 'not_found') counts.noPost++
+    if (r.status === 'success' && r.tags_status === 'queued' && fetchingTags.value) {
+      counts.fetching++
+    }
   }
   if (counts.success + counts.duplicate + counts.error === 0) return null
 
@@ -78,10 +114,23 @@ const uploadSummary = computed(() => {
   if (counts.success > 0) parts.push(`${counts.success} uploaded`)
   if (counts.duplicate > 0) parts.push(`${counts.duplicate} skipped as duplicates`)
   if (counts.error > 0) parts.push(`${counts.error} failed`)
-  const message = `${parts.join(', ')}.`
+  let message = `${parts.join(', ')}.`
+  // Uploaded, but without the tags asked for: the toasts that said so have gone.
+  if (counts.tagsFailed > 0) {
+    message += ` Danbooru tags could not be fetched for ${counts.tagsFailed} of them.`
+  }
+  if (counts.noPost > 0) {
+    message += ` ${counts.noPost} ${counts.noPost === 1 ? 'has' : 'have'} no post on Danbooru.`
+  }
+  if (counts.fetching > 0) {
+    message += ` Fetching Danbooru tags for ${counts.fetching} of them…`
+  }
 
   if (counts.error > 0) {
     return { severity: 'danger' as const, title: 'Upload finished with errors', message }
+  }
+  if (counts.tagsFailed > 0) {
+    return { severity: 'warning' as const, title: 'Uploaded without some tags', message }
   }
   if (counts.duplicate > 0) {
     return { severity: 'warning' as const, title: 'Upload complete', message }
@@ -231,85 +280,241 @@ function onFileInput(e: Event) {
 function removeFile(index: number) {
   animatedGifs.value.delete(fileKey(selectedFiles.value[index]))
   selectedFiles.value = selectedFiles.value.filter((_, i) => i !== index)
+  uploadResults.value = uploadResults.value.filter((_, i) => i !== index)
 }
 
 function clearFiles() {
   selectedFiles.value = []
   uploadResults.value = []
+  lastUploadResults.value = []
   animatedGifs.value = new Set()
 }
 
+/**
+ * Sends the selected files in as many requests as the server's limits need
+ * (constants/uploads.ts), one after another, and fills in each file's result
+ * as its request comes back. A file the server didn't answer for, or that was
+ * too large to send, fails with the reason instead of going missing.
+ */
 async function uploadFiles() {
   if (!hasFiles.value || uploading.value) return
 
   uploading.value = true
-  uploadResults.value = selectedFiles.value.map((f) => ({
-    file_name: f.name,
-    status: 'pending' as const,
-  }))
-
-  const formData = new FormData()
-  for (const file of selectedFiles.value) {
-    formData.append('files[]', file)
-  }
-  if (fetchTags.value) {
-    formData.append('fetch_tags', '1')
-  }
+  const run = ++uploadRun
+  fetchingTags.value = false
+  const files = selectedFiles.value
+  const wantTags = fetchTags.value
+  let queued: number[] = []
+  const failWith = (index: number, message: string): UploadResult => ({
+    file_name: files[index].name,
+    status: 'error',
+    message,
+  })
+  uploadResults.value = files.map((f) => ({ file_name: f.name, status: 'pending' as const }))
 
   try {
-    const result = await api.upload<{
-      results: UploadResult[]
-      total_uploaded: number
-      total_duplicates: number
-      total_failed: number
-      total_tags_applied?: number
-    }>(endpoints.media.upload, formData)
-    if (!result) throw new Error('No response from the upload request')
+    const plan = planUploadBatches(files)
+    for (const index of plan.tooLarge) {
+      uploadResults.value[index] = failWith(index, `Larger than ${maxFileSizeLabel}`)
+    }
 
-    uploadResults.value = result.results
+    let requestError: string | null = null
+    for (const batch of plan.batches) {
+      const formData = new FormData()
+      for (const index of batch) {
+        formData.append('files[]', files[index])
+      }
+      if (wantTags) {
+        formData.append('fetch_tags', '1')
+      }
 
-    if (result.total_uploaded > 0) {
-      let msg = `${result.total_uploaded} file(s) uploaded successfully.`
-      if (result.total_tags_applied != null && result.total_tags_applied > 0) {
-        msg += ` ${result.total_tags_applied} tags applied.`
+      try {
+        const result = await api.upload<UploadResponse>(endpoints.media.upload, formData)
+        if (!result) throw new Error('No response from the upload request')
+
+        batch.forEach((index, n) => {
+          uploadResults.value[index] =
+            n < result.results.length
+              ? result.results[n]
+              : failWith(index, 'The server did not receive this file')
+        })
+      } catch (e) {
+        const message = getErrorMessage(e, 'The upload request failed. Please try again.')
+        requestError ??= message
+        for (const index of batch) {
+          uploadResults.value[index] = failWith(index, message)
+        }
+      }
+    }
+
+    const results = uploadResults.value.slice(0, files.length)
+    const count = (status: UploadResult['status']) =>
+      results.filter((r) => r.status === status).length
+    const uploaded = count('success')
+    const duplicates = count('duplicate')
+    const failed = count('error')
+    // Files added without the Danbooru tags asked for, because the server has
+    // no Danbooru account to ask with. Queued lookups are reported as they finish.
+    const tagErrors = results.flatMap((r) =>
+      r.status === 'success' && r.tags_error ? [r.tags_error] : [],
+    )
+    queued = results.flatMap((r) =>
+      wantTags && r.status === 'success' && r.tags_status === 'queued' && r.id !== undefined
+        ? [r.id]
+        : [],
+    )
+
+    // Keep only the failed files, with their results, for a retry; successes
+    // and duplicates are done. Files added while uploading stay too.
+    lastUploadResults.value = results
+    const keep = results.flatMap((r, index) => (r.status === 'error' ? [index] : []))
+    selectedFiles.value = [
+      ...keep.map((index) => files[index]),
+      ...selectedFiles.value.slice(files.length),
+    ]
+    uploadResults.value = keep.map((index) => results[index])
+
+    if (uploaded > 0) {
+      let msg = `${uploaded} file(s) uploaded successfully.`
+      if (queued.length > 0) {
+        msg += ' Fetching their Danbooru tags…'
       }
       toastStore.success(msg, 4000, 'Upload Complete')
-      await store.refreshTotals()
-      await store.refreshTags()
     }
-    if (result.total_duplicates > 0) {
+    if (tagErrors.length > 0) {
+      // Stays until dismissed: the files are in, so nothing else says their
+      // tags are missing, and the reason (a Ray ID, a setting) is to act on.
       toastStore.warning(
-        `${result.total_duplicates} file(s) were skipped because they already exist in the gallery.`,
+        `Danbooru tags could not be fetched for ${tagErrors.length} file(s). ${tagErrors[0]}`,
+        0,
+        'Tags Not Fetched',
+      )
+    }
+    if (duplicates > 0) {
+      toastStore.warning(
+        `${duplicates} file(s) were skipped because they already exist in the gallery.`,
         5000,
         'Duplicates Skipped',
       )
     }
-    if (result.total_failed > 0) {
+    if (failed > 0) {
       toastStore.error(
-        `${result.total_failed} file(s) could not be processed. Check the results below for details.`,
+        `${failed} file(s) could not be uploaded. ${requestError ?? 'Check the results below for details.'}`,
         8000,
         'Upload Failed',
       )
     }
-
-    // Clear the file list — keep only failed items (duplicates and successes are resolved)
-    const failedNames = new Set(
-      result.results.filter((r) => r.status === 'error').map((r) => r.file_name),
-    )
-    selectedFiles.value = selectedFiles.value.filter((f) => failedNames.has(f.name))
-  } catch (e) {
-    toastStore.error(
-      getErrorMessage(e, 'The upload request failed. Please try again.'),
-      8000,
-      'Upload Failed',
-    )
-    uploadResults.value = selectedFiles.value.map((f) => ({
-      file_name: f.name,
-      status: 'error' as const,
-      message: 'Upload request failed',
-    }))
+    if (uploaded > 0) {
+      await store.refreshTotals()
+    }
   } finally {
     uploading.value = false
+  }
+
+  if (queued.length > 0) await followTagImports(run, queued)
+}
+
+/** A file's result once the queue has run its Danbooru lookup. */
+function settle(result: UploadResult, status: TagImportStatus): UploadResult {
+  switch (status.status) {
+    case 'applied':
+      return { ...result, tags_status: 'applied', tags_applied: status.tags_applied }
+    case 'not_found':
+      return { ...result, tags_status: 'not_found' }
+    case 'failed':
+      return {
+        ...result,
+        tags_status: 'failed',
+        tags_error: status.error ?? 'The Danbooru lookup failed.',
+      }
+    case 'queued':
+      return result
+    case 'none': {
+      // Nothing is known of it any more, so nothing more is said about it.
+      const { tags_status: _dropped, ...rest } = result
+      return rest
+    }
+  }
+}
+
+/**
+ * The upload only queues each file's Danbooru lookup, so its outcome comes
+ * later: ask every few seconds until every lookup has finished (or a few
+ * minutes have passed), keeping the summary current, then report the outcome.
+ */
+async function followTagImports(run: number, ids: number[]) {
+  const waiting = new Set(ids)
+  const settled: TagImportStatus[] = []
+  const deadline = Date.now() + TAG_POLL_TIMEOUT_MS
+  fetchingTags.value = true
+
+  while (waiting.size > 0 && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, TAG_POLL_INTERVAL_MS))
+    const asked = [...waiting]
+    const done: TagImportStatus[] = []
+    for (let i = 0; i < asked.length; i += TAG_POLL_BATCH) {
+      try {
+        const statuses = await api.get<TagImportStatus[]>(
+          endpoints.media.tagImports(asked.slice(i, i + TAG_POLL_BATCH)),
+        )
+        done.push(...(statuses ?? []).filter((s) => s.status !== 'queued'))
+      } catch {
+        // A failed poll is asked again next time round.
+      }
+    }
+    for (const status of done) {
+      waiting.delete(status.media_id)
+      settled.push(status)
+    }
+    if (run === uploadRun && done.length > 0) {
+      const byId = new Map(done.map((status) => [status.media_id, status]))
+      lastUploadResults.value = lastUploadResults.value.map((r) => {
+        const status = r.id === undefined ? undefined : byId.get(r.id)
+        return status ? settle(r, status) : r
+      })
+    }
+  }
+
+  if (run === uploadRun) fetchingTags.value = false
+  reportTagImports(settled, waiting.size)
+}
+
+function reportTagImports(settled: TagImportStatus[], stillWaiting: number) {
+  const applied = settled.filter((s) => s.status === 'applied')
+  const failed = settled.filter((s) => s.status === 'failed')
+  const notFound = settled.filter((s) => s.status === 'not_found').length
+
+  if (applied.length > 0) {
+    const tags = applied.reduce((sum, s) => sum + s.tags_applied, 0)
+    toastStore.success(
+      `${tags} Danbooru tags applied to ${applied.length} file(s).`,
+      4000,
+      'Tags Applied',
+    )
+  }
+  if (failed.length > 0) {
+    // Stays until dismissed: the files are in, so nothing else says their
+    // tags are missing, and the reason (a Ray ID, a setting) is to act on.
+    const reason = failed[0].error ?? 'The Danbooru lookup failed.'
+    toastStore.warning(
+      `Danbooru tags could not be fetched for ${failed.length} file(s). ${reason}`,
+      0,
+      'Tags Not Fetched',
+    )
+  }
+  if (notFound > 0) {
+    toastStore.info(
+      `Danbooru has no post for ${notFound} file(s), so they were uploaded without tags.`,
+      6000,
+      'No Tags Found',
+    )
+  }
+  if (stillWaiting > 0) {
+    toastStore.info(
+      `Danbooru tags are still being fetched for ${stillWaiting} file(s); they will show on each file's page once done.`,
+      6000,
+      'Tags Still Fetching',
+    )
   }
 }
 </script>
@@ -394,7 +599,9 @@ async function uploadFiles() {
             <p class="is-size-5 has-text-grey mt-3">
               Drag &amp; drop files here, or click to browse
             </p>
-            <p class="is-size-7 has-text-grey-light mt-1">Images, GIFs, and videos up to 500 MB</p>
+            <p class="is-size-7 has-text-grey-light mt-1">
+              Images, GIFs, and videos up to {{ maxFileSizeLabel }} each
+            </p>
           </div>
         </div>
 
@@ -455,11 +662,9 @@ async function uploadFiles() {
                   class="has-text-success is-size-7"
                 >
                   <span class="icon"><i class="fa-solid fa-circle-check" /></span>
-                  <template v-if="uploadResults[index]?.tags_applied">
-                    {{ uploadResults[index].tags_applied }} tags
-                  </template>
-                  <template v-else-if="uploadResults[index]?.tags_found === false && fetchTags">
-                    No tags found
+                  <template v-if="uploadResults[index]?.tags_error">Tags not fetched</template>
+                  <template v-else-if="uploadResults[index]?.tags_status === 'queued'">
+                    Fetching tags
                   </template>
                 </span>
                 <span

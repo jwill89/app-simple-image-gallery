@@ -1,0 +1,54 @@
+{
+    "id": "media/upload-unsafe-name",
+    "route": "POST /media",
+    "about": "Characters outside [a-zA-Z0-9._-] in the file name become underscores; the extension keeps its case.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/media",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "multipart/form-data"
+                },
+                "multipart": [
+                    {
+                        "name": "files[]",
+                        "filename": "my photo #1.PNG",
+                        "type": "image/png",
+                        "file": "uploads/tiny.png"
+                    }
+                ]
+            },
+            "response": {
+                "status": 201,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "results": [
+                        {
+                            "file_name": "my_photo__1.PNG",
+                            "status": "success",
+                            "id": 31,
+                            "hash": "fb9061fd4b59b0856ea0514a8fb0c966"
+                        }
+                    ],
+                    "total_uploaded": 1,
+                    "total_duplicates": 0,
+                    "total_failed": 0
+                }
+            }
+        }
+    ]
+}

@@ -2,11 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Gallery\Tests\Support;
+namespace Tests\Support;
 
+use App\Http\Resources\MediaResource;
+use App\Http\Resources\TagCategoryResource;
+use App\Http\Resources\TagResource;
 use OpenApi\Augmenter\Properties;
 use OpenApi\Builder;
 use OpenApi\Utils\Pipeline;
+use ReflectionClass;
 
 /**
  * How the OpenAPI document is built from the #[OAS\*] attributes, shared by
@@ -18,16 +22,31 @@ final class OpenApiDocument
 {
     private const string BACKEND = __DIR__ . '/../..';
 
+    /**
+     * The resources that carry an entity schema. They are listed rather than
+     * scanned so the schemas keep the order the document has always had,
+     * after the other response shapes.
+     */
+    private const array SCHEMA_RESOURCES = [
+        MediaResource::class,
+        TagResource::class,
+        TagCategoryResource::class,
+    ];
+
     public static function builder(): Builder
     {
         return new Builder()
-            ->setSources([self::BACKEND . '/api', self::BACKEND . '/includes'])
+            ->setSources([
+                self::BACKEND . '/app/Http/Controllers/Api',
+                self::BACKEND . '/app/OpenApi',
+                array_map(static fn(string $class): ReflectionClass => new ReflectionClass($class), self::SCHEMA_RESOURCES),
+            ])
             ->setVersion('3.1.0')
             // swagger-php 7's Properties augmenter turns PHP property initialisers
             // into schema `default`s. Every one here is a placeholder on a doc-only
             // response class (`public bool $success = true` on ScanResult), not a
-            // value the API fills in for a missing field, so all 81 it would add
-            // are misleading. Where the API has a default, the attribute says so.
+            // value the API fills in for a missing field, so all it would add are
+            // misleading. Where the API has a default, the attribute says so.
             ->withAugmenters(static fn(Pipeline $augmenters): Pipeline => $augmenters->remove(Properties::class));
     }
 

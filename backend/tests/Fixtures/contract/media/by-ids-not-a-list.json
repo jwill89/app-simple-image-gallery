@@ -1,0 +1,67 @@
+{
+    "id": "media/by-ids-not-a-list",
+    "route": "POST /media/by-ids",
+    "about": "ids not an array, and no body at all: 400 InvalidInput.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/media/by-ids",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "ids": 5
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "InvalidInput",
+                    "message": "A non-empty array of media IDs is required."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/media/by-ids",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test"
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "error": "InvalidInput",
+                    "message": "A non-empty array of media IDs is required."
+                }
+            }
+        }
+    ]
+}

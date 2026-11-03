@@ -1,0 +1,41 @@
+{
+    "id": "tags/update-default-category",
+    "route": "PUT /tags/{tag_id}",
+    "about": "Without category_id the tag is moved to category 1, not left where it was.",
+    "steps": [
+        {
+            "request": {
+                "method": "PUT",
+                "path": "/api/tags/13",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "tag_name": "artist one"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "tag_id": 13,
+                    "category_id": 1,
+                    "tag_name": "artist one"
+                }
+            }
+        }
+    ]
+}

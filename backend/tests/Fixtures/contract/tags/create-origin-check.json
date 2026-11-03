@@ -1,0 +1,113 @@
+{
+    "id": "tags/create-origin-check",
+    "route": "POST /tags",
+    "about": "CSRF: no Origin or Referer → 403; a foreign Origin → 403, before the token is looked at, with no CORS headers and no X-RateLimit-Remaining (the origin check runs outside the rate limiter); a foreign Referer → 403.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "tag_name": "x"
+                }
+            },
+            "response": {
+                "status": 403,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN"
+                },
+                "json": {
+                    "error": "ForbiddenOrigin",
+                    "message": "The request origin is not allowed."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://evil.example",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "tag_name": "x"
+                }
+            },
+            "response": {
+                "status": 403,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN"
+                },
+                "json": {
+                    "error": "ForbiddenOrigin",
+                    "message": "The request origin is not allowed."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://evil.example",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "tag_name": "x"
+                }
+            },
+            "response": {
+                "status": 403,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN"
+                },
+                "json": {
+                    "error": "ForbiddenOrigin",
+                    "message": "The request origin is not allowed."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Referer": "https://evil.example/tags",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "tag_name": "x"
+                }
+            },
+            "response": {
+                "status": 403,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN"
+                },
+                "json": {
+                    "error": "ForbiddenOrigin",
+                    "message": "The request origin is not allowed."
+                }
+            }
+        }
+    ]
+}

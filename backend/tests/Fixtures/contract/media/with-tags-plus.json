@@ -1,0 +1,81 @@
+{
+    "id": "media/with-tags-plus",
+    "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+    "about": "\"c++\" encoded (%2B) and raw: a + in a path is a plus, not a space.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/with-tags/c%2B%2B/1",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "items": [
+                        {
+                            "media_id": 14,
+                            "media_type": "image",
+                            "file_name": "static-01.gif",
+                            "file_time": 1767268800,
+                            "hash": "1df71dcfd6a481cb422ad140b6fbd3a1",
+                            "bits_fingerprint": "1100000101101101000000101110010011001110110011010101000110100000",
+                            "width": 320,
+                            "height": 240,
+                            "duration": 0,
+                            "file_size": 12000
+                        }
+                    ],
+                    "total_pages": 1,
+                    "current_page": 1
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/with-tags/c++/1",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "HIT",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "items": [
+                        {
+                            "media_id": 14,
+                            "media_type": "image",
+                            "file_name": "static-01.gif",
+                            "file_time": 1767268800,
+                            "hash": "1df71dcfd6a481cb422ad140b6fbd3a1",
+                            "bits_fingerprint": "1100000101101101000000101110010011001110110011010101000110100000",
+                            "width": 320,
+                            "height": 240,
+                            "duration": 0,
+                            "file_size": 12000
+                        }
+                    ],
+                    "total_pages": 1,
+                    "current_page": 1
+                }
+            }
+        }
+    ]
+}

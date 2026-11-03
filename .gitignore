@@ -10,22 +10,15 @@
 !/scripts/deploy.ps1
 !/scripts/deploy.config.example.ps1
 
-# ── Backend (PHP) ─────────────────────────────────────────────────────────────
-# Dependencies are reinstalled via composer; composer.lock IS tracked (reproducible installs).
-/backend/vendor/
-# Secrets and runtime / generated data — never commit.
-/backend/.env
-/backend/db/gallery.db
-# Pre-migrate snapshots taken by scripts/deploy.ps1 (created on the host).
-/backend/db/.backups/
-/backend/cache/
-/backend/logs/
-/backend/dupes/
-/backend/media/
-# Test artifacts and tool caches.
-/backend/.phpunit.cache/
-/backend/.php-cs-fixer.cache
+# ── Backend (Laravel) ─────────────────────────────────────────────────────────
+# backend/.gitignore and backend/database/.gitignore cover the app itself.
 /backend/coverage/
+
+# ── Old backend (Slim) ────────────────────────────────────────────────────────
+# Removed from the repo in the Laravel migration's Phase 8. A checkout may still
+# hold its untracked files (.env, a database copy, vendor/), which must never be
+# committed.
+/backend-old/
 
 # ── Frontend (Vite) ───────────────────────────────────────────────────────────
 # Dependencies are reinstalled via npm ci; package-lock.json IS tracked.

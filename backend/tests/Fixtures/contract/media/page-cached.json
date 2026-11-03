@@ -1,0 +1,177 @@
+{
+    "id": "media/page-cached",
+    "route": "GET /media/page/{page}/{per_page?}",
+    "about": "The second identical read is served from the response cache.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/page/1/5",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "items": [
+                        {
+                            "media_id": 30,
+                            "media_type": "image",
+                            "file_name": "filler-30.avif",
+                            "file_time": 1767322800,
+                            "hash": "eb31856e995a2034c53f60bc4ab96be9",
+                            "bits_fingerprint": "1011100001011010100001000011110110111000000100111001011011011101",
+                            "width": 1500,
+                            "height": 1000,
+                            "duration": 0,
+                            "file_size": 60000
+                        },
+                        {
+                            "media_id": 29,
+                            "media_type": "image",
+                            "file_name": "filler-29.jpg",
+                            "file_time": 1767319200,
+                            "hash": "8f4d5a90bd43a527c94538dbb857af04",
+                            "bits_fingerprint": "0111110101001110110100101100010111100011100011011111010110110010",
+                            "width": 1024,
+                            "height": 1024,
+                            "duration": 0,
+                            "file_size": 130001
+                        },
+                        {
+                            "media_id": 28,
+                            "media_type": "image",
+                            "file_name": "filler-28.png",
+                            "file_time": 1767315600,
+                            "hash": "37d82f8ca0db17120ee738304b750a8f",
+                            "bits_fingerprint": "1011111100110001100011001100001001111101110101101011111101010000",
+                            "width": 1024,
+                            "height": 1024,
+                            "duration": 0,
+                            "file_size": 130000
+                        },
+                        {
+                            "media_id": 27,
+                            "media_type": "image",
+                            "file_name": "filler-27.jpg",
+                            "file_time": 1767312000,
+                            "hash": "f9a373b5195c09ab708086a1321ed958",
+                            "bits_fingerprint": "1111001111111101011000100000011110001001101100101000010011101010",
+                            "width": 900,
+                            "height": 1200,
+                            "duration": 0,
+                            "file_size": 99001
+                        },
+                        {
+                            "media_id": 26,
+                            "media_type": "image",
+                            "file_name": "filler-26.jpg",
+                            "file_time": 1767308400,
+                            "hash": "1a6b1d7c908b75776f42e4ad9fcd48e2",
+                            "bits_fingerprint": "0100110110100100010011100011100110110001011111111101000110000110",
+                            "width": 900,
+                            "height": 1200,
+                            "duration": 0,
+                            "file_size": 99000
+                        }
+                    ],
+                    "total_pages": 6,
+                    "current_page": 1
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/page/1/5",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "HIT",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "items": [
+                        {
+                            "media_id": 30,
+                            "media_type": "image",
+                            "file_name": "filler-30.avif",
+                            "file_time": 1767322800,
+                            "hash": "eb31856e995a2034c53f60bc4ab96be9",
+                            "bits_fingerprint": "1011100001011010100001000011110110111000000100111001011011011101",
+                            "width": 1500,
+                            "height": 1000,
+                            "duration": 0,
+                            "file_size": 60000
+                        },
+                        {
+                            "media_id": 29,
+                            "media_type": "image",
+                            "file_name": "filler-29.jpg",
+                            "file_time": 1767319200,
+                            "hash": "8f4d5a90bd43a527c94538dbb857af04",
+                            "bits_fingerprint": "0111110101001110110100101100010111100011100011011111010110110010",
+                            "width": 1024,
+                            "height": 1024,
+                            "duration": 0,
+                            "file_size": 130001
+                        },
+                        {
+                            "media_id": 28,
+                            "media_type": "image",
+                            "file_name": "filler-28.png",
+                            "file_time": 1767315600,
+                            "hash": "37d82f8ca0db17120ee738304b750a8f",
+                            "bits_fingerprint": "1011111100110001100011001100001001111101110101101011111101010000",
+                            "width": 1024,
+                            "height": 1024,
+                            "duration": 0,
+                            "file_size": 130000
+                        },
+                        {
+                            "media_id": 27,
+                            "media_type": "image",
+                            "file_name": "filler-27.jpg",
+                            "file_time": 1767312000,
+                            "hash": "f9a373b5195c09ab708086a1321ed958",
+                            "bits_fingerprint": "1111001111111101011000100000011110001001101100101000010011101010",
+                            "width": 900,
+                            "height": 1200,
+                            "duration": 0,
+                            "file_size": 99001
+                        },
+                        {
+                            "media_id": 26,
+                            "media_type": "image",
+                            "file_name": "filler-26.jpg",
+                            "file_time": 1767308400,
+                            "hash": "1a6b1d7c908b75776f42e4ad9fcd48e2",
+                            "bits_fingerprint": "0100110110100100010011100011100110110001011111111101000110000110",
+                            "width": 900,
+                            "height": 1200,
+                            "duration": 0,
+                            "file_size": 99000
+                        }
+                    ],
+                    "total_pages": 6,
+                    "current_page": 1
+                }
+            }
+        }
+    ]
+}

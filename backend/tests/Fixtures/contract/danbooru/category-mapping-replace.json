@@ -1,0 +1,88 @@
+{
+    "id": "danbooru/category-mapping-replace",
+    "route": "POST /danbooru/category-mappings",
+    "about": "POSTing an existing Danbooru category id replaces its mapping: 201.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/danbooru/category-mappings",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "danbooru_category_id": 0,
+                    "danbooru_category_name": "General",
+                    "gallery_category_id": 5
+                }
+            },
+            "response": {
+                "status": 201,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "danbooru_category_id": 0,
+                    "danbooru_category_name": "General",
+                    "gallery_category_id": 5,
+                    "gallery_category_name": "Personal List"
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/danbooru/category-mappings",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": [
+                    {
+                        "danbooru_category_id": 0,
+                        "danbooru_category_name": "General",
+                        "gallery_category_id": 5,
+                        "gallery_category_name": "Personal List"
+                    },
+                    {
+                        "danbooru_category_id": 1,
+                        "danbooru_category_name": "Artist",
+                        "gallery_category_id": 2,
+                        "gallery_category_name": "Artist"
+                    },
+                    {
+                        "danbooru_category_id": 3,
+                        "danbooru_category_name": "Copyright",
+                        "gallery_category_id": 4,
+                        "gallery_category_name": "Source"
+                    },
+                    {
+                        "danbooru_category_id": 4,
+                        "danbooru_category_name": "Character",
+                        "gallery_category_id": 3,
+                        "gallery_category_name": "Character"
+                    }
+                ]
+            }
+        }
+    ]
+}

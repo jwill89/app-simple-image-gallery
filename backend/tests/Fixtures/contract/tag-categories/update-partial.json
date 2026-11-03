@@ -1,0 +1,44 @@
+{
+    "id": "tag-categories/update-partial",
+    "route": "PUT /tag-categories/{category_id}",
+    "about": "Its own name in other letter case is not a conflict. Fields left out are reset to their defaults (description \"\", sort_order 0), not kept.",
+    "steps": [
+        {
+            "request": {
+                "method": "PUT",
+                "path": "/api/tag-categories/2",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "category_name": "ARTIST",
+                    "color": "rose"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "category_id": 2,
+                    "category_name": "ARTIST",
+                    "color": "rose",
+                    "description": "",
+                    "sort_order": 0
+                }
+            }
+        }
+    ]
+}

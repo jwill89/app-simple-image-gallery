@@ -1,0 +1,23 @@
+{
+    "generated_at": "2026-10-30 03:00:00",
+    "settings": {
+        "max_distance": 6,
+        "max_region_diff": 36.0,
+        "band_bits": 9,
+        "tuning": false
+    },
+    "images_compared": 26,
+    "lsh_candidates": 6,
+    "skipped_buckets": 0,
+    "region_rejected": 1,
+    "duplicates_found": 5,
+    "execution_time_seconds": 0.42,
+    "matches": [
+        [3, 4, 0, 0.9871, 4.2],
+        [12, 13, 1, null, null],
+        [10, 11, 2, null, null],
+        [6, 99, 3, 0.95, 10.5],
+        [21, 22, 5]
+    ],
+    "report_file": "dupes/dupes-2026-10-30.json"
+}

@@ -7,7 +7,7 @@ declare(strict_types=1);
  * the way OpenApiSpecTest checks it (tests/Support/OpenApiDocument.php).
  */
 
-use Gallery\Tests\Support\OpenApiDocument;
+use Tests\Support\OpenApiDocument;
 
 require __DIR__ . '/../vendor/autoload.php';
 

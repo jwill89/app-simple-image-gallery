@@ -1,0 +1,33 @@
+{
+    "id": "auth/login-foreign-origin",
+    "route": "POST /auth/login",
+    "about": "Login is a write, so the CSRF origin check applies: 403 ForbiddenOrigin.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/auth/login",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://evil.example",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "password": "contract-password"
+                }
+            },
+            "response": {
+                "status": 403,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN"
+                },
+                "json": {
+                    "error": "ForbiddenOrigin",
+                    "message": "The request origin is not allowed."
+                }
+            }
+        }
+    ]
+}

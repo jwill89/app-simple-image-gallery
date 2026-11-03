@@ -14,6 +14,166 @@ release body taken from that version's section below. So bump the version and
 update its section here in the same commit and push a green commit — no manual
 tagging.
 
+## [5.0.0] - 2026-11-03
+
+The backend moved from Slim 4 to **Laravel 13**, which changes how the gallery
+runs: a new server layout, a queue worker and a scheduler. With the move done,
+the API was reworked to use what Laravel offers, so the HTTP contract moves to
+**`5.0.0`**: HTTP caching, tag search, queued uploads, real 404s, partial edits
+and cursor paging. The move also turned up two old problems, with large uploads
+and with Danbooru, fixed here. How the migration was done, and its deliberate
+differences from API 4, are in [docs/laravel-migration.md](docs/laravel-migration.md).
+
+### Breaking (for running the gallery)
+
+- **Server layout.** The app's `public/` folder is the DocumentRoot; the code,
+  `.env` and the data (`db/`, `media/`, `dupes/`) sit beside it, unserved. The
+  flat webroot is gone.
+- **A queue worker and a cron entry are required.** `php artisan queue:work`
+  (the systemd unit `gallery-queue` on the droplet) runs ingests, Danbooru
+  imports and rebuilds; `php artisan schedule:run`, every minute, runs the
+  nightly ingest and prunes expired logins.
+- **The maintenance scripts are Artisan commands:** `cron.php` →
+  `gallery:ingest`, `cron_with_tags.php` → `gallery:ingest --import-tags`,
+  `tag_imports.php` → `gallery:import-tags`, `regenerate-*.php` →
+  `gallery:regenerate {thumbnails|fingerprints|metadata}`, `dupes.php` →
+  `gallery:dupes` (same options).
+- **Settings.** A Laravel `.env` (`APP_KEY`, `DB_DATABASE`,
+  `QUEUE_CONNECTION=database`, …) with the gallery's keys as before, plus
+  `GALLERY_MEDIA_PATH`, `GALLERY_DUPES_PATH`, `SCHEDULE_TIMEZONE` and
+  `DANBOORU_USER_ID`.
+- **Everyone logs in once more.** Login tokens moved to Sanctum.
+
+### Breaking (for API clients — the contract is `5.0.0`)
+
+- **`GET /tags/display` is a page**, `{ items, total, current_page, total_pages }`,
+  taking `page`, `per_page` (default 25), `search` (tag or category name),
+  `sort` (`tag_name`, `category_name`, `media_count`), `direction` and `ids`.
+  It was every tag at once.
+- **Uploads queue their slow work.** `POST /media` answers once the files are
+  stored; thumbnails and Danbooru lookups run on the queue. With `fetch_tags`,
+  each stored file says `tags_status: "queued"`, or why not as `tags_error`;
+  `GET /media/tag-imports?ids=…` reports how each lookup went. The per-file
+  `tags_found`, `tags_applied` and `tags_method`, and `total_tags_applied`,
+  are gone.
+- **A path id names a record or the request is a 404**, with the resource's
+  code: `MediaNotFound`, `TagNotFound`, `CategoryNotFound`, `MappingNotFound`,
+  `ImplicationNotFound`. A non-numeric id matches no route (`404 NotFound`).
+  API 4 answered 400 for a malformed id and 200 or 204 for a missing one.
+- **A `PUT` changes only the fields it sends.** API 4 reset the others to their
+  defaults.
+- `POST /media/{id}/danbooru-tags` no longer returns `all_tags` (every tag in
+  the gallery).
+
+### Added
+
+- **Uploads of any number of files.** The upload page sends them in batches of
+  at most 20 files and 100 MB, within PHP's limits, which used to drop every
+  file past the 20th without a word. A file the server never answered for is
+  marked failed, and a file over 100 MB isn't sent.
+- **The upload page says when tags are missing:** a warning that stays until
+  dismissed when Danbooru tags couldn't be fetched (with the reason), a notice
+  for files Danbooru has no post for, and both counts in the upload summary.
+- **`DANBOORU_USER_ID`.** Danbooru requests name the account in their
+  User-Agent (`GalleryTagImporter/1.0; user #…`), as Danbooru asks of API
+  clients; its firewall had started blocking the server's requests without it.
+- **`503 DanbooruBlocked`.** Danbooru's firewall refusing the server is
+  reported as that, with Cloudflare's Ray ID, instead of as rejected
+  credentials. An upload's per-file `tags_error` carries the reason.
+- **The nightly ingest actually runs** on a schedule; `cron.php` was never
+  scheduled.
+- **HTTP caching.** The public reads send an `ETag` with
+  `Cache-Control: no-cache, private`, and answer `304 Not Modified` while
+  nothing has changed.
+- **Tag search:** `GET /tags?search=…` gives the best matches (the name
+  itself, then names starting with it, then names containing it), with `limit`
+  and `exclude`; `?names=…` and `?ids=…` look tags up. The app searches as you
+  type instead of downloading every tag when it starts.
+- **Cursor paging:** `GET /media?cursor=…` continues a listing (`tags=…` or
+  `untagged=1` keep its filter), and every numbered page gives the
+  `next_cursor` to continue from. Infinite scroll uses it, so items added while
+  you scroll no longer repeat ones already shown.
+- **`PATCH /tags/{id}` and `PATCH /tag-categories/{id}`** for partial edits
+  (`PUT` does the same).
+- **`GET /media/{id}?include=tags`**: an item with its tags in one request.
+- **`DELETE /auth/token`** revokes the token sent, and logging out calls it.
+- A failed validation lists every broken field under `errors`, beside the
+  first one's `error` and `message`, and the tag form shows the field's message.
+
+### Changed
+
+- **The backend is Laravel 13:** Eloquent models, Form Requests, API Resources,
+  Sanctum, the database queue and scheduler, and Pest tests. The 191 requests
+  recorded from the Slim app are replayed against it on every test run.
+- **Ingest** handles one file at a time: a bad file fails alone instead of
+  rolling back the whole batch. The ingest refuses to remove anything when it finds none
+  of the gallery's files, which is what a wrong media path looks like.
+- **Errors** are always `{ error, message }`: an unknown `/api` path is
+  `404 NotFound` (Slim answered an HTML 405), a wrong method
+  `405 MethodNotAllowed`. Renaming a tag onto an existing name is
+  `400 TagAlreadyExists` and dismissing a pair with an unknown id
+  `404 MediaNotFound` (both were 500s). A CORS preflight is `204`.
+- The login throttle is 10 attempts per 5 minutes, as the old code intended
+  (its cleanup made it about 10 a minute).
+- Each OpenAPI operation has a readable `operationId` (`listMedia`,
+  `uploadMedia`, …).
+- Only server errors (5xx) are logged.
+- **The cached lists are cleared by the models**: saving or deleting media,
+  tags or categories clears what it affects, from whichever request, job or
+  command made the change.
+- The Tags page searches, sorts and pages on the server, and the upload page
+  reports each queued Danbooru lookup as it finishes.
+- Deploys install no dev packages on the server, cache the config and routes,
+  and leave the code readable but not writable by other users.
+- **The service worker is TypeScript** (`frontend/src/sw/`), type-checked
+  against a worker's globals, linted and tested like the app, and built to
+  `/sw.js` by a Vite plugin. It shares the thumbnail URLs and the prefetch
+  message with the app instead of repeating them.
+- **PHP's upload limits are in `public/.user.ini`**, which PHP-FPM reads.
+  `.htaccess` keeps them for mod_php inside `<IfModule php_module>`, since
+  without mod_php a bare `php_value` makes Apache refuse every request. The
+  droplet now runs Apache's event MPM with PHP-FPM: thumbnails Cloudflare
+  hasn't cached load about 13 times faster, and API requests no longer wait
+  behind them.
+
+### Fixed
+
+- After an upload, the files kept for a retry showed other files' statuses.
+- The upload page advertised 500 MB per file; the server accepts 100 MB.
+- **Infinite scroll's thumbnails arrived slowly** when they weren't cached.
+  The service worker prefetched both sizes of every thumbnail, though a screen
+  shows one; downloaded a second copy when the page asked for one still on its
+  way; and listed all 2,000 cached thumbnails after storing each download. It
+  now prefetches the size the cards use, shares a download between the
+  prefetch and the page, and trims its cache once per 100 downloads. The media
+  listings no longer pass through it (its rule for them matched only the
+  `/api/media?page=…` form the API stopped using in 3.0.0).
+- **Deploys took the site down for 10–20 seconds.** The new code was unpacked
+  over the live folder, and every request failed until Composer, the migration
+  and `optimize` had run: Laravel couldn't write `bootstrap/cache`, and with
+  `public/media` gone, thumbnails fell through to Laravel too. One deploy logged
+  75 fatal errors. The new code is now built beside the live code and swapped
+  in by renames.
+- **A deploy's service worker reached browsers up to two hours late.**
+  Cloudflare cached `/sw.js` like any `.js` file. It is now sent with
+  `Cache-Control: no-cache`, so Cloudflare checks with the server every time.
+- The API docs said `POST /tags/{id}/migrate` deletes the source tag; it keeps
+  it (`DELETE /tags/{id}/migrate-to/{target_id}` deletes).
+
+### Security
+
+- Login tokens are stored hashed (SHA-256), expire after 24 hours and are
+  pruned daily.
+- Only `public/` is served. In the old flat webroot, any file put there was
+  reachable unless a rule blocked it.
+- Every response, the SPA's pages included, carries `X-Frame-Options` and
+  `X-Content-Type-Options`.
+
+### Removed
+
+- The Slim app, Phinx, and the hand-built rate limiter, response cache and
+  token table they came with.
+
 ## [4.0.0] - 2026-08-05
 
 A UI and design-system release. The interface was rebuilt around a token layer
@@ -552,6 +712,8 @@ from the git history, not a formal release.
   with a dedicated tag page, sorting by tag name, a sticky footer with copyright/
   disclaimer, and a **cron** ingest script for importing media (including videos).
 
+[5.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v4.0.0...v5.0.0
+[4.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v3.3.0...v4.0.0
 [3.3.0]: https://github.com/jwill89/simple-image-gallery/compare/v3.2.0...v3.3.0
 [3.2.0]: https://github.com/jwill89/simple-image-gallery/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/jwill89/simple-image-gallery/compare/v3.0.0...v3.1.0

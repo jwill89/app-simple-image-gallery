@@ -10,8 +10,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The Laravel backend. The contract recorded from the Slim app it replaced
+  # (tests/Fixtures/contract/) is replayed by its tests.
   backend:
-    name: Backend (PHP / Slim)
+    name: Backend (PHP / Laravel)
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -26,48 +28,49 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          # The ext-* composer.json requires (composer install refuses without them).
+          # The ext-* composer.json requires; Laravel's others are in setup-php's defaults.
           extensions: pdo, pdo_sqlite, curl, fileinfo, gd, mbstring
           tools: composer
-          coverage: pcov
+          coverage: none
 
       - name: Cache Composer packages
         uses: actions/cache@v6
         with:
           path: backend/vendor
-          key: composer-${{ matrix.php }}-${{ hashFiles('backend/composer.lock') }}
-          restore-keys: composer-${{ matrix.php }}-
+          key: composer-laravel-${{ matrix.php }}-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-laravel-${{ matrix.php }}-
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
 
-      # Dev packages included: they run here and on the droplet, whose deploy
-      # installs them for Phinx.
+      # Larastan and Pest boot the app, which reads .env and needs an APP_KEY.
+      - name: Prepare the environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      # Dev packages included: their advisories matter in CI too.
       - name: Security advisories (composer audit)
         run: composer audit
 
-      - name: Verify OpenAPI spec is current
+      - name: Coding standard (Pint / PER)
+        run: composer lint
+
+      - name: Current PHP idioms, Laravel rules, no dead code (Rector)
+        run: composer rector:check
+
+      - name: Static analysis (Larastan level 8 + strict and deprecation rules)
+        run: composer analyse
+
+      # The frontend's generated types are built from this file, so it must be
+      # what the #[OAS\*] attributes produce.
+      - name: OpenAPI spec is current (composer docs)
         run: |
           composer docs
           git diff --exit-code openapi.json
 
-      - name: composer.json is normalized
-        run: composer normalize --dry-run
-
-      - name: Dependencies declared and used (composer-unused, composer-require-checker)
-        run: composer deps:check
-
-      - name: Coding standard (PHP CS Fixer / PER-CS 3.0)
-        run: composer lint
-
-      - name: Current PHP idioms, no dead code (Rector)
-        run: composer rector:check
-
-      - name: Static analysis (PHPStan level 8 + strict and deprecation rules)
-        run: composer analyse
-
-      - name: Test (PHPUnit + coverage)
-        run: composer test:coverage
+      - name: Test (Pest)
+        run: composer test
 
   frontend:
     name: Frontend (Vue / Vite)

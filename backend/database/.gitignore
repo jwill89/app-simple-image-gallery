@@ -1,0 +1,3 @@
+*.sqlite*
+# The local copy of the gallery database (see .env.example: DB_DATABASE).
+gallery.db*

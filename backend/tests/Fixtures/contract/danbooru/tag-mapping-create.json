@@ -1,0 +1,82 @@
+{
+    "id": "danbooru/tag-mapping-create",
+    "route": "POST /danbooru/tag-mappings",
+    "about": "201 with the new id.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/danbooru/tag-mappings",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "danbooru_tag": "long_hair",
+                    "gallery_tag": "long hair"
+                }
+            },
+            "response": {
+                "status": 201,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "id": 4,
+                    "danbooru_tag": "long_hair",
+                    "gallery_tag": "long hair"
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/danbooru/tag-mappings",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": [
+                    {
+                        "id": 1,
+                        "danbooru_tag": "1girl",
+                        "gallery_tag": "one woman"
+                    },
+                    {
+                        "id": 2,
+                        "danbooru_tag": "cat_ears",
+                        "gallery_tag": "cat"
+                    },
+                    {
+                        "id": 4,
+                        "danbooru_tag": "long_hair",
+                        "gallery_tag": "long hair"
+                    },
+                    {
+                        "id": 3,
+                        "danbooru_tag": "smiling",
+                        "gallery_tag": "smile"
+                    }
+                ]
+            }
+        }
+    ]
+}

@@ -1,0 +1,44 @@
+{
+    "id": "media/page-per-page-clamped-low",
+    "route": "GET /media/page/{page}/{per_page?}",
+    "about": "per_page 0 is clamped to 1.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/page/2/0",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "items": [
+                        {
+                            "media_id": 29,
+                            "media_type": "image",
+                            "file_name": "filler-29.jpg",
+                            "file_time": 1767319200,
+                            "hash": "8f4d5a90bd43a527c94538dbb857af04",
+                            "bits_fingerprint": "0111110101001110110100101100010111100011100011011111010110110010",
+                            "width": 1024,
+                            "height": 1024,
+                            "duration": 0,
+                            "file_size": 130001
+                        }
+                    ],
+                    "total_pages": 30,
+                    "current_page": 2
+                }
+            }
+        }
+    ]
+}

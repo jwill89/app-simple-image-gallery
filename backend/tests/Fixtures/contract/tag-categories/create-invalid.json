@@ -1,0 +1,143 @@
+{
+    "id": "tag-categories/create-invalid",
+    "route": "POST /tag-categories",
+    "about": "Blank name: 400 InvalidInput. 51 characters: 400 NameTooLong. A semantic colour (danger): 400 InvalidColor. An existing name in other letter case: 400 NameTaken.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tag-categories",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "category_name": " ",
+                    "color": "violet"
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "InvalidInput",
+                    "message": "Category name is required."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tag-categories",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "category_name": "ccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                    "color": "violet"
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "error": "NameTooLong",
+                    "message": "Category name must be 50 characters or fewer."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tag-categories",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "category_name": "Meta",
+                    "color": "danger"
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "117"
+                },
+                "json": {
+                    "error": "InvalidColor",
+                    "message": "The selected color is not valid."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tag-categories",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "category_name": "artist",
+                    "color": "rose"
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "116"
+                },
+                "json": {
+                    "error": "NameTaken",
+                    "message": "A category named \"artist\" already exists."
+                }
+            }
+        }
+    ]
+}

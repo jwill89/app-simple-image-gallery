@@ -1,0 +1,106 @@
+{
+    "id": "media/danbooru-upstream-failures",
+    "route": "POST /media/{media_id}/danbooru-tags",
+    "about": "Danbooru answering 401, 429 and 500 maps to 500 DanbooruAuthFailed, 429 DanbooruRateLimited and 503 DanbooruUnavailable. Never 502/504 (Cloudflare).",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/media/15/danbooru-tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>"
+                }
+            },
+            "response": {
+                "status": 500,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "DanbooruAuthFailed",
+                    "message": "Danbooru rejected the request. Check DANBOORU_LOGIN and DANBOORU_API_KEY in the server .env, and the IP allowlist on the API key — keys are revoked when the account password changes, and a new outbound address (enabling IPv6 gives the server one) is refused until it is allowlisted."
+                }
+            },
+            "danbooru_calls": [
+                "GET /posts.json?tags=md5:60e9012826556d079bc1cd341165875b",
+                "GET /iqdb_queries.json?search[url]=https://gallery.test/media/full/kon-01.jpg"
+            ]
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/media/16/danbooru-tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>"
+                }
+            },
+            "response": {
+                "status": 429,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "error": "DanbooruRateLimited",
+                    "message": "Danbooru is rate-limiting this account. Wait a minute and try again."
+                }
+            },
+            "danbooru_calls": [
+                "GET /posts.json?tags=md5:e1ba93cdd6aafa770dce1eec4888d974",
+                "GET /iqdb_queries.json?search[url]=https://gallery.test/media/full/cafe-01.jpg"
+            ]
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/media/18/danbooru-tags",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>"
+                }
+            },
+            "response": {
+                "status": 503,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "117"
+                },
+                "json": {
+                    "error": "DanbooruUnavailable",
+                    "message": "Danbooru returned an error. Try again shortly."
+                }
+            },
+            "danbooru_calls": [
+                "GET /posts.json?tags=md5:d4be7aa685c4260621cdfbdbc5779542",
+                "GET /iqdb_queries.json?search[url]=https://gallery.test/media/full/far-01.png"
+            ]
+        }
+    ]
+}

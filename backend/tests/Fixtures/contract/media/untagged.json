@@ -1,0 +1,80 @@
+{
+    "id": "media/untagged",
+    "route": "GET /media/untagged/{page}/{per_page?}",
+    "about": "The four untagged items.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/untagged/1",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "items": [
+                        {
+                            "media_id": 27,
+                            "media_type": "image",
+                            "file_name": "filler-27.jpg",
+                            "file_time": 1767312000,
+                            "hash": "f9a373b5195c09ab708086a1321ed958",
+                            "bits_fingerprint": "1111001111111101011000100000011110001001101100101000010011101010",
+                            "width": 900,
+                            "height": 1200,
+                            "duration": 0,
+                            "file_size": 99001
+                        },
+                        {
+                            "media_id": 22,
+                            "media_type": "image",
+                            "file_name": "filler-22.jpg",
+                            "file_time": 1767294000,
+                            "hash": "8f04fd5098bba75daa534cd36ecc1d0a",
+                            "bits_fingerprint": "1001001010110010110001110010010101110000101001000000000100010101",
+                            "width": 800,
+                            "height": 600,
+                            "duration": 0,
+                            "file_size": 81001
+                        },
+                        {
+                            "media_id": 17,
+                            "media_type": "video",
+                            "file_name": "clip-02.webm",
+                            "file_time": 1767279600,
+                            "hash": "e4342c57f4952177b994edfc2af3c128",
+                            "bits_fingerprint": "",
+                            "width": 1280,
+                            "height": 720,
+                            "duration": 30,
+                            "file_size": 8000000
+                        },
+                        {
+                            "media_id": 11,
+                            "media_type": "image",
+                            "file_name": "near-c2.jpg",
+                            "file_time": 1767258000,
+                            "hash": "d04b2c9a2a550a2dfa1063dfb8eaa39f",
+                            "bits_fingerprint": "0110001000010011110100100100111010010010011111010101110100100111",
+                            "width": 640,
+                            "height": 480,
+                            "duration": 0,
+                            "file_size": 64100
+                        }
+                    ],
+                    "total_pages": 1,
+                    "current_page": 1
+                }
+            }
+        }
+    ]
+}

@@ -1,0 +1,34 @@
+{
+    "id": "duplicates/report-none",
+    "route": "GET /duplicates/report",
+    "about": "A dupes/ directory with no reports: 404 NoReportsFound.",
+    "setup": {
+        "files": {
+            "dupes/dupes-2026-10-30.json": null
+        }
+    },
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/duplicates/report",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 404,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "NoReportsFound",
+                    "message": "No duplicate reports found. Run a scan first."
+                }
+            }
+        }
+    ]
+}

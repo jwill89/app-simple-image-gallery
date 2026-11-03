@@ -8,10 +8,22 @@
 
 type Id = string | number
 
+/** A query string from the set values, `?`-prefixed, or '' when none is set. */
+function query(params: Record<string, string | number | boolean | undefined>): string {
+  const search = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '' && value !== false) search.set(key, String(value))
+  }
+  const text = search.toString()
+  return text === '' ? '' : `?${text}`
+}
+
 export const endpoints = {
   version: '/version',
   auth: {
     login: '/auth/login',
+    /** DELETE: revoke the token the request carries (log out). */
+    logout: '/auth/token',
   },
   media: {
     page: (page: Id, perPage: Id) => `/media/page/${page}/${perPage}`,
@@ -20,6 +32,13 @@ export const endpoints = {
     withTags: (tagList: string, page: Id, perPage: Id) =>
       `/media/with-tags/${encodeURIComponent(tagList)}/${page}/${perPage}`,
     byId: (id: Id) => `/media/${id}`,
+    /** The item with its tags, in display order, in one request. */
+    byIdWithTags: (id: Id) => `/media/${id}?include=tags`,
+    /** The items after a cursor (a page's or a feed's `next_cursor`), in one listing. */
+    feed: (params: { cursor: string; perPage: number; tags?: string; untagged?: boolean }) =>
+      `/media${query({ cursor: params.cursor, per_page: params.perPage, tags: params.tags, untagged: params.untagged === true ? 1 : undefined })}`,
+    /** Where these items' queued Danbooru imports stand. */
+    tagImports: (ids: readonly number[]) => `/media/tag-imports${query({ ids: ids.join(',') })}`,
     random: '/media/random',
     count: '/media/count',
     byIds: '/media/by-ids',
@@ -31,7 +50,27 @@ export const endpoints = {
   },
   tags: {
     list: '/tags',
-    display: '/tags/display',
+    /**
+     * The best matches for a name: exact, then prefix, then containing. An
+     * empty term (still sent: it is what asks for a search) lists the first by name.
+     */
+    search: (term: string, limit: number, exclude: readonly number[] = []) => {
+      const params = new URLSearchParams({ search: term, limit: String(limit) })
+      if (exclude.length > 0) params.set('exclude', exclude.join(','))
+      return `/tags?${params.toString()}`
+    },
+    byNames: (names: readonly string[]) => `/tags${query({ names: names.join(',') })}`,
+    byIds: (ids: readonly number[]) => `/tags${query({ ids: ids.join(',') })}`,
+    /** A page of the management list (tags with category and counts). */
+    display: (params: {
+      page?: number
+      perPage?: number
+      search?: string
+      sort?: 'tag_name' | 'category_name' | 'media_count'
+      direction?: 'asc' | 'desc'
+      ids?: readonly number[]
+    }) =>
+      `/tags/display${query({ page: params.page, per_page: params.perPage, search: params.search, sort: params.sort, direction: params.direction, ids: params.ids?.join(',') })}`,
     byId: (id: Id) => `/tags/${id}`,
     create: '/tags',
     migrate: (id: Id) => `/tags/${id}/migrate`,

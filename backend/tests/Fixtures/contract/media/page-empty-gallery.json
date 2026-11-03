@@ -1,0 +1,36 @@
+{
+    "id": "media/page-empty-gallery",
+    "route": "GET /media/page/{page}/{per_page?}",
+    "about": "No media at all: total_pages is 0 here, where the untagged and tag-search listings say 1.",
+    "setup": {
+        "sql": [
+            "DELETE FROM media"
+        ]
+    },
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/page/1",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "items": [],
+                    "total_pages": 0,
+                    "current_page": 1
+                }
+            }
+        }
+    ]
+}

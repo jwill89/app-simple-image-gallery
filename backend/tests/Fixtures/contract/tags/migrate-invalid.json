@@ -1,0 +1,137 @@
+{
+    "id": "tags/migrate-invalid",
+    "route": "POST /tags/{tag_id}/migrate",
+    "about": "No target: 400 InvalidTagID. To itself: 400 CannotMigrateToSelf. Unknown target or source: 404 TagDoesNotExist.",
+    "steps": [
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tags/5/migrate",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {}
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "error": "InvalidTagID",
+                    "message": "Both source and target tag IDs must be positive numbers."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tags/5/migrate",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "target_tag_id": 5
+                }
+            },
+            "response": {
+                "status": 400,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "error": "CannotMigrateToSelf",
+                    "message": "A tag cannot be migrated to itself."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tags/5/migrate",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "target_tag_id": 999
+                }
+            },
+            "response": {
+                "status": 404,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "117"
+                },
+                "json": {
+                    "error": "TagDoesNotExist",
+                    "message": "The source or target tag could not be found."
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/tags/999/migrate",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Authorization": "Bearer <admin-token>",
+                    "Content-Type": "application/json"
+                },
+                "json": {
+                    "target_tag_id": 5
+                }
+            },
+            "response": {
+                "status": 404,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "116"
+                },
+                "json": {
+                    "error": "TagDoesNotExist",
+                    "message": "The source or target tag could not be found."
+                }
+            }
+        }
+    ]
+}

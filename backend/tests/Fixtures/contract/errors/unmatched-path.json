@@ -1,0 +1,97 @@
+{
+    "id": "errors/unmatched-path",
+    "route": "ANY /{unmatched}",
+    "about": "An unmatched path is 405 with \"Allow: OPTIONS\", never 404: the OPTIONS catch-all route /{routes:.+} matches every path, so the router reports a wrong method. The body is Slim's, not { error, message }: HTML for a browser's Accept: */*, { \"message\": … } only when JSON is asked for. Routing runs before the group middleware, so no 401.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/no-such-route",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 405,
+                "headers": {
+                    "allow": "OPTIONS",
+                    "content-type": "text/html;charset=UTF-8",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "text": "<!doctype html><html lang=\"en\">    <head>        <meta charset=\"utf-8\">        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">        <title>405 Method Not Allowed</title>        <style>            body{margin:0;padding:30px;font:12px/1.5 Helvetica,Arial,Verdana,sans-serif}            h1{margin:0;font-size:48px;font-weight:normal;line-height:48px}            strong{display:inline-block;width:65px}        </style>    </head>    <body>        <h1>405 Method Not Allowed</h1>        <div><p>The request method is not supported for the requested resource.</p></div>        <a href=\"#\" onclick=\"window.history.go(-1)\">Go Back</a>    </body></html>"
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/no-such-route",
+                "headers": {
+                    "Accept": "application/json"
+                }
+            },
+            "response": {
+                "status": 405,
+                "headers": {
+                    "allow": "OPTIONS",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "118"
+                },
+                "json": {
+                    "message": "405 Method Not Allowed"
+                }
+            }
+        },
+        {
+            "request": {
+                "method": "POST",
+                "path": "/api/no-such-route",
+                "headers": {
+                    "Accept": "*/*",
+                    "Origin": "https://gallery.test",
+                    "Content-Type": "application/json"
+                },
+                "json": {}
+            },
+            "response": {
+                "status": 405,
+                "headers": {
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-headers": "X-Requested-With, Content-Type, Accept, Origin, Authorization",
+                    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                    "access-control-allow-origin": "https://gallery.test",
+                    "access-control-max-age": "86400",
+                    "allow": "OPTIONS",
+                    "content-type": "text/html;charset=UTF-8",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "117"
+                },
+                "text": "<!doctype html><html lang=\"en\">    <head>        <meta charset=\"utf-8\">        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">        <title>405 Method Not Allowed</title>        <style>            body{margin:0;padding:30px;font:12px/1.5 Helvetica,Arial,Verdana,sans-serif}            h1{margin:0;font-size:48px;font-weight:normal;line-height:48px}            strong{display:inline-block;width:65px}        </style>    </head>    <body>        <h1>405 Method Not Allowed</h1>        <div><p>The request method is not supported for the requested resource.</p></div>        <a href=\"#\" onclick=\"window.history.go(-1)\">Go Back</a>    </body></html>"
+            }
+        },
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/1/no-such-thing",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 405,
+                "headers": {
+                    "allow": "OPTIONS",
+                    "content-type": "text/html;charset=UTF-8",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "116"
+                },
+                "text": "<!doctype html><html lang=\"en\">    <head>        <meta charset=\"utf-8\">        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">        <title>405 Method Not Allowed</title>        <style>            body{margin:0;padding:30px;font:12px/1.5 Helvetica,Arial,Verdana,sans-serif}            h1{margin:0;font-size:48px;font-weight:normal;line-height:48px}            strong{display:inline-block;width:65px}        </style>    </head>    <body>        <h1>405 Method Not Allowed</h1>        <div><p>The request method is not supported for the requested resource.</p></div>        <a href=\"#\" onclick=\"window.history.go(-1)\">Go Back</a>    </body></html>"
+            }
+        }
+    ]
+}

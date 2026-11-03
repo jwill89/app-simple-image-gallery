@@ -1,0 +1,44 @@
+{
+    "id": "media/with-tags-unicode",
+    "route": "GET /media/with-tags/{tag_list}/{page}/{per_page?}",
+    "about": "\"café\", percent-encoded UTF-8.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/media/with-tags/caf%C3%A9/1",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "content-type": "application/json",
+                    "x-cache": "MISS",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "json": {
+                    "items": [
+                        {
+                            "media_id": 16,
+                            "media_type": "image",
+                            "file_name": "cafe-01.jpg",
+                            "file_time": 1767276000,
+                            "hash": "e1ba93cdd6aafa770dce1eec4888d974",
+                            "bits_fingerprint": "0111101111110110111111001000010000100001000001111011101111011000",
+                            "width": 1280,
+                            "height": 720,
+                            "duration": 0,
+                            "file_size": 150001
+                        }
+                    ],
+                    "total_pages": 1,
+                    "current_page": 1
+                }
+            }
+        }
+    ]
+}

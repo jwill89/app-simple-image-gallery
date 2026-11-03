@@ -7,19 +7,20 @@ data model, and conventions, read **[AGENTS.md](AGENTS.md)** first.
 ## Project layout
 
 ```
-backend/    PHP 8.5 + Slim 4 API, SQLite, Phinx migrations, CLI scripts
+backend/    PHP 8.5 + Laravel 13 API and SPA shell, SQLite, queued jobs, artisan commands
 frontend/   Vue 3 + TypeScript SPA (Vite, Pinia, Vue Router, Bulma)
-scripts/    Dev-only deploy script (not part of the app; gitignored)
+scripts/    Dev-only deploy script and its config template
+docs/       The Slim → Laravel migration plan and its record
 ```
 
-The droplet webroot is flat; the deploy flattens `backend/` + `frontend/dist` onto
-it. See [AGENTS.md §2](AGENTS.md) for the full tree.
+On the droplet, `backend/public/` is Apache's DocumentRoot; the deploy copies the built
+`frontend/dist` into it. See [AGENTS.md §2](AGENTS.md) for the full tree and §3 for the droplet.
 
 ## Prerequisites
 
 - **PHP 8.5+** with `pdo_sqlite`, `curl`, `fileinfo`, `mbstring`, and **GD** (WebP, ideally AVIF).
 - **Composer** and **Node.js 26+** (with npm).
-- **`ffmpeg`** on your `PATH` (video/animated thumbnails).
+- **`ffmpeg`/`ffprobe`** on your `PATH` (thumbnails, video metadata).
 
 ## Local setup
 
@@ -27,13 +28,15 @@ it. See [AGENTS.md §2](AGENTS.md) for the full tree.
 
 ```bash
 cd backend
-composer install
-cp .env.example .env     # then fill in real values — see AGENTS.md §3 for what each key does
-php db/setup.php         # creates db/gallery.db and runs migrations
+composer setup           # composer install, .env from .env.example, APP_KEY
+# then set DB_DATABASE in .env to an absolute path to a copy of the gallery database
+php artisan migrate
+composer dev             # php artisan serve on :8000
 ```
 
-Serve `backend/` with Apache + `mod_rewrite` (it is the app root). At minimum set
-`GALLERY_ADMIN_PASSWORD` in `backend/.env`, or admin login stays disabled.
+Never point `DB_DATABASE` at a database another app is using. Set at least
+`GALLERY_ADMIN_PASSWORD` in `backend/.env`, or admin login stays disabled; the other keys are
+described in `.env.example` and [AGENTS.md §3](AGENTS.md).
 
 **Frontend** (run from `frontend/`):
 
@@ -51,24 +54,23 @@ npm run dev             # Vite dev server on :5173, proxies /api and /media to h
 
 CI runs these checks on every push and pull request — please run them locally first.
 
-**PHP — PER-CS 3.0** (PSR-12's successor, enforced by PHP CS Fixer; config in
-`backend/.php-cs-fixer.dist.php`), plus static analysis, Rector and dependency checks:
+**PHP — Pint** (the `per` preset, PSR-12's successor; config in `backend/pint.json`), plus
+static analysis and Rector:
 
 ```bash
 cd backend
-composer lint           # PHP CS Fixer: must report no files to fix
+composer lint           # Pint: must report no files to fix
 composer lint:fix       # apply the fixes
-composer analyse        # PHPStan level 8 + strict and deprecation rules: must report no errors
-composer rector:check   # Rector (PHP 8.5 idioms, dead code): must propose no changes
+composer analyse        # Larastan level 8 + strict and deprecation rules: must report no errors
+composer rector:check   # Rector (PHP 8.5 and Laravel idioms, dead code): must propose no changes
 composer rector         # apply Rector's changes (review them before committing)
-composer deps:check     # composer-unused + composer-require-checker
-composer normalize      # keep composer.json in normalized order (CI runs --dry-run)
 ```
 
-Keep SQL in the `Repository`/`Storage` layer, return responses via the
-`AbstractController` helpers (`success()` / `created()` / `noContent()` / `error()`),
-and follow the layered flow described in AGENTS.md. **Annotate every new/changed
-endpoint** with `#[OAS\...]` attributes (and structure classes with `#[OAS\Schema]`),
+Follow the layering in AGENTS.md: routes in `routes/api.php` (writes inside the `auth:sanctum`
+group), validation in a Form Request extending `ApiRequest`, controllers that return Resources
+and raise `ApiException`s, domain rules on the models, larger work in services and queued jobs.
+**Annotate every new/changed endpoint** with `#[OAS\...]` attributes and a readable
+`operationId` (and doc-only response classes in `app/OpenApi/Schemas/` with `#[OAS\Schema]`),
 then regenerate the committed spec:
 
 ```bash
@@ -116,23 +118,24 @@ generated module directly.
 
 ## Tests
 
-Backend (PHPUnit 13, from `backend/`):
+Backend (Pest 5, from `backend/`):
 
 ```bash
-composer test            # run the suite
-composer test:coverage   # with a coverage report (needs pcov or xdebug)
+composer test            # the whole suite, including the contract replay
 ```
 
-Tests live in `backend/tests/Unit/` (organized by layer) and run against an in-memory
-SQLite database built from `backend/tests/Support/schema.sql` — a flattened snapshot of
-the Phinx schema. **If you add or change a migration, regenerate that snapshot** (migrate a
-scratch SQLite file and dump `SELECT sql FROM sqlite_master`), preserving the manual edits
-documented at the top of the file.
-
-Code is wired for testability via **constructor dependency injection**: Storage/Collection
-classes (and `RateLimiter`) receive their `PDO`/dependencies through the constructor, and the
-PHP-DI container in `backend/api/dependencies.php` supplies them in production. Keep new
-DB-bound classes injectable rather than calling `DatabaseConnection::getInstance()` directly.
+- **Feature tests** (`tests/Feature/`) run on a fresh in-memory SQLite database per test. Test
+  through HTTP where you can, and fake what leaves the app: `Http::fake()` for Danbooru,
+  `Process::fake()` for ffmpeg/ffprobe, `Queue::fake()` when only the dispatch matters.
+- **The contract replay** (`tests/Feature/Contract/`) sends the 191 requests recorded from the
+  Slim app at API 4 (`tests/Fixtures/contract/`) and checks each answer. The recordings are
+  frozen: a change to what the API answers on purpose goes in
+  `tests/Feature/Contract/divergences.php` with its reason, never into a recording. Where the new
+  behaviour replaces a recorded one, the entry is `superseded` and names the feature test that
+  covers it instead.
+- **`SchemaTest`** checks that a fresh `migrate` builds the production schema
+  (`tests/Fixtures/schema.sql`). A migration that changes a gallery table updates what it expects
+  in the same change.
 
 Frontend (Vitest, from `frontend/`):
 
@@ -142,44 +145,47 @@ npm run test:watch       # watch mode
 npm run test:coverage    # with a coverage report
 ```
 
-Specs live in `frontend/src/__tests__/*.spec.ts` (happy-dom).
+Specs live in `frontend/src/__tests__/*.spec.ts` (happy-dom). Component specs mount a view with
+`@vue/test-utils` and fake the server by mocking `useApi` (see `UploadView.spec.ts`).
 
 ## Database changes
 
-The schema lives in Phinx migrations (`backend/db/migrations/`) — the single source
-of truth. **Never hand-edit `db/setup.php` to change the schema.** Add a migration:
+The schema lives in Laravel migrations (`backend/database/migrations/`). Add a migration;
+never edit one that has run in production:
 
 ```bash
 cd backend
-php vendor/bin/phinx create AddSomethingUseful
-php vendor/bin/phinx migrate
+php artisan make:migration add_something_useful
+php artisan migrate
 ```
 
 ## Pull-request flow
 
-1. Branch off `master`.
+1. Branch off `main`.
 2. Make your change; run the lint, test, and build checks above until they pass.
    If you touched the API, run `composer docs` + `npm run gen:types` and commit the
    regenerated `backend/openapi.json` and `frontend/src/types/api.generated.ts`.
-3. Add a bullet under the **`## [Unreleased]`** heading in
-   [CHANGELOG.md](CHANGELOG.md), in the right group (Added / Changed / Fixed /
-   Removed / Security). We follow [Keep a Changelog](https://keepachangelog.com/)
-   and [Semantic Versioning](https://semver.org/).
-4. Open a PR against `master`. CI (lint, tests, build) must be green.
+3. Add a bullet under an **`## [Unreleased]`** heading in [CHANGELOG.md](CHANGELOG.md) (create
+   it at the top if there isn't one), in the right group (Added / Changed / Fixed / Removed /
+   Security). We follow [Keep a Changelog](https://keepachangelog.com/) and
+   [Semantic Versioning](https://semver.org/).
+4. Open a PR against `main`. CI (lint, tests, build) must be green.
 
 ## Security & secrets
 
-- **Never commit secrets.** `backend/.env` (admin password, Danbooru API key) and
-  `scripts/deploy.ps1` (host IP, SSH key path) are gitignored — keep them that way.
+- **Never commit secrets.** `backend/.env` (admin password, Danbooru API key, `APP_KEY`) and
+  `scripts/deploy.config.ps1` (host, SSH user, key path) are gitignored — keep them that way.
 - The SSH private key lives **outside** the repo; only its path is referenced.
 - Report a security concern privately to the maintainer rather than opening a public
   issue.
 
 ## Releasing (maintainers)
 
-1. Move the `## [Unreleased]` entries under a new `## [x.y.z] - YYYY-MM-DD` heading
-   and update the compare links at the bottom of `CHANGELOG.md`.
-2. Bump the version in **`frontend/package.json`**, **`backend/composer.json`**, and
-   `Gallery\Core\Configuration::VERSION` (the footer and `GET /api/version` read these),
-   then run `composer docs` so the spec's `info.version` matches.
-3. Tag the release `vX.Y.Z` and deploy with `scripts/deploy.ps1`.
+1. Turn the `## [Unreleased]` heading into `## [x.y.z] - YYYY-MM-DD` and add its compare link at
+   the bottom of `CHANGELOG.md`.
+2. Bump the version in **`frontend/package.json`** (and `package-lock.json`, with
+   `npm version x.y.z --no-git-tag-version`) and in **`backend/config/gallery.php`** (`version`,
+   which `GET /api/version` serves; the footer reads `package.json`). Move
+   `App\OpenApi\OpenApiSpec::API_VERSION` only if the API surface changed, then run `composer docs`.
+3. Merge to `main`: once CI is green, it tags `vX.Y.Z` and publishes the release from that
+   version's CHANGELOG section. Deploy with `scripts/deploy.ps1`.

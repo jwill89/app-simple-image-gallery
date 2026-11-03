@@ -1,0 +1,29 @@
+{
+    "id": "system/openapi",
+    "route": "GET /openapi.json",
+    "about": "The committed spec, byte for byte, with a 5-minute public Cache-Control.",
+    "steps": [
+        {
+            "request": {
+                "method": "GET",
+                "path": "/api/openapi.json",
+                "headers": {
+                    "Accept": "*/*"
+                }
+            },
+            "response": {
+                "status": 200,
+                "headers": {
+                    "cache-control": "public, max-age=300",
+                    "content-type": "application/json",
+                    "x-content-type-options": "nosniff",
+                    "x-frame-options": "SAMEORIGIN",
+                    "x-ratelimit-remaining": "119"
+                },
+                "sha256": "adc166e1dfb8a643592dd21f96fbe45fc4e5e92dc0e577a98656744f5effbedf",
+                "bytes": 100155,
+                "same_as": "backend/openapi.json"
+            }
+        }
+    ]
+}
