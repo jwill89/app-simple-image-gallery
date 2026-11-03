@@ -148,6 +148,9 @@ differences from API 4, are in [docs/laravel-migration.md](docs/laravel-migratio
   prefetch and the page, and trims its cache once per 100 downloads. The media
   listings no longer pass through it (its rule for them matched only the
   `/api/media?page=…` form the API stopped using in 3.0.0).
+- **A deploy's service worker reached browsers up to two hours late.**
+  Cloudflare cached `/sw.js` like any `.js` file. It is now sent with
+  `Cache-Control: no-cache`, so Cloudflare checks with the server every time.
 - The API docs said `POST /tags/{id}/migrate` deletes the source tag; it keeps
   it (`DELETE /tags/{id}/migrate-to/{target_id}` deletes).
 

@@ -547,7 +547,10 @@ Keep these invariants when editing auth or routes:
   cache, and trimming after each download stalled a scroll for seconds. Bump `CACHE_VERSION` (in
   `cache.ts`) only when cached entries would be wrong for the new code: a bump empties every
   cache, thumbnails included, so the next scroll downloads them all again. Any change to the
-  built `sw.js` installs on the next visit anyway.
+  built `sw.js` installs on the next visit anyway, as long as nothing serves an old copy:
+  `public/.htaccess` sends `/sw.js` with `Cache-Control: no-cache`, so Cloudflare checks with
+  the server on every request (`cf-cache-status: EXPIRED`). Cloudflare caches `.js` files, and
+  without that header it kept serving the old worker for up to two hours after a deploy.
 - **The worker is TypeScript, built apart from the app.** `sw.ts` wires the worker's events;
   `cache.ts` does the caching using only what pages and workers share (`caches`, `fetch`,
   `Request`, `Response`), so `swCache.spec.ts` runs it against a fake cache. The

@@ -12,6 +12,15 @@
     Require all denied
 </Files>
 
+# Browsers find a new service worker by fetching /sw.js again, so no cache may
+# keep it: Cloudflare caches .js files, and served a deploy's old worker for up
+# to two hours. With no-cache, Cloudflare checks with the server every time.
+<IfModule mod_headers.c>
+    <Files "sw.js">
+        Header set Cache-Control "no-cache"
+    </Files>
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
