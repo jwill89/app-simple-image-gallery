@@ -21,16 +21,20 @@
          Never .env, storage/, vendor/ or bootstrap/cache/.
       3. Upload it in a single pscp stream.
       4. On the host (one plink connection):
-           - back up the current code to .deploy-backup (rollback; skip with -NoBackup),
-           - replace the code (storage/ and .env are left alone),
-           - composer install --no-dev                     (skip with -SkipComposer),
+           - build the new code whole in .deploy-next: unpacked, vendor/ copied from
+             the live code, composer install --no-dev     (skip with -SkipComposer),
+             the public/media link copied, all of it given to www-data (the code
+             read-only to everyone else),
+           - swap it in by renames, moving the previous code to .deploy-backup
+             (kept afterwards unless -NoBackup), then package:discover; the site
+             runs the old code or the new, never a half-replaced folder,
            - snapshot the database next to it in .backups/ via SQLite VACUUM INTO,
              keeping the five most recent                  (skip with -NoBackup),
            - php artisan migrate --force                   (skip with -SkipMigrate),
-           - storage:link (public/media), optimize, queue:restart,
-           - give the code, vendor/ and storage/ to www-data (the code read-only to
-             everyone else), and health-check the API.
-         If a step fails, the previous CODE is restored automatically. The database
+           - storage:link (public/media), optimize, queue:restart, and health-check
+             the API. storage/ and .env are left alone throughout.
+         If a step fails before the swap, the live code was never touched; after it,
+         the previous CODE is moved back automatically. The database
          is NOT rolled back automatically: the failure trap fires on any non-zero
          exit, including after a migration has already succeeded, so reverting data
          could discard media uploaded during the deploy. A failed migration prints
@@ -56,7 +60,7 @@
 .PARAMETER SkipBuild    Deploy the existing frontend/dist without rebuilding.
 .PARAMETER SkipComposer Don't run `composer install` on the host.
 .PARAMETER SkipMigrate  Don't run database migrations on the host.
-.PARAMETER NoBackup     Don't keep a .deploy-backup rollback copy, or snapshot the database.
+.PARAMETER NoBackup     Don't keep the previous code in .deploy-backup once the deploy succeeds (it is still put back on a failure), or snapshot the database.
 
 .EXAMPLE
     .\scripts\deploy.ps1                       # full build + deploy + composer + migrate
@@ -223,50 +227,50 @@ cd "{{APPROOT}}" || { echo "ERROR: cannot cd to {{APPROOT}}" >&2; exit 2; }
 if [ ! -f .env ]; then echo "ERROR: {{APPROOT}}/.env is missing. Create it before the first deploy (docs/laravel-migration.md, Deployment)." >&2; exit 2; fi
 if [ ! -f "{{TARBALL}}" ]; then echo "ERROR: {{TARBALL}} not found (upload failed?)" >&2; exit 3; fi
 export COMPOSER_ALLOW_SUPERUSER=1
-CODE="app bootstrap/app.php bootstrap/providers.php config database public resources routes artisan composer.json composer.lock openapi.json"
-# What a deploy gives to www-data. Not the whole folder: the data, backups/ and
-# slim-rollback/ sit beside the code and keep their own owners.
-OWNED="$CODE bootstrap vendor storage"
-SUCCESS=0
-'@
-
-if ($NoBackup) {
-    $backup = @'
-echo "==> -NoBackup: skipping rollback snapshot"
-'@
-} else {
-    $backup = @'
-echo "==> backing up current code to .deploy-backup"
+# The code, by its top-level entries. The new set is built whole in STAGE and
+# swapped in by renames, so the site runs either the old code or the new: never
+# a half-replaced folder, which failed every request for the 10-20 s that
+# composer install, the migration and optimize took (thumbnails included, with
+# public/media missing).
+CODE="app bootstrap config database public resources routes vendor artisan composer.json composer.lock openapi.json"
+STAGE=.deploy-next
+# The previous code, moved aside by the swap: put back if a later step fails.
 BACKUP=.deploy-backup
-rm -rf "$BACKUP"; mkdir -p "$BACKUP"
-for p in $CODE; do
-  if [ -e "$p" ]; then cp -a --parents "$p" "$BACKUP/"; fi
-done
-restore() {
+SWAPPED=0
+SUCCESS=0
+finish() {
   rc=$?
+  rm -rf "$STAGE"
   if [ "$SUCCESS" = "1" ]; then exit 0; fi
-  echo "ERROR: deploy failed (rc=$rc) - restoring previous code from $BACKUP" >&2
-  for p in $CODE; do rm -rf "$p"; done
-  cp -a "$BACKUP/." ./ 2>/dev/null || true
-  php artisan optimize:clear >/dev/null 2>&1 || true
-  chown -R www-data:www-data $OWNED 2>/dev/null || true
+  if [ "$SWAPPED" = "1" ]; then
+    echo "ERROR: deploy failed (rc=$rc) - restoring the previous code from $BACKUP" >&2
+    for p in $CODE; do
+      if [ -e "$BACKUP/$p" ] || [ -L "$BACKUP/$p" ]; then rm -rf "$p"; mv "$BACKUP/$p" "$p"; fi
+    done
+    php artisan queue:restart >/dev/null 2>&1 || true
+  else
+    echo "ERROR: deploy failed (rc=$rc) before the swap - the live code was not touched" >&2
+  fi
   exit $rc
 }
-trap restore EXIT
+trap finish EXIT
 '@
-}
 
-# Replaced, not extracted over: a file removed from the repo must not linger
-# (a stale command or class would still be loaded).
-$extract = @'
-echo "==> replacing the code (.env and storage/ untouched)"
-for p in $CODE; do rm -rf "$p"; done
-tar xzf "{{TARBALL}}"
+$unpack = @'
+echo "==> unpacking the new code into $STAGE"
+rm -rf "$STAGE"; mkdir "$STAGE"
+tar xzf "{{TARBALL}}" -C "$STAGE"
 rm -f "{{TARBALL}}"
 # The tarball is built on Windows, whose modes come through as 777/666.
-chmod -R u=rwX,go=rX $CODE bootstrap
-mkdir -p storage/app storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
-rm -f bootstrap/cache/*.php
+chmod -R u=rwX,go=rX "$STAGE"
+mkdir -p "$STAGE/bootstrap/cache"
+rm -f "$STAGE"/bootstrap/cache/*.php
+# Composer starts from the live vendor/, so it only applies what changed.
+if [ -d vendor ]; then cp -a vendor "$STAGE/vendor"; fi
+# The links storage:link made (public/media), so thumbnails are served the
+# moment the new public/ is in.
+find public -maxdepth 1 -type l -exec cp -P {} "$STAGE/public/" \; 2>/dev/null || true
+mkdir -p storage/app storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
 '@
 
 if ($SkipComposer) {
@@ -274,11 +278,26 @@ if ($SkipComposer) {
 echo "==> -SkipComposer: skipping composer install"
 '@
 } else {
+    # --no-scripts: its one hook, package:discover, boots the app, which needs
+    # the live .env and storage/. It runs after the swap.
     $composer = @'
 echo "==> composer install (no dev packages)"
-composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+composer install --working-dir="$STAGE" --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts
 '@
 }
+
+$swap = @'
+# Owned by www-data before it goes live, so Laravel can write bootstrap/cache.
+chown -R www-data:www-data "$STAGE"
+echo "==> swapping the new code in (the previous code goes to $BACKUP)"
+rm -rf "$BACKUP"; mkdir "$BACKUP"
+SWAPPED=1
+for p in $CODE; do
+  if [ -e "$p" ] || [ -L "$p" ]; then mv "$p" "$BACKUP/$p"; fi
+  if [ -e "$STAGE/$p" ]; then mv "$STAGE/$p" "$p"; fi
+done
+php artisan package:discover --ansi
+'@
 
 if ($SkipMigrate) {
     $migrate = @'
@@ -331,18 +350,22 @@ fi
 
 $finish = @'
 echo "==> storage:link, optimize, queue:restart"
-php artisan storage:link --no-interaction
+# The media link came over with the new code; this makes it on a first deploy.
+[ -L public/media ] || php artisan storage:link --no-interaction
 # Config, routes and events; the app has no Blade views to cache.
 php artisan optimize --except=views
 php artisan queue:restart
-chown -R www-data:www-data $OWNED
+# What the artisan runs above wrote as root. Not the whole folder: the data,
+# backups/ and slim-rollback/ sit beside the code and keep their own owners.
+chown -R www-data:www-data bootstrap storage
 SUCCESS=1
-code=$(curl -s -o /dev/null -w "%{http_code}" "{{HEALTHURL}}" 2>/dev/null || echo "000")
+'@ + "`n" + $(if ($NoBackup) { 'rm -rf "$BACKUP"' } else { '' }) + "`n" + @'
+code=$(curl -s -o /dev/null -w "%{http_code}" "{{HEALTHURL}}" 2>/dev/null) || true
 echo "==> health check: GET {{HEALTHURL}} -> HTTP $code"
 echo "DEPLOY_OK"
 '@
 
-$remoteScript = ($header, $backup, $extract, $composer, $migrate, $finish) -join "`n"
+$remoteScript = ($header, $unpack, $composer, $swap, $migrate, $finish) -join "`n"
 $remoteScript = $remoteScript.Replace('{{APPROOT}}', $AppRoot).Replace('{{TARBALL}}', $remoteTarball).Replace('{{HEALTHURL}}', $HealthUrl)
 
 # ── 5. Run the remote deploy (1 connection) ───────────────────────────────────
@@ -353,7 +376,8 @@ foreach ($line in $out) { if ("$line".Trim()) { Write-Host "    $line" } }
 if ($LASTEXITCODE -ne 0 -or -not ($out -match 'DEPLOY_OK')) {
     Fail @"
 Remote deploy failed (exit $LASTEXITCODE).
-  The host restored the previous CODE from .deploy-backup (unless -NoBackup).
+  The live CODE is the previous one: untouched if the failure came before the swap,
+  moved back from .deploy-backup if after (the host's output above says which).
   The DATABASE was left as-is. If the failure was in the migrate step, the snapshot
   path and restore command are printed above.
   Inspect logs:  plink -i "$KeyPath" $remoteTarget "tail -n 50 $AppRoot/storage/logs/laravel-*.log"

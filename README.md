@@ -168,11 +168,12 @@ folder come from the untracked `scripts/deploy.config.ps1`):
 It ships the code only — never `.env`, `storage/`, `vendor/`, the database or the media. On
 the host it:
 
-1. keeps a `.deploy-backup/` copy of the code, restored if a later step fails (unless `-NoBackup`);
-2. runs `composer install --no-dev`;
-3. snapshots the database with `VACUUM INTO` and runs the migrations;
-4. links the media folder and caches the config, routes and events;
-5. restarts the queue worker and health-checks the API.
+1. builds the new code beside the live one (`composer install --no-dev` included), then swaps it
+   in by renames, so the site never runs a half-replaced folder; the previous code goes to
+   `.deploy-backup/`, put back if a later step fails (kept afterwards unless `-NoBackup`);
+2. snapshots the database with `VACUUM INTO` and runs the migrations;
+3. links the media folder and caches the config, routes and events;
+4. restarts the queue worker and health-checks the API.
 
 If a passphrase-protected key is used, load it into Pageant first (`pageant.exe <key>`).
 

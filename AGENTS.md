@@ -225,13 +225,21 @@ php artisan gallery:dupes --tune --max-distance=8 --max-region-diff=off  # calib
 `scripts/deploy.config.ps1`) ships **code only**. It never ships `.env`, `storage/`, `vendor/`, the
 data or the backups. On the host it:
 
-1. backs up the current code to `.deploy-backup/`, restored automatically if a later step fails;
-2. replaces the code, with the code read-only to everyone but its owner;
-3. runs `composer install --no-dev`;
-4. snapshots the database (`VACUUM INTO`, see §10), then runs `php artisan migrate --force`;
-5. runs `storage:link`, `optimize --except=views` and `queue:restart`;
-6. gives the code, `vendor/` and `storage/` to `www-data`;
-7. health-checks `/api/media/count`.
+1. builds the new code whole in `.deploy-next/`: unpacked (read-only to everyone but its owner),
+   `vendor/` copied from the live code, `composer install --no-dev --no-scripts`, the
+   `public/media` link copied, all of it owned by `www-data`;
+2. swaps it in by renaming each top-level entry, moving the previous code to `.deploy-backup/`,
+   which goes back in place automatically if a later step fails; then `package:discover`;
+3. snapshots the database (`VACUUM INTO`, see §10), then runs `php artisan migrate --force`;
+4. runs `storage:link`, `optimize --except=views` and `queue:restart`;
+5. health-checks `/api/media/count`.
+
+**Never change code in place on the live site.** Until 2026-11-03 the deploy deleted the code
+and unpacked the new code over the live folder, then ran Composer, the migration and
+`optimize`. For those 10–20 s every request failed: `bootstrap/cache` belonged to root, so
+Laravel couldn't boot, and its error page then died on `Target class [view] does not exist`.
+`public/media` was missing too, so thumbnail requests fell through to Laravel. A single deploy
+logged 75 fatal errors.
 
 It uses only two SSH connections, to respect the droplet's `ufw limit ssh`.
 

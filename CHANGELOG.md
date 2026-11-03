@@ -148,6 +148,12 @@ differences from API 4, are in [docs/laravel-migration.md](docs/laravel-migratio
   prefetch and the page, and trims its cache once per 100 downloads. The media
   listings no longer pass through it (its rule for them matched only the
   `/api/media?page=…` form the API stopped using in 3.0.0).
+- **Deploys took the site down for 10–20 seconds.** The new code was unpacked
+  over the live folder, and every request failed until Composer, the migration
+  and `optimize` had run: Laravel couldn't write `bootstrap/cache`, and with
+  `public/media` gone, thumbnails fell through to Laravel too. One deploy logged
+  75 fatal errors. The new code is now built beside the live code and swapped
+  in by renames.
 - **A deploy's service worker reached browsers up to two hours late.**
   Cloudflare cached `/sw.js` like any `.js` file. It is now sent with
   `Cache-Control: no-cache`, so Cloudflare checks with the server every time.
