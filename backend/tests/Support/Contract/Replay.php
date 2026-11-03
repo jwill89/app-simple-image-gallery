@@ -52,6 +52,12 @@ final class Replay
     /** The recording server's upload_max_filesize (1M), so a larger generated file is refused as PHP refuses it. */
     private const int UPLOAD_MAX_FILESIZE = 1024 * 1024;
 
+    /**
+     * The release the recordings were made at, which GET /version reports. A
+     * release since moves config('gallery.version'), not the contract.
+     */
+    private const string RECORDED_VERSION = '4.0.0';
+
     /** The fixture report's age, as the recorder set it: older than any report a case writes. */
     private const int FIXTURE_REPORT_MTIME = 1761782400;
 
@@ -176,6 +182,7 @@ final class Replay
 
         $this->root = $root = sys_get_temp_dir() . '/gallery-replay-' . bin2hex(random_bytes(4));
         config([
+            'gallery.version' => self::RECORDED_VERSION,
             'gallery.media_path' => "{$root}/media",
             'gallery.dupes_path' => "{$root}/dupes",
             // The built index.html the SPA shell was recorded with.

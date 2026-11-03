@@ -14,6 +14,94 @@ release body taken from that version's section below. So bump the version and
 update its section here in the same commit and push a green commit — no manual
 tagging.
 
+## [5.0.0] - 2026-11-03
+
+The backend moved from Slim 4 to **Laravel 13**. The API contract is unchanged
+(still `4.0.0`), so the frontend talks to it as before; what changed is how the
+gallery runs: a new server layout, a queue worker and a scheduler. The move also
+turned up two old problems, with large uploads and with Danbooru, fixed here.
+How the migration was done, and its few deliberate differences in what the API
+answers, are in [docs/laravel-migration.md](docs/laravel-migration.md).
+
+### Breaking (for running the gallery)
+
+- **Server layout.** The app's `public/` folder is the DocumentRoot; the code,
+  `.env` and the data (`db/`, `media/`, `dupes/`) sit beside it, unserved. The
+  flat webroot is gone.
+- **A queue worker and a cron entry are required.** `php artisan queue:work`
+  (the systemd unit `gallery-queue` on the droplet) runs ingests, Danbooru
+  imports and rebuilds; `php artisan schedule:run`, every minute, runs the
+  nightly ingest and prunes expired logins.
+- **The maintenance scripts are Artisan commands:** `cron.php` →
+  `gallery:ingest`, `cron_with_tags.php` → `gallery:ingest --import-tags`,
+  `tag_imports.php` → `gallery:import-tags`, `regenerate-*.php` →
+  `gallery:regenerate {thumbnails|fingerprints|metadata}`, `dupes.php` →
+  `gallery:dupes` (same options).
+- **Settings.** A Laravel `.env` (`APP_KEY`, `DB_DATABASE`,
+  `QUEUE_CONNECTION=database`, …) with the gallery's keys as before, plus
+  `GALLERY_MEDIA_PATH`, `GALLERY_DUPES_PATH`, `SCHEDULE_TIMEZONE` and
+  `DANBOORU_USER_ID`.
+- **Everyone logs in once more.** Login tokens moved to Sanctum.
+
+### Added
+
+- **Uploads of any number of files.** The upload page sends them in batches of
+  at most 20 files and 100 MB, within PHP's limits, which used to drop every
+  file past the 20th without a word. A file the server never answered for is
+  marked failed, and a file over 100 MB isn't sent.
+- **The upload page says when tags are missing:** a warning that stays until
+  dismissed when Danbooru tags couldn't be fetched (with the reason), a notice
+  for files Danbooru has no post for, and both counts in the upload summary.
+- **`DANBOORU_USER_ID`.** Danbooru requests name the account in their
+  User-Agent (`GalleryTagImporter/1.0; user #…`), as Danbooru asks of API
+  clients; its firewall had started blocking the server's requests without it.
+- **`503 DanbooruBlocked`.** Danbooru's firewall refusing the server is
+  reported as that, with Cloudflare's Ray ID, instead of as rejected
+  credentials. An upload's per-file `tags_error` carries the reason.
+- **The nightly ingest actually runs** on a schedule; `cron.php` was never
+  scheduled.
+
+### Changed
+
+- **The backend is Laravel 13:** Eloquent models, Form Requests, API Resources,
+  Sanctum, the database queue and scheduler, and Pest tests. The 191 requests
+  recorded from the Slim app are replayed against it on every test run.
+- **Ingest** handles one file at a time: a bad file fails alone instead of
+  rolling back the whole batch. Ingests, imports and rebuilds clear the cached
+  lists they change. The ingest refuses to remove anything when it finds none
+  of the gallery's files, which is what a wrong media path looks like.
+- **Errors** are always `{ error, message }`: an unknown `/api` path is
+  `404 NotFound` (Slim answered an HTML 405), a wrong method
+  `405 MethodNotAllowed`. Renaming a tag onto an existing name is
+  `400 TagAlreadyExists` and dismissing a pair with an unknown id
+  `404 MediaNotFound` (both were 500s). A CORS preflight is `204`.
+- The login throttle is 10 attempts per 5 minutes, as the old code intended
+  (its cleanup made it about 10 a minute).
+- Each OpenAPI operation has a readable `operationId` (`listMedia`,
+  `uploadMedia`, …).
+- Only server errors (5xx) are logged.
+- Deploys install no dev packages on the server, cache the config and routes,
+  and leave the code readable but not writable by other users.
+
+### Fixed
+
+- After an upload, the files kept for a retry showed other files' statuses.
+- The upload page advertised 500 MB per file; the server accepts 100 MB.
+
+### Security
+
+- Login tokens are stored hashed (SHA-256), expire after 24 hours and are
+  pruned daily.
+- Only `public/` is served. In the old flat webroot, any file put there was
+  reachable unless a rule blocked it.
+- Every response, the SPA's pages included, carries `X-Frame-Options` and
+  `X-Content-Type-Options`.
+
+### Removed
+
+- The Slim app, Phinx, and the hand-built rate limiter, response cache and
+  token table they came with.
+
 ## [4.0.0] - 2026-08-05
 
 A UI and design-system release. The interface was rebuilt around a token layer
@@ -552,6 +640,8 @@ from the git history, not a formal release.
   with a dedicated tag page, sorting by tag name, a sticky footer with copyright/
   disclaimer, and a **cron** ingest script for importing media (including videos).
 
+[5.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v4.0.0...v5.0.0
+[4.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v3.3.0...v4.0.0
 [3.3.0]: https://github.com/jwill89/simple-image-gallery/compare/v3.2.0...v3.3.0
 [3.2.0]: https://github.com/jwill89/simple-image-gallery/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/jwill89/simple-image-gallery/compare/v3.0.0...v3.1.0

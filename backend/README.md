@@ -1,9 +1,10 @@
 # Gallery backend (Laravel)
 
-The gallery's API and SPA shell, as a Laravel 13 app, rebuilt from the Slim app on the
-`laravel-migration` branch; the plan, and how far it has got, is in
-[docs/laravel-migration.md](../docs/laravel-migration.md). It must answer every request
-the way the recordings in `tests/Fixtures/contract/` say the Slim app did.
+The gallery's API and SPA shell, as a Laravel 13 app. It replaced a Slim app in 5.0.0 without
+changing the API contract ([docs/laravel-migration.md](../docs/laravel-migration.md) has how, and
+the few deliberate differences), and the tests replay the requests recorded from that app
+(`tests/Fixtures/contract/`) to keep it that way. Architecture and conventions are in
+[AGENTS.md](../AGENTS.md).
 
 ## Local setup
 
@@ -35,15 +36,15 @@ composer test             # Pest
 
 ## Commands and background work
 
-The work the Slim app did in `scripts/*.php` is Artisan commands. Most queue a job per file
-or item, which a queue worker (`php artisan queue:work`) runs; each job logs its result.
+Maintenance is Artisan commands. Most queue a job per file or item, which a queue worker
+(`php artisan queue:work`) runs; each job logs its result.
 
 ```bash
-php artisan gallery:ingest                # what cron.php did: add the files in the media folder, drop items whose files are gone
-php artisan gallery:ingest --import-tags  # ...and import Danbooru tags for each new image (cron_with_tags.php)
-php artisan gallery:import-tags [id]      # tag_imports.php: a Danbooru import for every item, or one; rate-limited
-php artisan gallery:regenerate thumbnails # or fingerprints, or metadata (the regenerate-*.php scripts)
-php artisan gallery:dupes                 # dupes.php, with the same --max-distance, --max-region-diff and --tune
+php artisan gallery:ingest                # add the files in the media folder's root, drop items whose files are gone
+php artisan gallery:ingest --import-tags  # ...and import Danbooru tags for each new image
+php artisan gallery:import-tags [id]      # a Danbooru import for every item, or one; rate-limited
+php artisan gallery:regenerate thumbnails # or fingerprints, or metadata: rebuild from each item's file
+php artisan gallery:dupes                 # scan for duplicates; --max-distance, --max-region-diff, --tune
 ```
 
 `routes/console.php` schedules the ingest every night at midnight, in `SCHEDULE_TIMEZONE`,

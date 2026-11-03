@@ -268,7 +268,8 @@ Progress:
 
   `backups/ROLLBACK.txt` has the steps back, and `backups/rollback-vhosts/` has vhost files ready to point at `slim-rollback/`. The original vhost copies, now `apache-before-cutover/`, serve the folder root, which is the Laravel app now, so they must not be restored as they are.
 - **Deploys narrowed their permissions.** They chown only the code, `vendor/` and `storage/` to `www-data`, never the data, `backups/` or `slim-rollback/`. The tarball, built on Windows, gave the code world-writable modes (`777`/`666`), which the old deploy kept too; the code is now `755`/`644`.
-- Still to do: delete `slim-rollback/` and drop the old tables after a week live, and the docs (AGENTS.md has a banner saying which parts are out of date).
+- **The docs describe Laravel, and the version is 5.0.0** (2026-11-03). README, AGENTS.md, CONTRIBUTING.md and `backend/README.md` were rewritten for the Laravel app and the droplet as it now runs, and CHANGELOG has the 5.0.0 entry. It's a major version because running the gallery changed: the server layout, a queue worker, a cron entry and new settings. The API version stays `4.0.0`. The contract replay pins `/api/version`'s app version to the one the recordings were made at, so a release doesn't touch them.
+- Still to do, after a week live (from about 2026-11-10): delete `slim-rollback/` from the droplet (with `backups/rollback-vhosts/`, and the rollback steps in `backups/ROLLBACK.txt`), and add a migration that drops `auth_tokens`, `rate_limits` and `phinx_migrations`. That finishes Phase 8.
 
 ## Deployment
 

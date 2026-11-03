@@ -4,20 +4,10 @@ Operational guide for AI coding agents (and humans) working in this repository.
 Read this before making changes. It describes the architecture, conventions,
 data model, commands, and the non-obvious gotchas that will bite you.
 
-> **Laravel migration** (branch `laravel-migration`): the backend was rebuilt as a pure
-> Laravel app without changing the API contract, and has served the live site since
-> 2026-11-03. The plan, its phases and each phase's "Done when" line are in
-> [docs/laravel-migration.md](docs/laravel-migration.md).
->
-> - **`backend/` is the Laravel app** (its README covers setup and checks; CI runs it).
-> - **The Slim app has been removed.** The contract recorded from it is frozen in
->   `backend/tests/Fixtures/contract/` and replayed by the tests; that folder's README says
->   how to get the Slim code and its recorder back from git history.
->
-> Until the plan's Phase 8 is finished, the rest of this file still describes the Slim app.
-> Its backend paths (`api/`, `includes/Gallery/`, Phinx, `scripts/*.php`) no longer exist:
-> for the backend, go by `backend/README.md`, the plan and the code. The frontend sections
-> still hold.
+> **The backend is Laravel** (since 5.0.0, live from 2026-11-03). It replaced a Slim 4 app
+> without changing the API contract. How that was done, and every deliberate difference, is in
+> [docs/laravel-migration.md](docs/laravel-migration.md). The contract recorded from the Slim app
+> is frozen in `backend/tests/Fixtures/contract/` and replayed by the tests.
 
 ---
 
@@ -37,96 +27,71 @@ SaaS. Key features:
   distance → a worst-region comparison of the thumbnails that tells re-saves from variants).
 - **Favorites** (client-side, `localStorage`).
 - Admin-gated **uploads** and **deletes** via a single shared password → bearer token.
+- A nightly **ingest** of files dropped into the media folder, and queued **background work**:
+  ingest, Danbooru imports, and rebuilding thumbnails, fingerprints or metadata.
 - A PWA-ish **service worker** for thumbnail/API caching and adjacent-page prefetch.
 
 ### Tech stack
 
 | Layer | Tech |
 |------|------|
-| Backend | PHP **8.5** (typed constants, `match`, enums-style consts), [Slim 4](https://www.slimframework.com/) + PHP-DI |
-| Database | **SQLite** (single file at `db/gallery.db`), WAL mode |
-| Migrations | [Phinx](https://phinx.org/) (`db/migrations/`) — the single source of truth for the schema |
-| Image/video tooling | `ffmpeg` (shelled out via `exec`), PHP GD, `intervention/imagehash` (perceptual hash, always on GD) |
-| Logging | Monolog (rotating file, 14 days) |
+| Backend | PHP **8.5**, **Laravel 13**: Eloquent, Form Requests, API Resources, Sanctum, the database queue, the scheduler |
+| Database | **SQLite** (one file, WAL mode); Laravel migrations in `backend/database/migrations/` |
+| Image/video tooling | `ffmpeg`/`ffprobe` through Laravel's `Process`, PHP GD, `intervention/imagehash` (perceptual hash, always on GD) |
+| HTTP client | Laravel's `Http` for Danbooru, faked in tests |
+| API docs | swagger-php 7 attributes → committed `backend/openapi.json`, served at `/api/openapi.json` and `/api/docs` (Scalar) |
 | Frontend | **Vue 3** (`<script setup>` + Composition API), TypeScript, [Pinia](https://pinia.vuejs.org/), Vue Router |
 | Build | **Vite** on Node **26+** (outputs to `frontend/dist`) |
-| Styling | **Bulma 1.x** + custom `style.css` (extended color palette), FontAwesome (kit script) |
-| Tests | **PHPUnit 13** (`backend/tests/`, in-memory SQLite) + **Vitest** (`frontend/src/__tests__/`, happy-dom) |
+| Styling | **Bulma 1.x** + custom `style.css` (token layer), FontAwesome (kit script) |
+| Tests | **Pest 5** (`backend/tests/`, in-memory SQLite) + **Vitest** (`frontend/src/__tests__/`, happy-dom) |
 
 ---
 
 ## 2. Repository layout
 
-The repo is split into **`backend/`** (PHP) and **`frontend/`** (Vue), with a dev-only
-**`scripts/`** at the root. The droplet's webroot is **flat** (project root ===
-DocumentRoot): at deploy time `scripts/deploy.ps1` flattens `backend/*` and the built
-`frontend/dist` into one payload that mirrors the live layout. All PHP resolves paths
-via `__DIR__`/`chdir(__DIR__ . '/..')`, so `backend/` *is* the app root in both places.
-
 ```
 /
-├── backend/                   # PHP app — flattened onto the droplet webroot at deploy time
-│   ├── index.php              # SPA front controller: injects OG/Twitter meta + FA kit, serves dist/index.html
-│   ├── .htaccess              # Apache rewrites: dist assets → real files → /api → index.php fallback
-│   ├── composer.json          # PSR-4: Gallery\ → includes/Gallery, Routes\ → api/Routes
-│   ├── phinx.php              # Phinx config (sqlite, db/gallery.db)
-│   ├── phpunit.xml            # PHPUnit 13 config (tests/Unit; coverage source)
-│   ├── .php-cs-fixer.dist.php # coding standard: PER-CS 3.0 (PSR-12's successor) via PHP CS Fixer
-│   ├── phpstan.neon           # PHPStan level 8 + strict/deprecation/PHPUnit rules
-│   ├── rector.php             # PHP 8.5 idioms + dead-code removal (`composer rector:check` in CI)
-│   ├── composer-unused.php · composer-require-checker.json  # `composer deps:check` config
-│   ├── openapi.json           # generated (committed) — via `composer docs`; served at /api/openapi.json
-│   ├── bin/openapi.php        # `composer docs`: builds openapi.json (builder shared with OpenApiSpecTest)
-│   │
-│   ├── api/
-│   │   ├── .htaccess          # Routes everything to api/index.php
-│   │   ├── index.php          # Slim bootstrap: middleware stack + ALL route definitions
-│   │   ├── dependencies.php   # PHP-DI definitions: provides PDO, autowires Repository/Collection→Controller
-│   │   └── Routes/
-│   │       ├── OpenApiSpec.php          # global #[OAS\Info/Server/Security\Scheme/Tag] metadata
-│   │       └── Internal/                # Controllers (namespace Routes\Internal), all #[OAS\*]-annotated
-│   │           ├── AbstractController.php     # success()/created()/noContent()/error()/cachedSuccess()
-│   │           ├── SystemController.php       # /version, /openapi.json, /docs (Scalar)
-│   │           ├── AuthController.php         # /auth/login
-│   │           ├── MediaController.php        # /media/*  (list/read/upload/delete + media-scoped tags)
-│   │           ├── TagController.php          # /tags/*   (tag CRUD + migrate)
-│   │           ├── TagCategoryController.php  # /tag-categories/*
-│   │           ├── TagImplicationController.php # /tag-implications/*
-│   │           ├── DanbooruController.php     # /danbooru/{category,tag}-mappings
-│   │           ├── UploadController.php       # POST /media (multipart create)
-│   │           └── DuplicatesController.php   # /duplicates/*
-│   │
-│   ├── includes/Gallery/      # Domain layer (namespace Gallery\…)
-│   │   ├── Core/              # Configuration (holds VERSION), DatabaseConnection, Logger, RateLimiter,
-│   │   │                      # ResponseCache, DanbooruTagger, DuplicateScanner, MediaThumbnail
-│   │   ├── Collection/        # "Service"/use-case layer (MediaCollection, …)
-│   │   ├── Repository/        # Data-access (TagRepository, TagCategoryRepository, DanbooruRulesRepository)
-│   │   ├── Storage/           # SQL data-access layer (MediaStorage)
-│   │   └── Structure/         # Plain data objects (Media, Tag, TagCategory) — JsonSerializable, #[OAS\Schema]
-│   │       └── Api/           # Doc-only #[OAS\Schema] classes for composite responses (MediaPage, …)
-│   │
-│   ├── db/
-│   │   ├── setup.php          # CLI bootstrap: ensures db/gallery.db exists, then runs Phinx migrations
-│   │   ├── migrations/        # Phinx migrations (the schema source of truth)
-│   │   └── gallery.db         # SQLite database (gitignored)
-│   │
-│   ├── scripts/               # CLI cron/maintenance scripts (gitignored). cron.php = ingest pipeline,
-│   │                          # dupes.php = duplicate scan, tag_imports.php, regenerate-*.php
-│   │
-│   ├── tests/                 # PHPUnit 13 suite
-│   │   ├── Support/           # DatabaseTestCase + schema.sql (fresh in-memory SQLite per test)
-│   │   ├── Unit/              # by layer: Structure/, Core/, Storage/
-│   │   └── Fixtures/          # recorded API contract (contract/), its fixture DB + files (bin/record-contract.php)
-│   │
-│   ├── vendor/                # Composer deps (gitignored, regenerated on the host)
-│   ├── cache/api/             # File-based response cache (gitignored)
-│   ├── dupes/                 # Duplicate scan JSON reports (gitignored)
-│   ├── logs/                  # Monolog output (gitignored)
-│   ├── .env                   # Config (gitignored); template committed as .env.example
-│   └── media/
-│       ├── (root)             # cron.php INPUT folder: drop new files here for ingestion
-│       ├── full/              # canonical full-size files (served directly)
-│       └── thumbs/            # generated WebP thumbnails: <base>.webp (200px) and <base>@2x.webp (400px)
+├── backend/                     # The Laravel app; its README covers local setup and the checks
+│   ├── app/
+│   │   ├── Http/
+│   │   │   ├── Controllers/Api/       # One controller per resource; every action #[OAS\*]-annotated
+│   │   │   ├── Controllers/SpaController.php  # The SPA shell: index.html + each page's link-preview tags
+│   │   │   ├── Middleware/            # SecurityHeaders, VerifyOrigin (the CSRF origin check)
+│   │   │   ├── Requests/              # ApiRequest (contract-shaped validation errors) + one per write
+│   │   │   └── Resources/             # The JSON shapes: Media, Tag, TagCategory, mappings, …
+│   │   ├── Models/                    # Eloquent: Media, Tag, TagCategory, DismissedDuplicate,
+│   │   │                              #   DanbooruCategoryMapping, DanbooruTagMapping, User (the admin)
+│   │   ├── Services/
+│   │   │   ├── Danbooru/              # DanbooruTagger (MD5 → IQDB, import rules), DanbooruFailure
+│   │   │   ├── Duplicates/            # DuplicateScanner (LSH → Hamming → RegionDifference), ScanSettings
+│   │   │   ├── Media/                 # MediaIngest, MediaMetadata, Thumbnailer (ffmpeg)
+│   │   │   └── Fingerprinter.php      # The perceptual hash (pHash on GD)
+│   │   ├── Jobs/                      # ProcessNewMedia, ImportDanbooruTags, RebuildFromFile
+│   │   ├── Console/Commands/          # gallery:ingest, gallery:import-tags, gallery:regenerate, gallery:dupes
+│   │   ├── Support/                   # ResponseCache + CacheGroup: cached reads, invalidated by group
+│   │   ├── Exceptions/                # ApiException + ApiExceptionRenderer: { error, message } for all of /api
+│   │   ├── OpenApi/                   # Global OAS metadata (holds API_VERSION) + doc-only response schemas
+│   │   └── Providers/AppServiceProvider.php  # rate limiters, CORS origins, the media link, unwrapped resources
+│   ├── bootstrap/app.php        # Middleware stack and exception rendering
+│   ├── config/gallery.php       # Every gallery setting, read from .env (code never calls env())
+│   ├── database/migrations/     # The schema; the baseline is the Slim app's, created only where missing
+│   ├── routes/
+│   │   ├── api.php              # Every /api route: public ones first, then the auth:sanctum group
+│   │   ├── web.php              # The SPA shell's fallback route: everything outside /api
+│   │   └── console.php          # The schedule
+│   ├── public/                  # Apache's DocumentRoot: index.php, .htaccess (upload limits), the built SPA
+│   │                            #   (the deploy copies frontend/dist here), media → the media folder
+│   ├── resources/spa/index.html # The built SPA's index.html, which the shell serves (deploy copies it; gitignored)
+│   ├── storage/                 # Logs, the file cache (responses, rate limits, locks); contents gitignored
+│   ├── tests/
+│   │   ├── Feature/             # HTTP, console, jobs, models, services; Contract/ replays the recordings
+│   │   ├── Unit/                # The OpenAPI document, the fingerprinter, the region difference
+│   │   ├── Support/             # The contract replay (Contract/), fixture seeder, OpenAPI builder, test images
+│   │   └── Fixtures/            # Frozen contract recordings (contract/), contract.sql, schema.sql, files
+│   ├── bin/openapi.php          # `composer docs`: writes openapi.json
+│   ├── openapi.json             # Generated, committed; CI fails if it is stale
+│   ├── pint.json · phpstan.neon · rector.php · phpunit.xml
+│   └── .env.example             # Every setting, documented
 │
 ├── frontend/                  # Vue 3 + Vite source
 │   ├── vite.config.ts         # Vite + Vitest config (build outDir, dev proxy, test block)
@@ -141,64 +106,77 @@ via `__DIR__`/`chdir(__DIR__ . '/..')`, so `backend/` *is* the app root in both 
 │   │   ├── composables/       # useApi (fetch wrapper), useGalleryData, useMediaTags, usePrefetch
 │   │   ├── components/        # Reusable UI (GalleryCard, TagBadge, TagMultiSelect, modals…)
 │   │   ├── views/             # Route-level pages
-│   │   ├── constants/categories.ts  # color → CSS class helpers (reads store)
-│   │   ├── __tests__/         # Vitest specs (*.spec.ts): useApi, categories, stores
+│   │   ├── constants/         # categories.ts (color → CSS class helpers), uploads.ts (upload batching)
+│   │   ├── __tests__/         # Vitest specs (*.spec.ts): useApi, categories, stores, uploads, UploadView
 │   │   └── style.css          # Custom styles + extended Bulma color palette
 │   ├── public/sw.js           # Service worker (caching + prefetch)
-│   └── dist/                  # Vite build output (gitignored) — index.php serves dist/index.html
+│   └── dist/                  # Vite build output (gitignored); the deploy copies it into backend/public
 │
-├── .github/workflows/ci.yml   # CI: lint, static analysis, tests + build per side; PSScriptAnalyzer on scripts/
+├── .github/workflows/ci.yml   # CI: lint, static analysis, tests + build per side; PSScriptAnalyzer; release
 ├── .editorconfig              # LF, UTF-8, 4 spaces (2 for frontend files, YAML, Markdown)
 ├── PSScriptAnalyzerSettings.psd1  # PowerShell lint settings for scripts/
 ├── README.md · CONTRIBUTING.md · CHANGELOG.md · LICENSE
-├── docs/laravel-migration.md  # Laravel migration plan (phases, endpoint inventory, deployment)
+├── docs/laravel-migration.md  # How the backend moved from Slim to Laravel: phases, contract changes, deployment
 └── scripts/                   # Dev-only: deploy.ps1 (PuTTY pscp/plink → droplet) + config template
 ```
 
 ### Layering convention (backend)
 
-`Controller → Collection → Storage → DatabaseConnection (PDO)`
+`Route → middleware → Form Request → Controller → Model / Service → Eloquent (SQLite)`
 
-- **Structure** (`Media`, `Tag`, `TagCategory`): dumb data holders extending `AbstractStructure`
-  (which provides `jsonSerialize()` via reflection). Properties are **private** and hydrated by
-  PDO `FETCH_CLASS`. Fluent setters return `$this`.
-- **Storage**: the only place raw SQL lives. One class per table-group. Always use PDO prepared
-  statements / bound params.
-- **Collection**: thin domain/use-case wrapper over Storage; also where filesystem side effects
-  live (e.g. `MediaCollection::save()` writes the thumbnail + fingerprint; `delete()` unlinks files).
-- **Controller**: HTTP concerns only — parse/validate input, call collections, shape responses
-  via `$this->success()` / `$this->error()` / `$this->cachedSuccess()`.
+- **Models** are Eloquent, with the domain rules that belong to one table: `Media::typeOf()`
+  and `isAnimatedGif()`, `Media::thumbnailPaths()`, the tag-search scopes, `Tag::normalizeName()`,
+  `Tag::withImplied()`, `Tag::moveMediaTo()`. Deleting a `Media` removes its files.
+- **Form Requests** validate a write's body. They extend `ApiRequest`, which fails with the
+  first broken rule as the contract's `{ error, message }` and the endpoint's own code and status
+  (usually 400), never Laravel's 422 with `{ message, errors }`.
+- **Controllers** do HTTP only: read the ids (`positiveId()` answers a malformed one with the
+  endpoint's 400), call models and services, and return a Resource or `JsonResponse` with the
+  right status. A failure is `throw new ApiException('PascalCaseCode', status, 'message')`.
+- **Services** hold the work that isn't one model's: Danbooru, the duplicate scan, ingesting a
+  file (fingerprint, metadata, thumbnails).
+- **Resources** are the response shapes, unwrapped (no `{ data: … }`).
+- **Jobs** take anything slow or per-file, on the database queue.
 
-When adding a feature, follow this chain. Do **not** put SQL in controllers or collections.
+Prefer Eloquent and the query builder. The few raw fragments left (the random pick, the tag
+search's `HAVING`, the implication walk) bind their values.
 
 ---
 
 ## 3. Running & building
 
-### Backend (Apache + PHP 8.5)
-The app expects to be served by Apache with `mod_rewrite`. The document root is the PHP app root —
-**`backend/`** in this repo (the deploy flattens it into the droplet webroot); `.htaccess` serves
-`dist/*` assets, then real files (`media/full`, `media/thumbs`), routes `/api` to the Slim app, and
-falls everything else back to `index.php` (which injects OG tags and serves the SPA shell).
+### Backend, locally
 
 ```bash
 cd backend
-composer install              # install PHP deps into backend/vendor/
-composer lint                 # PER-CS 3.0 (PHP CS Fixer); `composer lint:fix` applies the fixes
-composer analyse              # PHPStan level 8 + strict and deprecation rules
-composer rector:check         # current PHP idioms, no dead code; `composer rector` applies
-composer deps:check           # every package used is declared, every one declared is used
+composer setup        # install, create .env from .env.example, generate APP_KEY
+# set DB_DATABASE in .env to an absolute path to a copy of the gallery database
+php artisan migrate
+composer dev          # php artisan serve, on http://localhost:8000
+```
+
+Never point `DB_DATABASE` at a database another app is using. Fill in the `GALLERY_*` and
+`DANBOORU_*` settings as `.env.example` describes. The Vite dev server proxies `/api` and
+`/media` to `http://localhost` (`frontend/vite.config.ts`), so serve the backend there, or point
+the proxy at `php artisan serve`'s port while you work.
+
+The checks CI runs, from `backend/`:
+
+```bash
+composer lint            # Pint (per preset); `composer lint:fix` applies the fixes
+composer analyse         # Larastan level 8 + strict and deprecation rules
+composer rector:check    # current PHP and Laravel idioms, no dead code; `composer rector` applies
+composer test            # Pest, including the contract replay
+composer docs            # regenerate openapi.json (CI fails if the committed one is stale)
 ```
 
 ### Database
-**Phinx migrations (`backend/db/migrations/`) are the single source of truth** for schema, indexes,
-and seeds. Run from `backend/`:
-```bash
-php vendor/bin/phinx migrate    # apply migrations
-php db/setup.php                # convenience wrapper: ensures db/gallery.db exists, then migrates
-```
-`db/setup.php` no longer contains hand-written `CREATE TABLE`s — it just creates the SQLite file if
-missing and runs Phinx. To change the schema, **add a migration** (`php vendor/bin/phinx create …`).
+
+**Laravel migrations (`backend/database/migrations/`) are the schema.** The baseline,
+`0001_01_01_000000_create_gallery_tables`, creates each gallery table only where it is missing:
+on a fresh database it builds the schema, and on the live one (built by the Slim app's Phinx
+migrations) it does nothing. Change the schema by **adding a migration**; never edit one that has
+run on the droplet.
 
 ### Frontend
 ```bash
@@ -208,48 +186,89 @@ npm run dev        # Vite dev server on :5173, proxies /api and /media to http:/
 npm run build      # vue-tsc type-check + vite build → outputs to frontend/dist
 npm run preview
 ```
-The production app is **the built `dist/`** served via `index.php`; there is no Node server in prod.
+The production app is **the built `dist/`**, copied into `backend/public/` (its `index.html` into
+`resources/spa/`) and served by Apache and the SPA shell; there is no Node server in prod.
 
-### CLI maintenance (in `backend/scripts/`, run from anywhere — they `chdir` to the app root)
+### Background work: commands, queue and schedule
+
+Artisan commands, run from the app folder (on the droplet as `www-data`:
+`sudo -u www-data php artisan …`):
+
 ```bash
-php backend/scripts/cron.php          # ingest new files from media/ → media/full/, build thumbs+fingerprints, prune orphans
-php backend/scripts/dupes.php         # run the duplicate scanner → writes dupes/dupes-YYYY-MM-DD.json
-php backend/scripts/dupes.php --tune --max-distance=8 --max-region-diff=off  # calibrate (see §9)
-php backend/scripts/regenerate-thumbnails.php
-php backend/scripts/regenerate-fingerprints.php   # after any change to how fingerprints are computed (see §10)
-php backend/scripts/regenerate-metadata.php   # backfill width/height/duration/file_size on existing rows
-php backend/scripts/tag_imports.php   # bulk Danbooru tag import
+php artisan gallery:ingest [--import-tags]   # queue the files dropped into the media folder; remove items whose files are gone
+php artisan gallery:import-tags [id]         # queue a Danbooru import for every item, or one
+php artisan gallery:regenerate thumbnails    # or fingerprints, or metadata: queue a rebuild of every item from its file
+php artisan gallery:dupes                    # scan for duplicates → dupes/dupes-YYYY-MM-DD.json
+php artisan gallery:dupes --tune --max-distance=8 --max-region-diff=off  # calibrate (see §9)
 ```
-All CLI scripts have a `PHP_SAPI !== 'cli'` guard and refuse to run over HTTP.
+
+- **The queue** is the `database` driver. On the droplet the systemd unit `gallery-queue` runs
+  `php artisan queue:work --tries=3 --max-time=3600` as `www-data` and restarts by itself; every
+  deploy sends `queue:restart` so it picks up new code. Jobs: `ProcessNewMedia` (one ingested file,
+  unique per name), `ImportDanbooruTags` (rate-limited to 30 a minute, retried for a day),
+  `RebuildFromFile`.
+- **The schedule** (`routes/console.php`) runs `gallery:ingest` at midnight and
+  `sanctum:prune-expired` daily, in `SCHEDULE_TIMEZONE` (UTC on the droplet).
+  `/etc/cron.d/gallery-scheduler` runs `php artisan schedule:run` every minute as `www-data`.
+- `gallery:ingest` refuses to remove anything when none of the gallery's files are in
+  `media/full`, which is what a wrong `GALLERY_MEDIA_PATH` looks like.
 
 ### Deploy (to the DigitalOcean droplet)
 ```powershell
-./scripts/deploy.ps1            # build SPA → tar backend/ + frontend/dist → upload → composer install → migrate
-./scripts/deploy.ps1 -SkipBuild # redeploy existing frontend/dist
+./scripts/deploy.ps1            # build the SPA → pack the code → upload → composer install → migrate → optimize
+./scripts/deploy.ps1 -SkipBuild # redeploy the existing frontend/dist
 ```
-`scripts/deploy.ps1` (PuTTY pscp/plink) **flattens `backend/*` + `frontend/dist`** onto the flat
-webroot and ships **code only** (never `db/gallery.db`, `.env`, `vendor/`, or `media/`), then on the
-host runs `composer install` (with dev deps — Phinx is a dev dependency) and `php db/setup.php`
-(which baselines a legacy pre-Phinx DB, then applies pending migrations), restores `www-data`
-ownership, and clears `cache/api/`. Keeps a `.deploy-backup/` for rollback. Uses only two SSH
-connections to respect the droplet's `ufw limit ssh`. The webroot is `/var/www/gallery.mathdad.me`
-and *is* the app root (project root === DocumentRoot).
+`scripts/deploy.ps1` (PuTTY pscp/plink; host, user, key and app folder come from the untracked
+`scripts/deploy.config.ps1`) ships **code only**. It never ships `.env`, `storage/`, `vendor/`, the
+data or the backups. On the host it:
 
-### Config (`backend/.env` — gitignored; template in `backend/.env.example`)
-Keys (resolved by `Gallery\Core\Configuration`):
+1. backs up the current code to `.deploy-backup/`, restored automatically if a later step fails;
+2. replaces the code, with the code read-only to everyone but its owner;
+3. runs `composer install --no-dev`;
+4. snapshots the database (`VACUUM INTO`, see §10), then runs `php artisan migrate --force`;
+5. runs `storage:link`, `optimize --except=views` and `queue:restart`;
+6. gives the code, `vendor/` and `storage/` to `www-data`;
+7. health-checks `/api/media/count`.
+
+It uses only two SSH connections, to respect the droplet's `ufw limit ssh`.
+
+Everything for the gallery lives in **`/var/www/gallery.mathdad.me/`**, as every site in
+`/var/www` lives in a folder named for its domain:
+
+| Path | Holds |
+| --- | --- |
+| `app/`, `bootstrap/`, `config/`, `database/`, `resources/`, `routes/`, `vendor/`, … | The code, replaced by each deploy |
+| `public/` | Apache's DocumentRoot, the only part served (both gallery vhosts) |
+| `.env`, `storage/` | Settings and Laravel's runtime files, kept across deploys |
+| `db/`, `media/`, `dupes/` | The data: `gallery.db` (+ `.backups/` snapshots), the media and the ingest folder, scan reports |
+| `backups/` | The pre-cutover backup, `ROLLBACK.txt`, the vhost files for a rollback; root-only |
+| `slim-rollback/` | The Slim app as it last ran, until Phase 8 deletes it |
+
+### Config (`backend/.env`, gitignored; documented in `backend/.env.example`)
+
+Laravel's own keys (`APP_KEY`, `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, `LOG_*`,
+`QUEUE_CONNECTION=database`, `CACHE_STORE=file`, `DB_DATABASE`) plus the gallery's, which
+`config/gallery.php` reads:
+
 ```
-GALLERY_ADMIN_PASSWORD     # admin password; DEFAULTS TO 'changeme' if unset (⚠)
-GALLERY_URL                # public base URL, required for Danbooru IQDB fallback
-GALLERY_ALLOWED_ORIGINS    # comma-separated CORS allowlist
+GALLERY_ADMIN_PASSWORD     # admin password; login is refused while it is empty
+GALLERY_URL                # public base URL, for Danbooru's IQDB fallback
+GALLERY_ALLOWED_ORIGINS    # comma-separated CORS + CSRF origin allowlist
+GALLERY_MEDIA_PATH         # media folder (full/, thumbs/, the ingest folder); default storage/app/media
+GALLERY_DUPES_PATH         # duplicate-scan reports; default storage/app/dupes
 DANBOORU_LOGIN             # Danbooru API username
 DANBOORU_API_KEY           # Danbooru API key
 DANBOORU_USER_ID           # the account's numeric ID, sent in the User-Agent; Danbooru's firewall blocks clients without it
-FONTAWESOME_KIT_ID         # FA kit id (injected into <head> by index.php)
+FONTAWESOME_KIT_ID         # FA kit id (injected into <head> by the SPA shell)
 DUPLICATE_MAX_DISTANCE     # duplicate scan: largest Hamming distance reported, 0-16 (default 6)
 DUPLICATE_MAX_REGION_DIFF  # duplicate scan: largest worst-region difference, 0-255 or off (default 36)
+SCHEDULE_TIMEZONE          # the schedule's timezone (UTC on the droplet)
 ```
-Explicit OS/Docker env vars take precedence over `.env`. `Configuration` also understands Apache
-`REDIRECT_`-prefixed vars from mod_rewrite.
+
+Real environment variables take precedence over `.env`. The gallery's values are read raw, so a
+password of `null` or `true` stays a string. **The production config is cached** (`optimize`), so
+a `.env` change takes effect only after the next deploy, or `php artisan optimize --except=views`
+as `www-data`.
 
 ---
 
@@ -265,36 +284,42 @@ tag_implications(tag_id FK, implied_tag_id FK)  # PK(tag_id, implied_tag_id)
 danbooru_category_map(danbooru_category_id PK, danbooru_category_name, gallery_category_id FK)
 danbooru_tag_map(id PK, danbooru_tag UNIQUE, gallery_tag)
 dismissed_duplicates(media_id_1, media_id_2, dismissed_at)  # PK(id1,id2), stored with id1<id2
-auth_tokens(token PK, created_at)               # bearer tokens, valid 24h
-rate_limits(ip, requested_at)                   # sliding-window limiter
+
+users                                           # one row: the admin the tokens belong to
+personal_access_tokens                          # Sanctum: login tokens, stored hashed, valid 24h
+jobs · job_batches · failed_jobs                # the database queue
+migrations                                      # Laravel's migration log
 ```
 
-Key indexes (defined in `db/migrations/`): `media(hash)`, `media(file_time DESC, media_id DESC)`,
+The live database also still holds the Slim app's `auth_tokens`, `rate_limits` and
+`phinx_migrations` until Phase 8 drops them. Rate limits now live in the cache, not a table.
+
+Key indexes (in the baseline migration): `media(hash)`, `media(file_time, media_id)`,
 `media(media_type)`, `media_tags(tag_id, media_id)` (reverse index for tag search),
-`tags(category_id)`, `rate_limits(ip, requested_at)`, `auth_tokens(created_at)`.
+`tags(category_id)`.
 
 Notes:
-- **Metadata** (`width`, `height`, `duration`, `file_size`) is extracted at ingest by
-  `Core/MediaMetadata` (images: `getimagesize`; videos/animated GIFs: `ffprobe`) inside
-  `MediaCollection::save()`, so both the upload and cron paths populate it. Backfill existing rows
-  with `php backend/scripts/regenerate-metadata.php`. `duration` is 0 for still images.
-- **`media_type='video'` includes animated GIFs** (detected by counting Graphic Control Extension
-  headers). Static GIFs are `'image'`. See `MediaCollection::detectMediaType()` and `isAnimatedGif()`.
+- **Metadata** (`width`, `height`, `duration`, `file_size`) is read at ingest by
+  `Services/Media/MediaMetadata` (images: `getimagesize`; videos and animated GIFs: `ffprobe`),
+  through `MediaIngest`, so uploads and the ingest both fill it. Backfill with
+  `php artisan gallery:regenerate metadata`. `duration` is 0 for still images.
+- **`media_type='video'` includes animated GIFs** (more than one Graphic Control Extension
+  header). Static GIFs are `'image'`. See `Media::typeOf()` and `Media::isAnimatedGif()`.
 - Only **images** get a `bits_fingerprint` (perceptual hash); videos don't, so duplicate detection
   is image-only.
-- `tag_name` and category name/short are **case-insensitive** (`COLLATE NOCASE`).
-- Tag deletion can **migrate** usages to another tag first (`migrateTag`, wrapped in a transaction).
-- Foreign keys use `ON DELETE CASCADE`, and `PRAGMA foreign_keys=ON` is set per connection — deleting
-  a media row removes its `media_tags`, etc.
+- `tag_name` and `category_name` are **case-insensitive** (`COLLATE NOCASE`).
+- Tag deletion can **migrate** usages to another tag first (`Tag::moveMediaTo()`, in a transaction).
+- Foreign keys use `ON DELETE CASCADE` and are enforced on every connection
+  (`config/database.php`), so deleting a media row removes its `media_tags`, and so on.
 
 ---
 
 ## 5. API surface (hybrid REST-RPC, all under `/api`)
 
-The **authoritative contract** is the generated OpenAPI 3.1 spec
-(`api/openapi.json`, `composer docs`), served at **`/api/openapi.json`** and browsable
-via **Scalar** at **`/api/docs`**. `backend/API.md` is the human overview. Below is the
-shape; 🔓 = public, 🔒 = bearer token required.
+The **authoritative contract** is the generated OpenAPI 3.1 spec (`backend/openapi.json`,
+`composer docs`), served at **`/api/openapi.json`** and browsable via **Scalar** at
+**`/api/docs`**. Every operation has a readable `operationId` (`listMedia`, `uploadMedia`, …).
+Below is the shape; 🔓 = public, 🔒 = bearer token required.
 
 REST-RPC conventions: reads → `200`, create → `201` (created resource), update → `200`
 (updated resource), delete → `204`, RPC action/batch → `200`. Non-CRUD state changes are
@@ -317,61 +342,72 @@ REST-RPC conventions: reads → `200`, create → `201` (created resource), upda
   `DELETE /{tag_id}/{implied_tag_id}` (🔒).
 - **Danbooru (`/danbooru`):** `GET` mappings (🔓); `POST/PUT/DELETE` on
   `category-mappings[/{danbooru_category_id}]` and `tag-mappings[/{id}]` (🔒).
-- **Duplicates (`/duplicates`):** `GET /report`, `POST /scan`, `POST /dismissals` (🔒).
+- **Duplicates (`/duplicates`):** `GET /report` (🔓), `POST /scan`, `POST /dismissals` (🔒).
 
 ### Response conventions
 
-- Reads return the resource/collection; creates `201` + resource; updates `200` + resource;
-  deletes `204`. Controllers use `$this->success()`/`created()`/`noContent()`.
-- Error: `{ "error": "PascalCaseCode", "message": "human readable" }` + status, via
-  `$this->error($response, 'CodeName', 4xx, 'message')`.
-- Cached GETs add `X-Cache: HIT|MISS`. Rate-limit info in `X-RateLimit-Remaining` / `Retry-After`.
-- Every action/schema is annotated with `#[OAS\*]` (swagger-php spec attributes, `use OpenApi\Spec as OAS`); **regenerate `openapi.json` (`composer docs`) and
-  the frontend types (`npm run gen:types`) after any contract change** — CI fails if they drift.
+- Reads return the resource or collection (a Resource, unwrapped); creates `201` + resource;
+  updates `200` + resource; deletes `204`.
+- Every error under `/api` is `{ "error": "PascalCaseCode", "message": "human readable" }` with its
+  status. The app raises them as `throw new ApiException('CodeName', 4xx, 'message')`.
+  `ApiExceptionRenderer` gives the framework's failures the same shape: an unknown path is
+  `404 NotFound`, a wrong method `405 MethodNotAllowed` (with `Allow`), anything uncaught
+  `500 ServerError`. Only 5xx errors are logged.
+- Danbooru failures: `429 DanbooruRateLimited`, `500 DanbooruAuthFailed` (the API refused the
+  credentials) or `DanbooruNotConfigured`, and `503 DanbooruUnreachable`, `DanbooruUnavailable` or
+  `DanbooruBlocked` (its firewall refused the server; the message says why, with Cloudflare's Ray ID).
+  An upload with `fetch_tags` reports a failed lookup on the file as `tags_error`.
+- Cached GETs add `X-Cache: HIT|MISS`. Rate-limit info is in `X-RateLimit-Remaining` / `Retry-After`.
+- Every action and schema is annotated with `#[OAS\*]` (swagger-php spec attributes,
+  `use OpenApi\Spec as OAS`); **regenerate `openapi.json` (`composer docs`) and the frontend
+  types (`npm run gen:types`) after any contract change**. CI fails if they drift.
 
 ---
 
-## 6. Middleware stack (order matters — defined in `api/index.php`)
+## 6. Middleware stack (order matters; set in `bootstrap/app.php`)
 
-Outermost → innermost:
-1. **Rate limiter** (global): 120 req / 60 s per IP, SQLite-backed sliding window.
-2. **CSRF origin check** (global, for POST/PUT/PATCH/DELETE): validates `Origin` against the
-   allowlist; falls back to deriving the origin from `Referer`; **rejects when both are absent**
-   (blocks non-browser clients like curl from bypassing CORS).
-3. **CORS headers** (global) + adds `X-Frame-Options`, `X-Content-Type-Options`.
-4. **OPTIONS** catch-all → 204.
-5. **`$authMiddleware`** (per-group): requires a valid bearer token for state-changing methods,
-   except a public allowlist matched by exact `(method, path pattern)`: `POST /media/by-ids`,
-   `PATCH /media/{id}/tags`, `DELETE /media/{id}/tags/{tag_id}`. Attached to **`/media`, `/tags`,
-   `/tag-categories`, `/tag-implications`, `/danbooru`, `/duplicates`** (`/auth/login` and the System
-   GETs are their own unguarded routes).
+1. **`SecurityHeaders`** (global, first): `X-Frame-Options: SAMEORIGIN` and
+   `X-Content-Type-Options: nosniff` on every response, the SPA shell's included.
+2. **CORS** (Laravel's `HandleCors`, global): origins from `GALLERY_ALLOWED_ORIGINS`; a preflight
+   is answered `204` before anything else checks it.
+3. **`VerifyOrigin`** (global): the CSRF check for `/api`. A POST, PUT, PATCH or DELETE is refused
+   (`403 ForbiddenOrigin`) unless its `Origin`, or failing that its `Referer`, is allowed; a write
+   with **neither** is refused too (it's a client working around CORS, such as curl). It runs
+   before the rate limiter and authentication, so a refused request is neither counted nor told
+   whether its token was good.
+4. **`throttle:api`** (the `api` group): 120 requests a minute per IP, then
+   `429 RateLimitExceeded` with `retry_after`. It runs before authentication (a priority list in
+   `bootstrap/app.php`), so every request counts, signed in or not.
+5. **`auth:sanctum`** on the protected group in `routes/api.php`: no valid token is
+   `401 Unauthorized` as `{ error, message }`; there is no login page to redirect to.
 
-Auth = opaque random token (`bin2hex(random_bytes(32))`) stored in `auth_tokens`, valid 24h,
-sent as `Authorization: Bearer …`. Frontend stores it in `sessionStorage` (`useApi.ts`).
+The `web` group is empty: the SPA shell keeps no session and sets no cookies. `TrimStrings` and
+`ConvertEmptyStringsToNull` are removed, so a password or tag name arrives exactly as sent.
 
 ---
 
 ## 7. Security model (and the one intentional exception)
 
-Current, hardened behavior — keep these invariants when editing auth/routes:
+Keep these invariants when editing auth or routes:
 
-- **All state-changing routes require a bearer token**, enforced by `$authMiddleware` on the
-  `/media`, `/tags`, `/tag-categories`, `/tag-implications`, `/danbooru`, `/duplicates` groups
-  (it only gates POST/PUT/PATCH/DELETE). If you add a new write route, put it in one of those groups.
-- **Public allowlist** (state-changing methods that intentionally skip auth), matched by exact
-  `(method, path pattern)`: `PATCH /media/{id}/tags`, `DELETE /media/{id}/tags/{tag_id}` (anyone may
-  tag media — *intentional* design choice), and `POST /media/by-ids` (a read that uses POST only to
-  carry a large id list). The exact match is deliberate so a public sub-route can't widen a protected
-  one (e.g. `DELETE /media/{id}` stays 🔒). Don't add to this list lightly.
-- **CSRF**: state-changing requests are rejected unless `Origin` (or, failing that, `Referer`) matches
-  `GALLERY_ALLOWED_ORIGINS`. Requests with neither header are rejected.
-- **Login**: refused entirely if `GALLERY_ADMIN_PASSWORD` is unset (so the `'changeme'` default can't
-  grant access); throttled to 10 attempts / 5 min per IP (own bucket) on top of the global limiter;
-  password compared with `hash_equals()`.
-- Tokens: 256-bit random, stored in `auth_tokens`, valid 24h, sent as `Authorization: Bearer …`.
-
-Remaining low-risk note: the bearer-token lookup is a direct DB equality match (not constant-time),
-which is fine given the token's entropy.
+- **Every state-changing route needs a bearer token**: it sits in the `auth:sanctum` group in
+  `routes/api.php`. If you add a write route, put it in that group.
+- **The public writes**, deliberately outside the group, each its own route: `PATCH /media/{id}/tags`
+  and `DELETE /media/{id}/tags/{tag_id}` (anyone may tag media — an *intentional* design choice), and
+  `POST /media/by-ids` (a read that uses POST only to carry a large id list). Being exact routes, a
+  public sub-route can't widen a protected one (`DELETE /media/{id}` stays 🔒). Don't add to them
+  lightly. They still pass the origin check.
+- **CSRF**: writes are refused unless `Origin` (or, failing that, `Referer`) is in
+  `GALLERY_ALLOWED_ORIGINS`; a write with neither header is refused.
+- **Login**: refused entirely while `GALLERY_ADMIN_PASSWORD` is empty (so no default can grant
+  access); throttled to 10 attempts / 5 minutes per IP (its own limiter) on top of the global one;
+  the password is compared with `hash_equals()`.
+- **Tokens**: Sanctum tokens on the one admin user (`User::admin()`): 64 random hex characters,
+  **stored as a SHA-256 hash**, valid 24 hours (`sanctum.expiration`), pruned daily. Sent as
+  `Authorization: Bearer …`; the frontend keeps it in `sessionStorage` (`useApi.ts`).
+- **Only `public/` is served.** `.env`, the code, the data folders, `backups/` and
+  `slim-rollback/` sit beside it, out of reach; an unknown path gets the SPA page, never a file.
+  Never point a vhost at the app folder itself.
 
 ---
 
@@ -446,7 +482,7 @@ which is fine given the token's entropy.
   the same red; migration `20260805000000` moved them to the `tag--<hue>` namespace. Never wire a
   category to a semantic colour. `constants/categories.ts` maps a category's `color` to
   `tag--<hue>` / `tag-text--<hue>`; keep its `VALID_COLORS` in sync with
-  `TagCategoryController::VALID_COLORS` (backend).
+  `TagCategory::COLORS` (backend).
 - **Interactive primitives** come from [Reka UI](https://reka-ui.com). Wrappers live in
   `components/`: `AppDialog` (all modals; pass `destructive` for irreversible actions and it swaps
   to `AlertDialog`), `AppMenu`/`AppMenuItem`, `AppTooltip`, `AppLightbox`, plus `TagMultiSelect`
@@ -492,42 +528,57 @@ which is fine given the token's entropy.
 
 ## 9. Caching & performance model
 
-- **Server response cache** (`Core/ResponseCache`, file-based in `cache/api/`): GET endpoints wrap
-  their generator in `cachedSuccess($response, $group, $key, $ttl, fn)`. TTLs: `TTL_SHORT=30s`
-  (lists), `TTL_MEDIUM=60s` (totals/all-tags/implications).
-- **Invalidation is group-based.** After any mutation, call `$this->invalidateCache('media','tags')`
-  for the affected groups. **If you add a new cached GET, make sure every mutation that affects it
-  invalidates the right group**, or you'll serve stale data for up to the TTL.
-- SQLite connection sets WAL, `foreign_keys=ON`, `synchronous=NORMAL`, 20 MB cache, mmap, 5 s busy
-  timeout (`DatabaseConnection`).
-- Duplicate scan is the heaviest operation: LSH banding → Hamming filter → a comparison of each
-  remaining pair's `@2x` thumbnails (not originals, to bound memory); it temporarily raises
-  `memory_limit`/`max_execution_time`. **Variants are the hard part.** This gallery holds many
-  versions of one artwork that differ only in a small area (an expression, a detail), and those hash
-  as close as distance 0 and score whole-image SSIM up to 0.97 — so neither a tighter cutoff nor an
-  SSIM floor can tell them from a re-saved copy (an SSIM floor was tried and dropped, 2026-11).
-  `Core/RegionDifference` can: both thumbnails are resampled to 256², blurred to wash out compression
-  noise, the overall colour offset removed, and the result is the mean difference of the *worst*
-  8×8 region on any channel. Calibrated on the droplet against the 26 pairs dismissed in the UI and
-  synthetic re-saves: re-saves scored ≤ 32.7, variants ≥ 40.9; coarser regions overlapped, so keep
-  them fine. **Tuning:** `DUPLICATE_MAX_DISTANCE` (default 6; re-saves landed 0–5 bits apart) is the
-  Hamming cutoff and `DUPLICATE_MAX_REGION_DIFF` (default 36, `off` to disable) the region ceiling;
-  a pair whose thumbnails can't be read is kept. The LSH band width is derived from the cutoff
-  (`bandBitsFor()`: cutoff + 1 bands, so no pair within it can miss them all). Buckets of over 100
-  images are still skipped and counted as `skipped_buckets`; each can hide pairs, which is what caps
-  the cutoff at 16. `dupes.php --tune` is the calibration run: it keeps dismissed pairs (flagged),
-  prints a distance × region-difference table, and writes `dupes/tuning-<timestamp>.json` so the
-  report the Duplicates page reads (`dupes-*.json`) is untouched. Report matches are
-  `[id1, id2, distance, ssim, region_diff]` (+ `dismissed` on a tuning run); the controller reads
-  the first four, so older reports still load.
+- **Response cache** (`App\Support\ResponseCache`, on the file cache store in
+  `storage/framework/cache`): a busy GET wraps its body in
+  `$this->cache->remember(CacheGroup::Media, $key, ResponseCache::TTL_SHORT, fn () => …)` and
+  answers with `X-Cache: HIT|MISS`. TTLs: `TTL_SHORT=30s` (lists), `TTL_MEDIUM=60s`
+  (totals/all-tags/implications).
+- **Invalidation is group-based.** After a write, call `$this->cache->bump(CacheGroup::Media,
+  CacheGroup::Tags)` for every group it affects. The file store has no cache tags, so each group's
+  version number is part of its keys and a bump moves it on. **If you add a cached GET, make sure
+  every write that affects it bumps its group** (jobs and commands too), or it serves stale data
+  for up to the TTL. Deploys don't clear the cache: entries expire within a minute anyway, and a
+  clear would also drop the rate limiter's counts and the queue's unique locks.
+- **SQLite** runs with WAL, foreign keys on, `synchronous=NORMAL` and a 5 s busy timeout
+  (`config/database.php`). One queue worker keeps writers few.
+- **Request cost** (measured on the droplet, 2026-11): a cached read takes about 10 ms, the
+  1.5 MB tag list about 13 ms. Laravel's boot adds 3–5 ms over the Slim app it replaced, which
+  is lost in a request's trip through Cloudflare.
+- **The duplicate scan is the heaviest operation** (`gallery:dupes`, or `POST /duplicates/scan`):
+  LSH banding → Hamming filter → a comparison of each remaining pair's `@2x` thumbnails (not
+  originals, to bound memory); it raises `memory_limit`/`max_execution_time` for the run.
+  **Variants are the hard part.** This gallery holds many versions of one artwork that differ only
+  in a small area (an expression, a detail), and those hash as close as distance 0 and score
+  whole-image SSIM up to 0.97, so neither a tighter cutoff nor an SSIM floor can tell them from a
+  re-saved copy (an SSIM floor was tried and dropped, 2026-11). `Services/Duplicates/RegionDifference`
+  can: both thumbnails are resampled to 256², blurred to wash out compression noise, the overall
+  colour offset removed, and the result is the mean difference of the *worst* 8×8 region on any
+  channel. Calibrated on the droplet against the 26 pairs dismissed in the UI and synthetic
+  re-saves: re-saves scored ≤ 32.7, variants ≥ 40.9; coarser regions overlapped, so keep them fine.
+  **Tuning:** `DUPLICATE_MAX_DISTANCE` (default 6; re-saves landed 0–5 bits apart) is the Hamming
+  cutoff and `DUPLICATE_MAX_REGION_DIFF` (default 36, `off` to disable) the region ceiling; a pair
+  whose thumbnails can't be read is kept. The LSH band width is derived from the cutoff (cutoff + 1
+  bands, so no pair within it can miss them all). Buckets of over 100 images are still skipped and
+  counted as `skipped_buckets`; each can hide pairs, which is what caps the cutoff at 16.
+  `gallery:dupes --tune` is the calibration run: it keeps dismissed pairs (flagged), prints a
+  distance × region-difference table, and writes `dupes/tuning-<timestamp>.json`, so the report the
+  Duplicates page reads (`dupes-*.json`) is untouched. Report matches are
+  `[id1, id2, distance, ssim, region_diff]` (+ `dismissed` on a tuning run); the API reads the
+  first four, so older reports still load.
 
 ---
 
 ## 10. Known traps & drift risks (read before editing)
 
-- **Schema source of truth = Phinx** (`db/migrations/`). `db/setup.php` is now just a bootstrap that
-  ensures `db/gallery.db` exists and runs migrations — no hand-written DDL. Change the schema by
-  **adding a migration**, never by editing `setup.php`.
+- **The schema is the migrations.** Add a migration to change it; never edit one that has run on
+  the droplet. `SchemaTest` checks that a fresh `migrate` builds the production schema the Slim app
+  left (`tests/Fixtures/schema.sql`), so a migration that changes a gallery table also changes what
+  that test expects — deliberately, in the same change.
+- **The contract recordings are frozen.** `tests/Feature/Contract/ContractTest.php` replays all 191
+  of them (`tests/Fixtures/contract/`, format in its README). The recorder went with the Slim app,
+  so a recording is edited by hand only to correct it. A deliberate change to what the API answers
+  goes in `tests/Feature/Contract/divergences.php` with its reason, and in the plan's "Contract
+  changes" section.
 - **PHP's upload limits fail quietly, so the upload page works within them.** `backend/public/.htaccess`
   sets `upload_max_filesize 100M` / `post_max_size 105M`, and `php.ini` keeps PHP's default
   `max_file_uploads = 20`. Past 20 files PHP drops the rest of a request, and past `post_max_size`
@@ -535,26 +586,30 @@ which is fine given the token's entropy.
   20 files and 100 MB, and doesn't send a file over 100 MB at all (`constants/uploads.ts`, mirroring
   those settings: change both together). `UploadController::MAX_FILE_SIZE` still says 500 MB, but
   PHP's 100 MB applies first.
-- **`ffmpeg` must be on PATH** for thumbnail generation; **GD** (with WebP, ideally AVIF) is required
-  for the duplicate scan's thumbnail comparison. On hosts where `exec()` is disabled, thumbnails silently won't generate. (Note:
-  `php-ffmpeg/php-ffmpeg` was removed from `composer.json` — thumbnails shell out to `ffmpeg` directly.)
-- **CI runs lint, static analysis, tests, and build.** GitHub Actions (`.github/workflows/ci.yml`)
-  runs, on the backend, `composer audit` + `composer normalize --dry-run` + `composer deps:check`
-  (composer-unused, composer-require-checker) + `composer lint` (PHP CS Fixer / PER-CS 3.0) +
-  `composer rector:check` + `composer analyse` (PHPStan level 8 + strict-rules) + `composer test`
-  (PHPUnit 13). On the frontend: `npm audit --omit=dev` + `npm run lint` (ESLint, type-checked,
-  incl. accessibility) + `npm run lint:css` (Stylelint) + `npm run knip` + `npm run format:check`
-  (Prettier) + `npm run build` (vue-tsc + Vite) + `npm run test` (Vitest), with coverage reported
-  (no hard gate). A third job runs PSScriptAnalyzer over `scripts/*.ps1` with
-  `PSScriptAnalyzerSettings.psd1`. The frontend CI job checks out submodules (see below). It also
-  **fails if the committed contract is stale**:
-  `composer docs` + `git diff --exit-code openapi.json` (backend) and `npm run gen:types` +
-  `git diff --exit-code src/types/api.generated.ts` (frontend). Backend tests build a fresh in-memory SQLite DB from
-  `backend/tests/Support/schema.sql` and pass it to Storage/Collection constructors (the app
-  uses **constructor DI** — the PHP-DI container in `api/dependencies.php` supplies `PDO` and
-  autowires the graph). If you change a migration, regenerate `schema.sql` (see CONTRIBUTING.md).
-  Frontend tests are in `src/__tests__/*.spec.ts` (happy-dom). Untested by design: HTTP
-  controllers, and the `ffmpeg`/curl/image-pipeline helpers.
+- **`ffmpeg` and `ffprobe` must be on the PATH** for thumbnails and video metadata (they run
+  through Laravel's `Process`); without them the gallery shows its placeholder. **GD** (with WebP,
+  ideally AVIF) is required for fingerprints and the duplicate scan's thumbnail comparison.
+- **Danbooru's firewall wants the account in the User-Agent.** Requests are sent as
+  `GalleryTagImporter/1.0; user #<DANBOORU_USER_ID>`; without the ID, Cloudflare blocks the
+  server (`503 DanbooruBlocked`) before the API key is even checked. A 403 that isn't JSON is that
+  block; the API's own refusals are JSON (`DanbooruAuthFailed`).
+- **Settings come from `config()`, never `env()`.** Production runs on a cached config, where
+  `env()` returns null outside `config/`. A new setting goes in `config/gallery.php` and
+  `.env.example`, and on the droplet in `.env` followed by a deploy.
+- **The queue worker runs old code until it restarts.** Deploys send `queue:restart`; after any
+  change made outside a deploy, run it yourself. A job already queued is unserialized with the
+  class as it is when it runs, so rename a job's properties with care.
+- **CI runs lint, static analysis, tests and build.** GitHub Actions (`.github/workflows/ci.yml`)
+  runs, on the backend, `composer audit` + `composer lint` (Pint) + `composer rector:check` +
+  `composer analyse` (Larastan level 8 + strict and deprecation rules) + `composer docs` with
+  `git diff --exit-code openapi.json` + `composer test` (Pest). On the frontend: `npm audit --omit=dev`
+  + `npm run gen:types` with `git diff --exit-code src/types/api.generated.ts` + `npm run lint`
+  (ESLint, type-checked, incl. accessibility) + `npm run lint:css` (Stylelint) + `npm run knip` +
+  `npm run format:check` (Prettier) + `npm run build` (vue-tsc + Vite) + `npm run test` (Vitest),
+  with coverage reported (no hard gate). A third job runs PSScriptAnalyzer over `scripts/*.ps1` with
+  `PSScriptAnalyzerSettings.psd1`. The frontend job checks out submodules. Backend feature tests run
+  on a fresh in-memory SQLite database per test (`RefreshDatabase`), with Danbooru (`Http::fake`),
+  ffmpeg (`Process::fake`) and the queue faked where they're touched.
 - **Deploys snapshot the database before migrating** — `scripts/deploy.ps1` writes
   `db/.backups/gallery-<timestamp>.db` via SQLite `VACUUM INTO` (keeping five) and aborts before
   migrating if the snapshot fails. Use `VACUUM INTO`, never `cp`: the connection runs in WAL mode,
@@ -562,36 +617,30 @@ which is fine given the token's entropy.
   **not** auto-restored by the failure trap — that trap fires on any non-zero exit, including
   after a migration has already succeeded, and reverting data could discard media uploaded during
   the deploy window; a failed migration prints the path and the restore command instead.
-- **OpenAPI is swagger-php 7's spec attributes** (`use OpenApi\Spec as OAS;`), migrated from the
-  classic `OpenApi\Attributes` with the package's own Rector set
-  (`vendor/zircote/swagger-php/rector/set/classic-to-spec.php`). The document is built by
-  `tests/Support/OpenApiDocument::builder()`, which both `composer docs` (`bin/openapi.php`) and
+- **OpenAPI is swagger-php 7's spec attributes** (`use OpenApi\Spec as OAS;`). The document is built
+  by `tests/Support/OpenApiDocument::builder()`, which both `composer docs` (`bin/openapi.php`) and
   `OpenApiSpecTest` use, so the two can't disagree about how it's built. That builder drops v7's
   `Properties` augmenter, which would publish every PHP property initialiser on a doc-only response
-  class as a schema `default` (81 of them, e.g. `success: true` on `ScanResult`); put a real default
-  on the attribute instead. swagger-php 8 moves the spec classes from `OpenApi\Spec` to
-  `OpenApi\Attributes`: one `use` line per file, and the same Rector set handles it.
+  class as a schema `default`; put a real default on the attribute instead. Give every operation an
+  explicit, readable `operationId`. swagger-php 8 moves the spec classes from `OpenApi\Spec` to
+  `OpenApi\Attributes`: one `use` line per file, and the package's Rector set handles it.
 - **Fingerprints are only comparable with ones computed the same way.** Anything that changes how
-  `MediaCollection::createFingerprint()` hashes (algorithm, library, image driver) needs
-  `php backend/scripts/regenerate-fingerprints.php` on the droplet right after the deploy, before
-  the next scan or ingest: until it finishes, old and new fingerprints sit side by side and their
-  distances mean nothing. The 2026-11 move from `jenssegers/imagehash` to `intervention/imagehash`
-  was one: same pHash, but the 8×8 block is read transposed, so every bit moved. Hashing is pinned
-  to GD for the same reason — the old library used Imagick when it was loaded, so the hash depended
-  on the machine. The script clears (rather than keeps) a fingerprint it can't recompute, so a
+  `Services/Fingerprinter` hashes (algorithm, library, image driver) needs
+  `php artisan gallery:regenerate fingerprints` on the droplet right after the deploy, before the
+  next scan or ingest: until its jobs finish, old and new fingerprints sit side by side and their
+  distances mean nothing. Hashing is pinned to GD because the hash otherwise depends on whether
+  Imagick is loaded. A fingerprint that can't be recomputed is cleared rather than kept, so a
   failure drops that image from the scan instead of leaving a stale-format hash in it.
 - **`config.platform.php` in `backend/composer.json` mirrors the droplet's PHP** (8.5.12 as of
   2026-11), so Composer resolves for what production runs, not your machine. Raise it only after
-  upgrading the droplet. `roave/security-advisories` conflicts with PHP releases that have known
-  advisories, so when the pin falls behind, `composer update` refuses to resolve anything; that
-  happened at 8.5.6 and is the signal to upgrade PHP on the droplet, not to raise the pin alone.
-- **Line endings are LF, enforced by `.gitattributes` (`* text=auto eol=lf`).** The PHP coding
-  standard fails a file on CRLF (phpcs did, and PHP CS Fixer does) and Prettier rewrites it, so a Windows checkout without this produced 34 lint
-  errors in files nobody had touched. `eol=lf` overrides `core.autocrlf`, so no per-developer git
-  config is required — do not "fix" a CRLF complaint by changing your local `core.autocrlf`. Note
-  that converting a file's line endings does *not* fix line endings already escaped inside a
-  generated artifact: `openapi.json` carried `\r\n` inside description strings taken from PHP
-  docblocks, and needed `composer docs` to clear (the `OpenApiSpecTest` catches this).
+  upgrading the droplet.
+- **Line endings are LF, enforced by `.gitattributes` (`* text=auto eol=lf`).** Pint and Prettier
+  fail or rewrite a CRLF file, so a Windows checkout without this produced lint errors in files
+  nobody had touched. `eol=lf` overrides `core.autocrlf`, so no per-developer git config is
+  required — do not "fix" a CRLF complaint by changing your local `core.autocrlf`. Converting a
+  file's line endings does *not* fix line endings already escaped inside a generated artifact:
+  `openapi.json` once carried `\r\n` inside descriptions taken from docblocks, and needed
+  `composer docs` to clear (the `OpenApiSpecTest` catches this).
 - **Do not upgrade to TypeScript 7 yet.** TS 7 is the native port and removed the `./lib/tsc`
   subpath from its package `exports`. `vue-tsc` resolves that path directly and exits with
   `ERR_PACKAGE_PATH_NOT_EXPORTED`, so the type-check (`npm run build`) cannot run at all — and
@@ -599,12 +648,12 @@ which is fine given the token's entropy.
   install the combination without complaint. Still true of 3.3.14 (2026-11): its only addition is
   following `typescript` when it is aliased to `@typescript/typescript6`. Stay on `~6.0.3` until
   vue-tsc ships TS 7 support.
-
 - **Version bumps are the release trigger.** CI tags and publishes `v<version>` from
   `frontend/package.json` using the matching `## [<version>]` section of `CHANGELOG.md` as the
-  release body, so bump the version and write its section in the same commit. The **HTTP contract
-  version is separate** — `Configuration::API_VERSION` — and only moves when the API surface
-  changes.
+  release body, so bump the version (`frontend/package.json` and `package-lock.json`, and
+  `config/gallery.php`'s `version`, which `GET /api/version` serves) and write its section in the
+  same commit. The **HTTP contract version is separate** — `App\OpenApi\OpenApiSpec::API_VERSION` —
+  and only moves when the API surface changes.
 - Release history lives in `CHANGELOG.md` (Keep a Changelog format). A historical
   `IMPROVEMENTS.md` also exists (gitignored) — old internal review notes, not a current audit;
   don't trust it as the state of the codebase.
@@ -614,24 +663,37 @@ which is fine given the token's entropy.
 ## 11. How to add things (quick recipes)
 
 **A new API endpoint**
-1. Add SQL to the relevant `*Repository`/`*Storage` class (prepared statements only).
-2. Expose it via the matching repository/collection method.
-3. Add a controller action; validate input, return via `success()`/`created()`/`noContent()`/`error()`
-   with the right status code, and **annotate it with `#[OAS\Operation\Get/Post/…]`** (+ any new response schema
-   under `Structure/Api/`).
-4. Register the route in `api/index.php` in the correct group (mind auth + caching); public writes
-   go on the `(method, path)` allowlist in `$authMiddleware`.
-5. If it's a cached GET, use `cachedSuccess`; if it's a mutation, call `invalidateCache`.
+1. Add the route to `routes/api.php`: public reads at the top, writes inside the `auth:sanctum`
+   group (a public write outside it only deliberately, see §7).
+2. For a write with a body, add a Form Request extending `ApiRequest`: `rules()`, `messages()` in
+   the contract's wording, and `errorCodes()` for each rule's code and status.
+3. Add the controller action: work through models and services, return a Resource (or
+   `JsonResponse`) with the right status, raise failures as `ApiException`, and **annotate it with
+   `#[OAS\Operation\Get/Post/…]`** and a readable `operationId` (+ any new response schema under
+   `app/OpenApi/Schemas/`).
+4. If it's a cached GET, use `$this->cache->remember()`; if it's a write, `$this->cache->bump()`
+   the groups it changes.
+5. Add a feature test (Pest) that goes through HTTP; fake Danbooru, ffmpeg or the queue if it
+   reaches them.
 6. Run `composer docs` (backend) and `npm run gen:types` (frontend); commit both regenerated files.
 
 **A new media field**
-Update: a **migration**, the `Media` structure (+setter + `#[OAS\Property]`),
-`MediaStorage` (`store`/`retrieve*` column lists), then regenerate the spec + types
+A **migration** adding the column (and `SchemaTest`'s expectation), the `Media` model (`$fillable`,
+casts), `MediaResource` (+ `#[OAS\Property]` on its schema), `MediaIngest`/`MediaMetadata` if it is
+read at ingest (and `gallery:regenerate` to backfill), then regenerate the spec + types
 (`composer docs`, `npm run gen:types`) so the frontend `Media` type picks it up.
 
 **A new tag-category color**
-Add to `TagCategoryController::VALID_COLORS` (backend) **and** `VALID_COLORS` in
-`constants/categories.ts` (frontend) **and** define the CSS in `frontend/src/style.css`.
+Add to `TagCategory::COLORS` (backend) **and** `VALID_COLORS` in `constants/categories.ts`
+(frontend) **and** define the CSS in `frontend/src/style.css`.
+
+**A new background task**
+A job class (`ShouldQueue`) dispatched where the work starts; if it runs on a timetable, one line
+in `routes/console.php`. If it writes what a cached read shows, bump that group.
+
+**A new setting**
+`config/gallery.php` (read raw, as the others are), `.env.example` with a comment, the
+`GalleryConfigTest` expectation, and §3's list above. On the droplet, add it to `.env` and deploy.
 
 **A new frontend page**
 Create a view in `views/`, add a lazy route with `meta.title` in `router/index.ts`, fetch via
@@ -641,15 +703,20 @@ Create a view in `views/`, add a lazy route with `meta.title` in `router/index.t
 
 ## 12. Conventions checklist for any change
 
-- [ ] SQL only in `Repository`/`Storage`; bound parameters always.
-- [ ] Controllers return the right status code (`200`/`201`/`204`) via `success()`/`created()`/
-      `noContent()`, or `error()` with a PascalCase code + human message.
-- [ ] Endpoints/schemas are `#[OAS\*]`-annotated; `composer docs` + `npm run gen:types` re-run and
-      the regenerated `openapi.json` / `api.generated.ts` committed (CI enforces).
-- [ ] Mutations invalidate the right cache group(s).
-- [ ] New state-changing routes are in an auth-protected group (or added to the public allowlist consciously).
-- [ ] Schema changes land in a **Phinx migration** (never hand-edited into `db/setup.php`).
+- [ ] Writes are validated by a Form Request extending `ApiRequest`; failures are `ApiException`s
+      with a PascalCase code and a human message.
+- [ ] The right status codes (`200`/`201`/`204`), and responses through Resources.
+- [ ] Endpoints/schemas are `#[OAS\*]`-annotated with an `operationId`; `composer docs` +
+      `npm run gen:types` re-run and the regenerated `openapi.json` / `api.generated.ts` committed (CI enforces).
+- [ ] Writes bump the right cache group(s), in jobs and commands too.
+- [ ] New state-changing routes are in the `auth:sanctum` group (or public, consciously).
+- [ ] Schema changes land in a **new migration**.
+- [ ] Settings are read with `config()`, never `env()` outside `config/`.
+- [ ] Slow or per-file work runs in a queued job.
+- [ ] A feature test covers it; the contract replay stays green, and a deliberate contract change
+      is in `divergences.php`.
 - [ ] Frontend: typed (import from `types/`), `<script setup>`, API via `useApi` + `api/endpoints.ts`, no direct `fetch`.
 - [ ] Bump `sw.js` `CACHE_VERSION` if caching/asset behavior changed.
-- [ ] Keep frontend/backend mirror lists (colors, extensions) in sync.
-```
+- [ ] Keep the mirrored lists in sync: tag colors (`TagCategory::COLORS` ↔ `constants/categories.ts`),
+      file types (`Media::IMAGE_EXTENSIONS`/`VIDEO_EXTENSIONS` ↔ `UploadView.vue`), and upload limits
+      (`public/.htaccess` ↔ `constants/uploads.ts`).
