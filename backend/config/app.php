@@ -67,6 +67,10 @@ return [
 
     'timezone' => 'UTC',
 
+    // The scheduler's clock (routes/console.php): the droplet's timezone, so
+    // the nightly ingest runs at its midnight, as cron.php did.
+    'schedule_timezone' => env('SCHEDULE_TIMEZONE', 'UTC'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration

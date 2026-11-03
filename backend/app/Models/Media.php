@@ -31,6 +31,14 @@ class Media extends Model
     /** Extensions of still images. A GIF is one unless it is animated. */
     public const array IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'tif', 'avif'];
 
+    public const array VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'm4v'];
+
+    /** Whether the gallery takes a file of this name: an image or video extension, in any case. */
+    public static function isSupportedFile(string $fileName): bool
+    {
+        return in_array(strtolower(pathinfo($fileName, PATHINFO_EXTENSION)), [...self::IMAGE_EXTENSIONS, ...self::VIDEO_EXTENSIONS], true);
+    }
+
     /**
      * Whether a file is an image or a video, by its extension: an animated GIF
      * is a video, and so is anything that isn't an image.

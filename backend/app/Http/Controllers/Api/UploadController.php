@@ -26,8 +26,6 @@ use Throwable;
  */
 final class UploadController extends Controller
 {
-    private const array VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'm4v'];
-
     // PHP's upload_max_filesize (.htaccess) refuses anything over 100 MB first.
     private const int MAX_FILE_SIZE = 500 * 1024 * 1024;
 
@@ -116,7 +114,7 @@ final class UploadController extends Controller
             return $error('Upload error code: ' . $file->getError());
         }
         $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
-        if (!in_array($extension, [...Media::IMAGE_EXTENSIONS, ...self::VIDEO_EXTENSIONS], true)) {
+        if (!Media::isSupportedFile($originalName)) {
             return $error('Invalid file type: .' . $extension);
         }
         if ($file->getSize() > self::MAX_FILE_SIZE) {
@@ -165,7 +163,7 @@ final class UploadController extends Controller
         }
 
         try {
-            $media = $ingest->add($path, $name, $hash);
+            $media = $ingest->add($path, $name, $hash, now()->getTimestamp());
         } catch (Throwable $e) {
             File::delete($path);
             Log::error('Upload processing failed', ['file' => $originalName, 'error' => $e->getMessage()]);

@@ -33,5 +33,9 @@ class AppServiceProvider extends ServiceProvider
                 $headers,
                 ['retry_after' => (int) $headers['Retry-After']],
             )));
+
+        // Queued Danbooru imports (ImportDanbooruTags): about one every two
+        // seconds, as the Slim app's bulk import paused between items.
+        RateLimiter::for('danbooru', static fn(): Limit => Limit::perMinute(30));
     }
 }

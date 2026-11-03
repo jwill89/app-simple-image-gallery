@@ -199,6 +199,14 @@ Controllers are untested today by design, so record what they return before touc
 
 **Done when:** ingesting a copy of the live media folder gives the same rows, thumbnails and fingerprints as `cron.php`.
 
+How it was built, and where it differs from the Slim scripts:
+
+- **Commands:** `gallery:ingest` (with `--import-tags` for what `cron_with_tags.php` did), `gallery:import-tags [id]`, `gallery:regenerate {thumbnails|fingerprints|metadata}` and `gallery:dupes`. The first three queue a job per file or item: `ProcessNewMedia`, `ImportDanbooruTags` and `RebuildFromFile`. `gallery:dupes` runs the scan itself and prints the tuning table.
+- **One file at a time:** a file that can't be added fails only its own job and stays in the ingest folder for the next night. `cron.php` ran the whole batch in one transaction, so one bad file rolled back every row while the files already moved stayed in `full/`. A file still waiting from an earlier run is not queued twice (`ShouldBeUnique`).
+- **Cache:** ingesting, regenerating and importing now invalidate the response-cache groups they change. The scripts left the lists stale until the cached responses expired.
+- **Danbooru:** `--import-tags` uses the import rules in the database and the IQDB fallback, like every other import; `cron_with_tags.php` had its own hard-coded rules and looked up MD5 only. Imports are limited to 30 a minute. One that Danbooru answers 429 waits a minute and tries again; jobs retry for a day and give up after three exceptions. Results go to the log, not the console.
+- **Checked:** the same sample ingest folder went through a staged copy of `cron.php` and through `gallery:ingest`. It held JPEG, PNG, WebP, GIF, BMP, animated GIF and video files, a file with a taken name, a copy of an existing item, an unsupported file, and 30 items whose files were gone. Both left the same rows, column for column, fingerprints included, and the same files. Neither machine had ffmpeg, so no thumbnails were compared; the tests check that ffmpeg and ffprobe are called with the arguments `cron.php` used. The run on a copy of the live media folder, with ffmpeg, is left for the droplet in Phase 7.
+
 ### Phase 6: SPA shell and API docs
 
 - Port `index.php` to a `SpaController` on `Route::fallback()` that reads the built `index.html` and injects the OG tags and FontAwesome kit the same way.
@@ -240,7 +248,7 @@ Laravel replaces the flat webroot with an app folder whose `public/` is the docu
 3. **Run `php artisan migrate --force`.** The baseline migration is a no-op on the live database and only adds Laravel's tables, so the old app is unaffected.
 4. **Test on a temporary subdomain** with its own vhost pointing at `gallery-app/public`. Add that origin to `GALLERY_ALLOWED_ORIGINS` while testing writes.
 5. **Switch.** Change the gallery vhost's DocumentRoot to `/var/www/gallery-app/public`, then run `apachectl configtest` and reload Apache. To roll back, point it at the old webroot and reload.
-6. **Start background work.** Add the scheduler cron entry for `www-data` (`* * * * * cd /var/www/gallery-app && php artisan schedule:run >> /dev/null 2>&1`) and remove the old `cron.php` line. Run `php artisan queue:work --tries=3 --max-time=3600` as `www-data` under systemd or Supervisor so it restarts automatically.
+6. **Start background work.** Set `SCHEDULE_TIMEZONE` in `.env` to the droplet's timezone (`timedatectl`), so the ingest keeps `cron.php`'s midnight. Add the scheduler cron entry for `www-data` (`* * * * * cd /var/www/gallery-app && php artisan schedule:run >> /dev/null 2>&1`) and remove the old `cron.php` line. Run `php artisan queue:work --tries=3 --max-time=3600` as `www-data` under systemd or Supervisor so it restarts automatically. Before the switch, finish Phase 5's check on a copy of the media folder: run `cron.php` and `gallery:ingest` on the same files and compare the rows, fingerprints and thumbnails.
 
 ### Apache details
 
