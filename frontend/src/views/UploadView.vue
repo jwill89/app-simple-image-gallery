@@ -83,11 +83,13 @@ const acceptString = ALL_EXTENSIONS.join(',')
 const uploadSummary = computed(() => {
   if (uploading.value || lastUploadResults.value.length === 0) return null
 
-  const counts = { success: 0, duplicate: 0, error: 0 }
+  const counts = { success: 0, duplicate: 0, error: 0, tagsFailed: 0, noPost: 0 }
   for (const r of lastUploadResults.value) {
     if (r.status === 'success') counts.success++
     else if (r.status === 'duplicate') counts.duplicate++
     else if (r.status === 'error') counts.error++
+    if (r.status === 'success' && r.tags_error) counts.tagsFailed++
+    if (r.status === 'success' && r.tags_found === false) counts.noPost++
   }
   if (counts.success + counts.duplicate + counts.error === 0) return null
 
@@ -95,10 +97,20 @@ const uploadSummary = computed(() => {
   if (counts.success > 0) parts.push(`${counts.success} uploaded`)
   if (counts.duplicate > 0) parts.push(`${counts.duplicate} skipped as duplicates`)
   if (counts.error > 0) parts.push(`${counts.error} failed`)
-  const message = `${parts.join(', ')}.`
+  let message = `${parts.join(', ')}.`
+  // Uploaded, but without the tags asked for: the toasts that said so have gone.
+  if (counts.tagsFailed > 0) {
+    message += ` Danbooru tags could not be fetched for ${counts.tagsFailed} of them.`
+  }
+  if (counts.noPost > 0) {
+    message += ` ${counts.noPost} ${counts.noPost === 1 ? 'has' : 'have'} no post on Danbooru.`
+  }
 
   if (counts.error > 0) {
     return { severity: 'danger' as const, title: 'Upload finished with errors', message }
+  }
+  if (counts.tagsFailed > 0) {
+    return { severity: 'warning' as const, title: 'Uploaded without some tags', message }
   }
   if (counts.duplicate > 0) {
     return { severity: 'warning' as const, title: 'Upload complete', message }
@@ -269,6 +281,7 @@ async function uploadFiles() {
 
   uploading.value = true
   const files = selectedFiles.value
+  const wantTags = fetchTags.value
   const failWith = (index: number, message: string): UploadResult => ({
     file_name: files[index].name,
     status: 'error',
@@ -289,7 +302,7 @@ async function uploadFiles() {
       for (const index of batch) {
         formData.append('files[]', files[index])
       }
-      if (fetchTags.value) {
+      if (wantTags) {
         formData.append('fetch_tags', '1')
       }
 
@@ -297,11 +310,18 @@ async function uploadFiles() {
         const result = await api.upload<UploadResponse>(endpoints.media.upload, formData)
         if (!result) throw new Error('No response from the upload request')
 
+        // Asked for tags, the server leaves out its tag total when it skipped
+        // the lookups because Danbooru isn't set up there; say so on each file.
+        const tagsSkipped = wantTags && result.total_tags_applied === undefined
         batch.forEach((index, n) => {
-          uploadResults.value[index] =
+          const answer =
             n < result.results.length
               ? result.results[n]
               : failWith(index, 'The server did not receive this file')
+          uploadResults.value[index] =
+            tagsSkipped && answer.status === 'success' && !answer.tags_error
+              ? { ...answer, tags_error: 'Danbooru is not set up on the server.' }
+              : answer
         })
         tagsApplied += result.total_tags_applied ?? 0
       } catch (e) {
@@ -319,9 +339,12 @@ async function uploadFiles() {
     const uploaded = count('success')
     const duplicates = count('duplicate')
     const failed = count('error')
-    // A file added without its Danbooru tags because the lookup failed, which
-    // isn't the same as Danbooru having no post for it.
-    const tagErrors = results.flatMap((r) => (r.tags_error ? [r.tags_error] : []))
+    // Files added without the Danbooru tags asked for: because the lookup
+    // failed, or because Danbooru has no post for them, which is no failure.
+    const tagErrors = results.flatMap((r) =>
+      r.status === 'success' && r.tags_error ? [r.tags_error] : [],
+    )
+    const noPost = results.filter((r) => r.status === 'success' && r.tags_found === false).length
 
     // Keep only the failed files, with their results, for a retry; successes
     // and duplicates are done. Files added while uploading stay too.
@@ -341,10 +364,19 @@ async function uploadFiles() {
       toastStore.success(msg, 4000, 'Upload Complete')
     }
     if (tagErrors.length > 0) {
+      // Stays until dismissed: the files are in, so nothing else says their
+      // tags are missing, and the reason (a Ray ID, a setting) is to act on.
       toastStore.warning(
         `Danbooru tags could not be fetched for ${tagErrors.length} file(s). ${tagErrors[0]}`,
-        12000,
+        0,
         'Tags Not Fetched',
+      )
+    }
+    if (noPost > 0) {
+      toastStore.info(
+        `Danbooru has no post for ${noPost} file(s), so they were uploaded without tags.`,
+        6000,
+        'No Tags Found',
       )
     }
     if (duplicates > 0) {
@@ -516,6 +548,9 @@ async function uploadFiles() {
                   <span class="icon"><i class="fa-solid fa-circle-check" /></span>
                   <template v-if="uploadResults[index]?.tags_applied">
                     {{ uploadResults[index].tags_applied }} tags
+                  </template>
+                  <template v-else-if="uploadResults[index]?.tags_error">
+                    Tags not fetched
                   </template>
                   <template v-else-if="uploadResults[index]?.tags_found === false && fetchTags">
                     No tags found

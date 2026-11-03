@@ -49,8 +49,9 @@ const sent = (call: number) => (upload.mock.calls[call][1] as FormData).getAll('
 
 let pinia: Pinia
 
-async function uploadThrough(files: File[]) {
+async function uploadThrough(files: File[], { fetchTags = false } = {}) {
   const wrapper = mount(UploadView, { global: { plugins: [pinia], stubs: { PageHeader: true } } })
+  if (fetchTags) await wrapper.get('input[type="checkbox"]').setValue(true)
   const input = wrapper.get('input[type="file"]')
   Object.defineProperty(input.element, 'files', { value: files, configurable: true })
   await input.trigger('change')
@@ -111,21 +112,70 @@ describe('UploadView', () => {
     )
   })
 
-  it("reports a failed Danbooru lookup with the server's reason", async () => {
+  it("warns, until dismissed, of a failed Danbooru lookup with the server's reason", async () => {
     const blocked = "Danbooru's firewall (Cloudflare) blocked this server's request."
     upload.mockImplementation((_url: string, form: FormData) => {
       const response = answer(form)
       return Promise.resolve({
         ...response,
+        total_tags_applied: 0,
         results: response.results.map((r) => ({ ...r, tags_error: blocked })),
       })
     })
 
-    await uploadThrough(images(3))
+    const wrapper = await uploadThrough(images(3), { fetchTags: true })
 
-    expect(useToastStore().toasts.map((t) => t.message)).toEqual([
+    const toasts = useToastStore().toasts
+    expect(toasts.map((t) => t.message)).toEqual([
       '3 file(s) uploaded successfully.',
       `Danbooru tags could not be fetched for 3 file(s). ${blocked}`,
+    ])
+    expect(toasts[1].duration).toBe(0)
+    expect(wrapper.text()).toContain(
+      '3 uploaded. Danbooru tags could not be fetched for 3 of them.',
+    )
+  })
+
+  it('warns when the server skipped the lookups because Danbooru is not set up there', async () => {
+    // No total_tags_applied: the server's sign that it ignored fetch_tags.
+    upload.mockImplementation((_url: string, form: FormData) => Promise.resolve(answer(form)))
+
+    const wrapper = await uploadThrough(images(2), { fetchTags: true })
+
+    expect(useToastStore().toasts.map((t) => t.message)).toContain(
+      'Danbooru tags could not be fetched for 2 file(s). Danbooru is not set up on the server.',
+    )
+    expect(wrapper.text()).toContain('Danbooru tags could not be fetched for 2 of them.')
+  })
+
+  it('says which files Danbooru has no post for, apart from failures', async () => {
+    upload.mockImplementation((_url: string, form: FormData) => {
+      const response = answer(form)
+      return Promise.resolve({
+        ...response,
+        total_tags_applied: 12,
+        results: response.results.map((r, i) =>
+          i === 0 ? { ...r, tags_found: true, tags_applied: 12 } : { ...r, tags_found: false },
+        ),
+      })
+    })
+
+    const wrapper = await uploadThrough(images(3), { fetchTags: true })
+
+    expect(useToastStore().toasts.map((t) => t.message)).toEqual([
+      '3 file(s) uploaded successfully. 12 tags applied.',
+      'Danbooru has no post for 2 file(s), so they were uploaded without tags.',
+    ])
+    expect(wrapper.text()).toContain('3 uploaded. 2 have no post on Danbooru.')
+  })
+
+  it('says nothing about tags when none were asked for', async () => {
+    upload.mockImplementation((_url: string, form: FormData) => Promise.resolve(answer(form)))
+
+    await uploadThrough(images(2))
+
+    expect(useToastStore().toasts.map((t) => t.message)).toEqual([
+      '2 file(s) uploaded successfully.',
     ])
   })
 
