@@ -114,7 +114,8 @@ if ($missing.Count -gt 0) {
 
 # ── Resolve paths & tools ─────────────────────────────────────────────────────
 $RepoRoot = Split-Path $PSScriptRoot -Parent
-$BackendDir = Join-Path $RepoRoot "backend" # PHP payload source
+# The Slim app, until the Laravel migration's Phase 7 rewrites this deploy for backend/.
+$BackendDir = Join-Path $RepoRoot "backend-old" # PHP payload source
 $FrontendDir = Join-Path $RepoRoot "frontend"
 $DistDir = Join-Path $FrontendDir "dist" # vite outDir is frontend/dist
 
@@ -174,7 +175,7 @@ $tarball = Join-Path $env:TEMP ("gallery-deploy-{0}.tgz" -f [guid]::NewGuid())
 $backendItems = @('index.php', '.htaccess', 'api', 'includes', 'db', 'phinx.php',
     'openapi.json', 'composer.json', 'composer.lock', 'scripts')
 foreach ($p in $backendItems) {
-    if (-not (Test-Path (Join-Path $BackendDir $p))) { Fail "Expected path missing: backend/$p" }
+    if (-not (Test-Path (Join-Path $BackendDir $p))) { Fail "Expected path missing: backend-old/$p" }
 }
 # Two -C roots flatten backend/* and frontend/dist into one archive; the excludes
 # keep the live SQLite DB (and its WAL/SHM sidecars) and any local pre-migrate

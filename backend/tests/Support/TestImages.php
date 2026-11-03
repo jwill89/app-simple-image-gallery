@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Gallery\Tests\Support;
+namespace Tests\Support;
 
 /**
  * Images drawn with GD for tests that need pixels: a stand-in artwork, and the

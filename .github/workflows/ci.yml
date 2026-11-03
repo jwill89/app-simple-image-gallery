@@ -10,68 +10,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The Laravel backend. backend-old/ (the Slim app) is reference only and has no
+  # job: nothing ships from it, and the contract recordings guard what it did.
   backend:
-    name: Backend (PHP / Slim)
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        php: ['8.5']
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ matrix.php }}
-          # The ext-* composer.json requires (composer install refuses without them).
-          extensions: pdo, pdo_sqlite, curl, fileinfo, gd, mbstring
-          tools: composer
-          coverage: pcov
-
-      - name: Cache Composer packages
-        uses: actions/cache@v6
-        with:
-          path: backend/vendor
-          key: composer-${{ matrix.php }}-${{ hashFiles('backend/composer.lock') }}
-          restore-keys: composer-${{ matrix.php }}-
-
-      - name: Install dependencies
-        run: composer install --prefer-dist --no-interaction --no-progress
-
-      # Dev packages included: they run here and on the droplet, whose deploy
-      # installs them for Phinx.
-      - name: Security advisories (composer audit)
-        run: composer audit
-
-      - name: Verify OpenAPI spec is current
-        run: |
-          composer docs
-          git diff --exit-code openapi.json
-
-      - name: composer.json is normalized
-        run: composer normalize --dry-run
-
-      - name: Dependencies declared and used (composer-unused, composer-require-checker)
-        run: composer deps:check
-
-      - name: Coding standard (PHP CS Fixer / PER-CS 3.0)
-        run: composer lint
-
-      - name: Current PHP idioms, no dead code (Rector)
-        run: composer rector:check
-
-      - name: Static analysis (PHPStan level 8 + strict and deprecation rules)
-        run: composer analyse
-
-      - name: Test (PHPUnit + coverage)
-        run: composer test:coverage
-
-  # The Laravel backend being built beside backend/ (docs/laravel-migration.md),
-  # through the same gate. At the plan's Phase 8 it replaces the job above.
-  backend-laravel:
     name: Backend (PHP / Laravel)
     runs-on: ubuntu-latest
     strategy:
@@ -79,7 +20,7 @@ jobs:
         php: ['8.5']
     defaults:
       run:
-        working-directory: backend-laravel
+        working-directory: backend
     steps:
       - uses: actions/checkout@v7
 
@@ -95,8 +36,8 @@ jobs:
       - name: Cache Composer packages
         uses: actions/cache@v6
         with:
-          path: backend-laravel/vendor
-          key: composer-laravel-${{ matrix.php }}-${{ hashFiles('backend-laravel/composer.lock') }}
+          path: backend/vendor
+          key: composer-laravel-${{ matrix.php }}-${{ hashFiles('backend/composer.lock') }}
           restore-keys: composer-laravel-${{ matrix.php }}-
 
       - name: Install dependencies
@@ -108,7 +49,7 @@ jobs:
           cp .env.example .env
           php artisan key:generate
 
-      # Dev packages included, as for the Slim backend.
+      # Dev packages included: their advisories matter in CI too.
       - name: Security advisories (composer audit)
         run: composer audit
 
@@ -203,7 +144,7 @@ jobs:
   # a version already released is skipped, so ordinary pushes are a no-op.
   release:
     name: Tag + release (on version bump)
-    needs: [backend, backend-laravel, frontend, scripts]
+    needs: [backend, frontend, scripts]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
     permissions:

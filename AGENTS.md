@@ -4,13 +4,18 @@ Operational guide for AI coding agents (and humans) working in this repository.
 Read this before making changes. It describes the architecture, conventions,
 data model, commands, and the non-obvious gotchas that will bite you.
 
-> **Laravel migration in progress** (branch `laravel-migration`): the Slim backend is
-> being moved to Laravel without changing the API contract. The plan, its phases and
-> each phase's "Done when" line are in [docs/laravel-migration.md](docs/laravel-migration.md).
-> The recorded contract the new backend must match lives in `backend/tests/Fixtures/contract/`
-> (`php backend/bin/record-contract.php` re-records it). The Laravel app is built in
-> `backend-laravel/` (its README covers setup and checks; CI runs it as `backend-laravel`).
-> Until the plan's Phase 8, this file still describes the Slim backend.
+> **Laravel migration in progress** (branch `laravel-migration`): the backend is being
+> rebuilt as a pure Laravel app without changing the API contract. The plan, its phases
+> and each phase's "Done when" line are in [docs/laravel-migration.md](docs/laravel-migration.md).
+>
+> - **`backend/` is the Laravel app** (its README covers setup and checks; CI runs it).
+> - **`backend-old/` is the Slim app**, kept only as reference and for testing: the contract
+>   the Laravel app must match is recorded from it into `backend-old/tests/Fixtures/contract/`
+>   (`php backend-old/bin/record-contract.php` re-records it). It is deleted when the
+>   migration is done. Don't port its code wholesale; port behavior, the Laravel way.
+>
+> Until the plan's Phase 8, the rest of this file still describes the Slim app, so read its
+> `backend/` paths as `backend-old/`.
 
 ---
 
@@ -120,8 +125,6 @@ via `__DIR__`/`chdir(__DIR__ . '/..')`, so `backend/` *is* the app root in both 
 │       ├── (root)             # cron.php INPUT folder: drop new files here for ingestion
 │       ├── full/              # canonical full-size files (served directly)
 │       └── thumbs/            # generated WebP thumbnails: <base>.webp (200px) and <base>@2x.webp (400px)
-│
-├── backend-laravel/           # Laravel 13 backend being built beside backend/ (docs/laravel-migration.md)
 │
 ├── frontend/                  # Vue 3 + Vite source
 │   ├── vite.config.ts         # Vite + Vitest config (build outDir, dev proxy, test block)

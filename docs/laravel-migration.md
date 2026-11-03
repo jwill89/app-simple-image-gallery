@@ -65,7 +65,7 @@ Every hand-built piece of the backend has a Laravel home; only the duplicate-det
 | `tag_imports.php` and `cron_with_tags.php` | `gallery:import-tags`, dispatching `ImportDanbooruTags` jobs. |
 | curl in `DanbooruTagger` | The Http client, with `Http::fake()` in tests. |
 | `exec()` calls to ffmpeg | The `Process` facade. `Process::fake()` makes the thumbnail pipeline testable for the first time. |
-| `DuplicateScanner`, `RegionDifference`, fingerprinting | Plain classes in `app/Services/`, unchanged. Use the query builder where Eloquent would be slow. |
+| `DuplicateScanner`, `RegionDifference`, fingerprinting | Services in `app/Services/` with the same algorithms, so they give the same results, wired the Laravel way: the query builder where Eloquent would be slow, `config()`, and the configured paths. |
 | Monolog `Logger` singleton | The `Log` facade. |
 
 ### Tooling
@@ -163,13 +163,13 @@ Controllers are untested today by design, so record what they return before touc
 
 ### Phase 2: Schema, models and the baseline migration
 
-- Write one baseline migration that creates each current table only if it's missing (`Schema::hasTable()`). It builds fresh test databases and does nothing on production, like `db/setup.php`'s Phinx baseline.
+- Write one baseline migration that creates each current table only if it's missing (`Schema::hasTable()`). It builds fresh test databases and does nothing on production, like `db/setup.php`'s Phinx baseline. It leaves out `auth_tokens` and `rate_limits`, which Sanctum and Laravel's rate limiter replace; production keeps them for the old app until the cleanup in Phase 8.
 - Copy the schema exactly: `COLLATE NOCASE` on `tag_name` and `category_name`, the composite keys on `media_tags`, `tag_implications` and `dismissed_duplicates`, the cascading foreign keys and every index.
 - Add Laravel's own tables: `users`, `personal_access_tokens`, `jobs`, `failed_jobs` and `job_batches`.
 - Build the models, relationships and factories, and a seeder that loads the contract fixture.
 - Move the duplicate-detection and fingerprint classes over with their existing unit tests, converted to Pest with the Drift plugin (pest --drift). Add a test that a known image still produces its stored fingerprint, since old and new hashes can't be mixed.
 
-**Done when:** a fresh `migrate` matches `tests/Support/schema.sql`, and migrating a copy of the live database only adds Laravel's tables.
+**Done when:** a fresh `migrate` matches `backend-old/tests/Support/schema.sql` (less the two replaced tables), and migrating a copy of the live database only adds Laravel's tables.
 
 ### Phase 3: Cross-cutting behavior
 
@@ -214,7 +214,7 @@ Follow the Deployment section below.
 
 ### Phase 8: Clean up
 
-- Delete the old backend and rename `backend-laravel/` to `backend/`.
+- Move the contract fixtures the Laravel tests read into `backend/tests/`, then delete `backend-old/`.
 - After a week live, add a migration that drops `auth_tokens`, `rate_limits` and `phinx_migrations`.
 - Update README, AGENTS.md, CONTRIBUTING.md and CHANGELOG, and bump the app version. The API version stays the same because the contract didn't change.
 
@@ -272,7 +272,7 @@ The plan assumes the recommendations below; change any of them before Phase 1 st
 | Formatter | Pint with the `per` preset | Same PER-CS style you enforce now, with the tool Laravel teams use. |
 | Test framework | Pest 5 | Built on PHPUnit 13 and needs PHP 8.4 or newer, which the droplet's 8.5.12 meets. Pest is common in Laravel shops, and its Drift plugin converts the existing tests. |
 | API docs | Keep swagger-php | The spec diff is the finish line; Scramble would generate a different spec. |
-| Repo layout | `backend-laravel/` beside `backend/` on a branch | Both apps can run for comparison, and the swap is one rename. |
+| Repo layout | Laravel in `backend/`, the Slim app in `backend-old/` on a branch | The Slim app stays runnable as reference and for recording the contract, and is deleted at the end. Laravel is the only backend that ships from the branch. |
 
 ### Risks
 
