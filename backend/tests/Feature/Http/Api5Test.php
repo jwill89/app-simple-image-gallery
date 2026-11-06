@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\Media;
 use Tests\Support\Contract\DanbooruStub;
 use Tests\Support\ContractFixtureSeeder;
+use Tests\Support\TestBrowser;
 
 use function Pest\Laravel\getJson;
 use function Pest\Laravel\seed;
@@ -20,18 +21,16 @@ beforeEach(function (): void {
 });
 
 test('a path id with no record behind it is a 404 naming what is missing', function (): void {
-    $admin = adminHeaders();
-
     getJson('/api/media/999')->assertNotFound()->assertJson(['error' => 'MediaNotFound']);
     getJson('/api/media/0')->assertNotFound()->assertJson(['error' => 'MediaNotFound']);
     getJson('/api/media/999/tags')->assertNotFound()->assertJson(['error' => 'MediaNotFound']);
     getJson('/api/tags/999')->assertNotFound()->assertJson(['error' => 'TagNotFound', 'message' => 'The tag could not be found.']);
-    withHeaders($admin)->deleteJson('/api/media/1/tags/999')->assertNotFound()->assertJson(['error' => 'TagNotFound']);
-    withHeaders($admin)->deleteJson('/api/tags/5/migrate-to/999')->assertNotFound()->assertJson(['error' => 'TagNotFound']);
-    withHeaders($admin)->patchJson('/api/tag-categories/999', ['color' => 'sky'])->assertNotFound()->assertJson(['error' => 'CategoryNotFound']);
-    withHeaders($admin)->deleteJson('/api/danbooru/category-mappings/99')->assertNotFound()->assertJson(['error' => 'MappingNotFound']);
-    withHeaders($admin)->putJson('/api/danbooru/tag-mappings/999', ['danbooru_tag' => 'a', 'gallery_tag' => 'b'])->assertNotFound()->assertJson(['error' => 'MappingNotFound']);
-    withHeaders($admin)->deleteJson('/api/tag-implications/8/1')->assertNotFound()->assertExactJson(['error' => 'ImplicationNotFound', 'message' => '"smile" does not imply "animal".']);
+    asAdmin()->deleteJson('/api/media/1/tags/999')->assertNotFound()->assertJson(['error' => 'TagNotFound']);
+    asAdmin()->deleteJson('/api/tags/5/migrate-to/999')->assertNotFound()->assertJson(['error' => 'TagNotFound']);
+    asAdmin()->patchJson('/api/tag-categories/999', ['color' => 'sky'])->assertNotFound()->assertJson(['error' => 'CategoryNotFound']);
+    asAdmin()->deleteJson('/api/danbooru/category-mappings/99')->assertNotFound()->assertJson(['error' => 'MappingNotFound']);
+    asAdmin()->putJson('/api/danbooru/tag-mappings/999', ['danbooru_tag' => 'a', 'gallery_tag' => 'b'])->assertNotFound()->assertJson(['error' => 'MappingNotFound']);
+    asAdmin()->deleteJson('/api/tag-implications/8/1')->assertNotFound()->assertExactJson(['error' => 'ImplicationNotFound', 'message' => '"smile" does not imply "animal".']);
 });
 
 test('an id that isn\'t digits matches no route: a plain 404', function (): void {
@@ -40,29 +39,25 @@ test('an id that isn\'t digits matches no route: a plain 404', function (): void
 });
 
 test('an edit changes only the fields it sends, by PATCH or PUT', function (): void {
-    $admin = adminHeaders();
-
-    withHeaders($admin)->patchJson('/api/tags/13', ['tag_name' => 'artist uno'])
+    asAdmin()->patchJson('/api/tags/13', ['tag_name' => 'artist uno'])
         ->assertOk()
         ->assertExactJson(['tag_id' => 13, 'category_id' => 2, 'tag_name' => 'artist uno']);
-    withHeaders($admin)->putJson('/api/tags/13', ['category_id' => 3])
+    asAdmin()->putJson('/api/tags/13', ['category_id' => 3])
         ->assertOk()
         ->assertExactJson(['tag_id' => 13, 'category_id' => 3, 'tag_name' => 'artist uno']);
 
-    withHeaders($admin)->patchJson('/api/tag-categories/2', ['color' => 'violet'])
+    asAdmin()->patchJson('/api/tag-categories/2', ['color' => 'violet'])
         ->assertOk()
         ->assertJson(['category_name' => 'Artist', 'color' => 'violet', 'description' => 'The artist who created this specific piece.', 'sort_order' => 1]);
 });
 
 test('a new tag or category still needs what it always did', function (): void {
-    $admin = adminHeaders();
-
-    withHeaders($admin)->postJson('/api/tags', [])->assertStatus(400)->assertJson(['error' => 'InvalidTagName']);
-    withHeaders($admin)->postJson('/api/tags', ['tag_name' => 'brand new'])->assertCreated()->assertJson(['category_id' => 1]);
+    asAdmin()->postJson('/api/tags', [])->assertStatus(400)->assertJson(['error' => 'InvalidTagName']);
+    asAdmin()->postJson('/api/tags', ['tag_name' => 'brand new'])->assertCreated()->assertJson(['category_id' => 1]);
 });
 
 test('a validation failure lists every broken field, with the first one\'s code', function (): void {
-    withHeaders(adminHeaders())->postJson('/api/tag-categories', ['category_name' => str_repeat('x', 51), 'color' => 'puce'])
+    asAdmin()->postJson('/api/tag-categories', ['category_name' => str_repeat('x', 51), 'color' => 'puce'])
         ->assertStatus(400)
         ->assertExactJson([
             'error' => 'NameTooLong',
@@ -74,15 +69,14 @@ test('a validation failure lists every broken field, with the first one\'s code'
         ]);
 });
 
-test('logging out revokes the token at once', function (): void {
-    $admin = adminHeaders();
+test('logging out signs the browser out at once', function (): void {
+    adminUser()->update(['password' => 'long-enough']);
+    $browser = new TestBrowser();
+    $browser->send('POST', '/api/auth/login', ['username' => 'admin', 'password' => 'long-enough'])->assertOk();
 
-    withHeaders($admin)->postJson('/api/tags', ['tag_name' => 'before logout'])->assertCreated();
-    withHeaders($admin)->deleteJson('/api/auth/token')->assertNoContent();
-    // A test's requests share one app, whose guard remembers the user; on the
-    // server each request starts afresh.
-    app('auth')->forgetGuards();
-    withHeaders($admin)->postJson('/api/tags', ['tag_name' => 'after logout'])->assertUnauthorized();
+    $browser->send('POST', '/api/tags', ['tag_name' => 'before logout'])->assertCreated();
+    $browser->send('DELETE', '/api/auth/session')->assertNoContent();
+    $browser->send('POST', '/api/tags', ['tag_name' => 'after logout'])->assertUnauthorized();
 });
 
 test('a media item comes with its tags, in display order, when asked', function (): void {
@@ -100,7 +94,7 @@ test('a read answers with an ETag, and 304 while it is unchanged', function (): 
     expect($etag)->toStartWith('"');
     withHeaders(['If-None-Match' => $etag])->getJson('/api/tags')->assertStatus(304)->assertNoContent(304);
 
-    withHeaders(adminHeaders())->postJson('/api/tags', ['tag_name' => 'zebra'])->assertCreated();
+    asAdmin()->postJson('/api/tags', ['tag_name' => 'zebra'])->assertCreated();
     $changed = withHeaders(['If-None-Match' => $etag])->getJson('/api/tags')->assertOk();
     expect($changed->headers->get('ETag') === $etag)->toBeFalse();
 });
@@ -109,7 +103,7 @@ test('the Danbooru import no longer sends every tag in the gallery back', functi
     config(['gallery.danbooru.login' => 'contract', 'gallery.danbooru.api_key' => 'contract-key', 'gallery.url' => 'https://gallery.test']);
     DanbooruStub::install(up: true);
 
-    $response = withHeaders(adminHeaders())->postJson('/api/media/1/danbooru-tags')->assertOk();
+    $response = asAdmin()->postJson('/api/media/1/danbooru-tags')->assertOk();
 
     expect(array_keys($response->json()))->toBe(['tags', 'method', 'tags_applied', 'tags_created']);
 });

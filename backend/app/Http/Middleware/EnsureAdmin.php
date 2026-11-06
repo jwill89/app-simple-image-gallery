@@ -12,8 +12,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Lets an admin account through; any other signed-in account is 403
- * Forbidden. Runs after auth:sanctum, which has already turned away a
- * request without a valid token (401).
+ * Forbidden. Runs after auth, which has already turned away a
+ * request that isn't signed in (401).
  */
 final class EnsureAdmin
 {

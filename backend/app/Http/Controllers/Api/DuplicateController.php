@@ -103,7 +103,7 @@ final class DuplicateController extends Controller
         operationId: 'runDuplicateScan',
         summary: 'Run a duplicate scan',
         tags: ['Duplicates'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         responses: [
             new OAS\Response(response: 200, description: 'Scan stats', content: new OAS\MediaType\Json(ref: '#/components/schemas/ScanResult')),
             new OAS\Response(response: 500, description: 'ScanFailed', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
@@ -141,7 +141,7 @@ final class DuplicateController extends Controller
         operationId: 'dismissDuplicatePair',
         summary: 'Dismiss a duplicate pair',
         tags: ['Duplicates'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(
             required: ['media_id_1', 'media_id_2'],
             properties: [

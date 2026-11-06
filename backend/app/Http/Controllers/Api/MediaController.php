@@ -294,7 +294,7 @@ final class MediaController extends Controller
         operationId: 'deleteMedia',
         summary: 'Delete a media item',
         tags: ['Media'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Deleted'),
@@ -325,7 +325,7 @@ final class MediaController extends Controller
         operationId: 'bulkDeleteMedia',
         summary: 'Bulk-delete media items',
         tags: ['Media'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         requestBody: new OAS\RequestBody(
             required: true,
             content: new OAS\MediaType\Json(

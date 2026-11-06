@@ -15,10 +15,12 @@ use App\Models\User;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\Exceptions\OriginMismatchException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Laravel\Passkeys\Passkey;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -28,8 +30,10 @@ use Throwable;
  * Every failure under /api answered as `{ error, message }`, never Laravel's
  * HTML or `{ message }` pages: an unknown path is 404 NotFound, a path id with
  * no record behind it 404 with the resource's own code (MediaNotFound, …), a
- * known path with the wrong method 405 MethodNotAllowed (with Allow), and
- * anything uncaught 500 ServerError. Errors the app raises itself are
+ * known path with the wrong method 405 MethodNotAllowed (with Allow), a write
+ * the browser doesn't mark same-origin 403 ForbiddenOrigin (as VerifyOrigin
+ * answers one from an origin it doesn't allow), and anything uncaught 500
+ * ServerError. Errors the app raises itself are
  * ApiExceptions, which render themselves, and responses already built (the
  * rate limiters') pass through.
  */
@@ -54,11 +58,13 @@ final class ApiExceptionRenderer
         $status = $e->getStatusCode();
         /** @var array<string, string> $headers */
         $headers = $e->getHeaders();
-        // Laravel turns a route model binding's miss into a 404 around it.
-        $missing = $e instanceof HttpException ? $e->getPrevious() : null;
+        // Laravel turns a route model binding's miss into a 404 around it, and
+        // PreventRequestForgery's refusal into a 403.
+        $previous = $e instanceof HttpException ? $e->getPrevious() : null;
 
         [$code, $message] = match (true) {
-            $status === 404 && $missing instanceof ModelNotFoundException => self::missing($missing),
+            $status === 404 && $previous instanceof ModelNotFoundException => self::missing($previous),
+            $status === 403 && $previous instanceof OriginMismatchException => ['ForbiddenOrigin', 'The request origin is not allowed.'],
             $status === 404 => ['NotFound', 'The requested endpoint does not exist.'],
             $status === 405 => ['MethodNotAllowed', "This endpoint does not support {$request->method()} requests."],
             default => [
@@ -86,6 +92,7 @@ final class ApiExceptionRenderer
             User::class => ['UserNotFound', 'The account could not be found.'],
             FavoriteList::class => ['ListNotFound', 'The list could not be found.'],
             SavedSearch::class => ['SearchNotFound', 'The saved search could not be found.'],
+            Passkey::class => ['PasskeyNotFound', 'The passkey could not be found.'],
             default => ['NotFound', 'The requested record could not be found.'],
         };
     }

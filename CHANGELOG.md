@@ -14,6 +14,62 @@ release body taken from that version's section below. So bump the version and
 update its section here in the same commit and push a green commit — no manual
 tagging.
 
+## [7.0.0] - 2026-11-03
+
+**Sessions and passkeys.** A browser now signs in with a session cookie the page's
+scripts can't read, instead of a token kept in the browser's storage, where any
+script on the page could copy it. And an account can add passkeys, to sign in
+with a phone, computer or password manager instead of its password. The HTTP
+contract moves to **`7.0.0`**.
+
+### Breaking (for running the gallery)
+
+- **Everyone signs in again:** login tokens are gone, and their table with them.
+- **Session settings** in `backend/.env`: `SESSION_DRIVER=file`,
+  `SESSION_LIFETIME=1440` (a day without a request signs a session out) and
+  `SESSION_EXPIRE_ON_CLOSE=true`. The cookie is Secure whenever `APP_URL` is
+  https. Sessions are files in `storage/framework/sessions`.
+- **Passkeys belong to `APP_URL`'s host**, so it must be the address people use.
+
+### Breaking (for API clients — the contract is `7.0.0`)
+
+- **No bearer tokens.** `POST /auth/login` and `POST /auth/register` answer
+  `{ user }` and set the session cookie (HttpOnly, `SameSite=Lax`), which the
+  browser sends with every request.
+- **`GET /auth/session`** (public) says who the browser is signed in as, or
+  `{ "user": null }`; it replaces `GET /auth/me`. **`DELETE /auth/session`** signs
+  out, replacing `DELETE /auth/token`.
+- **A write must come from the page itself:** one the browser doesn't mark
+  `Sec-Fetch-Site: same-origin` is `403 ForbiddenOrigin`, as one from an origin
+  that isn't allowed already was.
+
+### Added
+
+- **Passkeys.** The Account page adds them (the password first), and renames
+  and removes them; an unnamed one is named after where it is kept (Windows
+  Hello, iCloud Keychain, …). The login page signs in with one, from a button or
+  from the username field's suggestions. API: `POST /auth/passkey/options` and
+  `POST /auth/passkey` to sign in; `GET|POST /account/passkeys`,
+  `POST /account/passkeys/options` and `PATCH|DELETE /account/passkeys/{passkey_id}`.
+  Signing in with a passkey skips Turnstile and counts against the login limit.
+
+### Changed
+
+- "Keep me signed in" is a 30-day remember cookie; without it, the browser is
+  signed out when it closes.
+- Laravel Sanctum is gone. New: `laravel/passkeys` (on `web-auth/webauthn-lib`)
+  and `@simplewebauthn/browser`.
+
+### Security
+
+- **The page's scripts can't read the login.** The token used to sit in
+  `localStorage` or `sessionStorage`, readable by every script on the page (the
+  FontAwesome kit and Turnstile's among them), and it worked from any machine for
+  up to 30 days. The session cookie is HttpOnly.
+- Signing in starts a new session id, so one planted beforehand signs no one in.
+- A new password replaces the account's remember cookies and ends its other
+  sessions at their next request.
+
 ## [6.0.0] - 2026-11-03
 
 **Accounts.** Anyone can make one, with a username and password, behind
@@ -780,6 +836,8 @@ from the git history, not a formal release.
   with a dedicated tag page, sorting by tag name, a sticky footer with copyright/
   disclaimer, and a **cron** ingest script for importing media (including videos).
 
+[7.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v6.0.0...v7.0.0
+[6.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v5.0.0...v6.0.0
 [5.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v4.0.0...v5.0.0
 [4.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v3.3.0...v4.0.0
 [3.3.0]: https://github.com/jwill89/simple-image-gallery/compare/v3.2.0...v3.3.0

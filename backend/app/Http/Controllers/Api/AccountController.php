@@ -10,12 +10,12 @@ use App\Http\Requests\PasswordChangeRequest;
 use App\Http\Resources\TagResource;
 use App\Models\Tag;
 use App\Models\User;
+use App\Support\Login;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Laravel\Sanctum\PersonalAccessToken;
 use OpenApi\Spec as OAS;
 
 /**
@@ -26,15 +26,16 @@ use OpenApi\Spec as OAS;
 final class AccountController extends Controller
 {
     /**
-     * PATCH /account/password — Change the password. Every other login of the
-     * account is signed out; this one stays.
+     * PATCH /account/password — Change the password. Every other browser
+     * signed in as the account is signed out; this one stays, and stays kept
+     * signed in if it was.
      */
     #[OAS\Operation\Patch(
         path: '/account/password',
         operationId: 'changePassword',
         summary: 'Change your password',
         tags: ['Account'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         requestBody: new OAS\RequestBody(
             required: true,
             content: new OAS\MediaType\Json(
@@ -56,9 +57,9 @@ final class AccountController extends Controller
         $user = self::user($request);
         self::confirmPassword($user, $request->string('current_password')->toString());
 
-        $user->update(['password' => $request->string('password')->toString()]);
-        $current = $user->currentAccessToken();
-        $user->tokens()->when($current instanceof PersonalAccessToken, static fn($q) => $q->whereKeyNot($current->getKey()))->delete();
+        $remembered = Login::remembered($request);
+        $user->setNewPassword($request->string('password')->toString());
+        Login::start($user, $remembered);
 
         return response()->noContent();
     }
@@ -72,7 +73,7 @@ final class AccountController extends Controller
         operationId: 'deleteAccount',
         summary: 'Delete your account',
         tags: ['Account'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         requestBody: new OAS\RequestBody(
             required: true,
             content: new OAS\MediaType\Json(required: ['password'], properties: [new OAS\Property(property: 'password', schema: new OAS\Schema(type: 'string'))]),
@@ -96,7 +97,7 @@ final class AccountController extends Controller
             throw new ApiException('LastAdmin', 409, 'The last admin account can\'t be deleted. Make another admin first.');
         }
 
-        $user->tokens()->delete();
+        Login::end($request);
         $user->delete();
         Log::info('Account deleted', ['user_id' => $user->id]);
 
@@ -112,7 +113,7 @@ final class AccountController extends Controller
         operationId: 'listBlockedTags',
         summary: 'Your blocked tags',
         tags: ['Account'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         responses: [
             new OAS\Response(response: 200, description: 'The blocked tags', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/Tag'))),
         ],
@@ -131,7 +132,7 @@ final class AccountController extends Controller
         operationId: 'blockTag',
         summary: 'Block a tag',
         tags: ['Account'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Blocked'),
@@ -153,7 +154,7 @@ final class AccountController extends Controller
         operationId: 'unblockTag',
         summary: 'Unblock a tag',
         tags: ['Account'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [new OAS\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Unblocked'),
@@ -167,15 +168,16 @@ final class AccountController extends Controller
         return response()->noContent();
     }
 
-    /** The signed-in account (auth:sanctum has made sure there is one). */
-    private static function user(Request $request): User
+    /** The signed-in account (the auth middleware has made sure there is one). */
+    public static function user(Request $request): User
     {
         $user = $request->user();
 
         return $user instanceof User ? $user : throw new ApiException('Unauthorized', 401, 'Authentication is required. Please log in and try again.');
     }
 
-    private static function confirmPassword(User $user, string $password): void
+    /** Refuse the request (403 IncorrectPassword) unless $password is the account's. */
+    public static function confirmPassword(User $user, string $password): void
     {
         if (!Hash::check($password, $user->password)) {
             throw new ApiException('IncorrectPassword', 403, 'That isn\'t your current password.');

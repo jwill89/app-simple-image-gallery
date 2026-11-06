@@ -98,41 +98,16 @@ async function parseApiError(response: Response, _url: string): Promise<ApiError
   return new ApiError(response.status, code, message, fields)
 }
 
-const TOKEN_KEY = 'auth_token'
+let onUnauthorized: (() => void) | null = null
 
 /**
- * The login token. A "keep me signed in" login is kept in localStorage, where
- * it lasts its 30 days across browser restarts; any other in sessionStorage,
- * gone with the tab, as the server's token is within the day.
+ * Runs whenever the server answers 401: the browser's session no longer signs
+ * anyone in (it ran out, signed out elsewhere, or a new password ended it).
+ * The auth store uses it to forget the account. The session itself is a
+ * cookie the browser sends and the page never sees.
  */
-function getAuthToken(): string | null {
-  return sessionStorage.getItem(TOKEN_KEY) ?? localStorage.getItem(TOKEN_KEY)
-}
-
-let onTokenCleared: (() => void) | null = null
-
-/**
- * Runs whenever the token goes: signed out here, or a 401 found it expired
- * or revoked. The auth store uses it to forget the account.
- */
-export function whenAuthTokenCleared(handler: () => void): void {
-  onTokenCleared = handler
-}
-
-export function setAuthToken(token: string, remember = false): void {
-  sessionStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem(TOKEN_KEY)
-  ;(remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, token)
-}
-
-export function clearAuthToken(): void {
-  sessionStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem(TOKEN_KEY)
-  onTokenCleared?.()
-}
-
-export function hasAuthToken(): boolean {
-  return getAuthToken() !== null
+export function whenUnauthorized(handler: () => void): void {
+  onUnauthorized = handler
 }
 
 /**
@@ -152,20 +127,14 @@ async function parseJsonBody<T>(response: Response): Promise<T | undefined> {
 
 export function useApi() {
   async function request<T>(url: string, options: RequestInit = {}): Promise<T | undefined> {
-    // Attach auth token if available
-    const token = getAuthToken()
-    if (token) {
-      const headers = new Headers(options.headers)
-      if (!headers.has('Authorization')) {
-        headers.set('Authorization', `Bearer ${token}`)
-      }
-      options.headers = headers
-    }
-
-    const response = await fetch(`${API_BASE_URL}${url}`, options)
+    // The session cookie goes with every request to this origin.
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      credentials: 'same-origin',
+      ...options,
+    })
     if (!response.ok) {
       if (response.status === 401) {
-        clearAuthToken()
+        onUnauthorized?.()
       }
       throw await parseApiError(response, url)
     }
@@ -209,26 +178,9 @@ export function useApi() {
     })
   }
 
-  async function upload<T>(url: string, formData: FormData): Promise<T | undefined> {
-    const token = getAuthToken()
-    const headers: HeadersInit = {}
-    if (token) {
-      headers.Authorization = `Bearer ${token}`
-    }
-
-    const response = await fetch(`${API_BASE_URL}${url}`, {
-      method: 'POST',
-      headers,
-      body: formData,
-    })
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        clearAuthToken()
-      }
-      throw await parseApiError(response, url)
-    }
-    return parseJsonBody<T>(response)
+  /** A multipart POST; the browser sets its Content-Type, with the boundary. */
+  function upload<T>(url: string, formData: FormData): Promise<T | undefined> {
+    return request<T>(url, { method: 'POST', body: formData })
   }
 
   return { get, post, put, patch, del, upload }

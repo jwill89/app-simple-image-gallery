@@ -167,8 +167,12 @@ function navigateTo(name: 'account' | 'users') {
 
 async function signOut() {
   burgerActive.value = false
-  await auth.signOut()
-  toastStore.info('You are signed out.', 3000, 'Signed out')
+  try {
+    await auth.signOut()
+    toastStore.info('You are signed out.', 3000, 'Signed out')
+  } catch (e) {
+    toastStore.error(getErrorMessage(e, 'Could not sign out. Try again.'), 6000, 'Sign out')
+  }
 }
 
 // ── Saved searches ───────────────────────────────────────────────────

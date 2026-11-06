@@ -1,0 +1,109 @@
+version: '3'
+
+# Day-to-day commands; `task` alone lists them. CI (.github/workflows/ci.yml) runs the same checks.
+
+tasks:
+  default:
+    silent: true
+    cmds:
+      - task --list
+
+  setup:
+    desc: Install the backend's and frontend's dependencies (a fresh clone runs composer setup in backend/ first, for .env and APP_KEY)
+    cmds:
+      - cd backend && composer install
+      - cd frontend && npm ci
+
+  dev:
+    desc: Run the Vite dev server on :5173; it sends /api and /media to the backend at http://localhost
+    dir: frontend
+    cmds:
+      - npm run dev
+
+  dev:backend:
+    desc: Run the Laravel app with artisan serve on :8000
+    dir: backend
+    cmds:
+      - composer dev
+
+  gen:
+    desc: Regenerate backend/openapi.json from the PHP attributes, then the frontend's API types from it
+    cmds:
+      - cd backend && composer docs
+      - cd frontend && npm run gen:types
+
+  build:
+    desc: Type-check and build the SPA into frontend/dist
+    dir: frontend
+    cmds:
+      - npm run build
+
+  test:
+    desc: Run the backend (Pest) and frontend (Vitest) tests
+    aliases: [tests, test:unit, tests:unit]
+    cmds:
+      - task: test:backend
+      - task: test:frontend
+
+  test:backend:
+    desc: Run the backend's Pest tests, including the contract replay
+    aliases: [tests:backend]
+    dir: backend
+    cmds:
+      - composer test
+
+  test:frontend:
+    desc: Run the frontend's Vitest tests
+    aliases: [tests:frontend]
+    dir: frontend
+    cmds:
+      - npm test
+
+  lint:
+    desc: Lint, format-check, and statically analyse everything
+    cmds:
+      - task: lint:backend
+      - task: lint:frontend
+      - task: lint:scripts
+
+  lint:backend:
+    dir: backend
+    cmds:
+      - composer lint
+      - composer rector:check
+      - composer analyse
+
+  lint:frontend:
+    dir: frontend
+    cmds:
+      - npm run lint
+      - npm run lint:css
+      - npm run lint:md
+      - npm run knip
+      - npm run format:check
+
+  # PSScriptAnalyzer with PSScriptAnalyzerSettings.psd1, on the tracked scripts only.
+  # Install it once: Install-PSResource PSScriptAnalyzer -Version 1.25.0 -Scope CurrentUser -TrustRepository
+  lint:scripts:
+    cmds:
+      # Single-quoted so the task's own shell leaves PowerShell's $ alone.
+      - pwsh -NoProfile -Command 'foreach ($f in "scripts/deploy.ps1", "scripts/deploy.config.example.ps1") { $r = Invoke-ScriptAnalyzer -Path $f -Settings PSScriptAnalyzerSettings.psd1; $r | Format-Table -AutoSize | Out-String | Write-Output; if ($r) { exit 1 } }'
+
+  vuln:
+    desc: Check dependencies for known vulnerabilities
+    cmds:
+      - cd backend && composer audit
+      - cd frontend && npm audit --audit-level=high --omit=dev
+
+  check:
+    desc: Lint, audit, test, and build, as CI does (CI also checks the generated files are current)
+    cmds:
+      - task: lint
+      - task: vuln
+      - task: test
+      - task: build
+
+  deploy:
+    desc: Build the SPA and deploy it with the Laravel code, then migrate (pass flags after --, e.g. -- -SkipMigrate)
+    cmds:
+      - pwsh -NoProfile -File scripts/deploy.ps1 {{.CLI_ARGS}}

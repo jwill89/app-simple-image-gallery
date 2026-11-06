@@ -16,7 +16,7 @@ use Illuminate\Support\Str;
  * checked, and `errors` lists each broken field's messages, so a form can mark
  * them all. The messages are the rules', so messages() sets the wording.
  *
- * Authorization is the routes' business (auth:sanctum), so every request is
+ * Authorization is the routes' business (auth, admin), so every request is
  * authorized here.
  */
 abstract class ApiRequest extends FormRequest

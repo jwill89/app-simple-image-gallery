@@ -26,9 +26,10 @@ SaaS. Key features:
 - **Duplicate detection** via perceptual hashing (LSH candidate generation → Hamming
   distance → a worst-region comparison of the thumbnails that tells re-saves from variants).
 - **Accounts** (since 6.0.0): open sign-up and login by username and password, behind Cloudflare
-  Turnstile. An account keeps **favorite lists** (the heart is its default "Favorites" list),
-  **blocked tags** (media carrying one leaves its listings) and **saved searches**. Signed out,
-  favorites stay in the browser's `localStorage`, and move into the account at the first sign-in.
+  Turnstile, or by **passkey** (since 7.0.0). A browser signs in with an HttpOnly session cookie.
+  An account keeps **favorite lists** (the heart is its default "Favorites" list), **blocked
+  tags** (media carrying one leaves its listings) and **saved searches**. Signed out, favorites
+  stay in the browser's `localStorage`, and move into the account at the first sign-in.
 - An **admin** is an account with `is_admin`: **uploads**, **deletes**, tag management, the
   duplicate scan and the Users page are theirs. The first admin is made with `gallery:user`.
 - A nightly **ingest** of files dropped into the media folder, and queued **background work**:
@@ -39,12 +40,12 @@ SaaS. Key features:
 
 | Layer | Tech |
 | --- | --- |
-| Backend | PHP **8.5**, **Laravel 13**: Eloquent, Form Requests, API Resources, Sanctum, the database queue, the scheduler |
+| Backend | PHP **8.5**, **Laravel 13**: Eloquent, Form Requests, API Resources, the session guard, the database queue, the scheduler; `laravel/passkeys` (WebAuthn) |
 | Database | **SQLite** (one file, WAL mode); Laravel migrations in `backend/database/migrations/` |
 | Image/video tooling | `ffmpeg`/`ffprobe` through Laravel's `Process`, PHP GD, `intervention/imagehash` (perceptual hash, always on GD) |
 | HTTP client | Laravel's `Http` for Danbooru, faked in tests |
 | API docs | swagger-php 7 attributes → committed `backend/openapi.json`, served at `/api/openapi.json` and `/api/docs` (Scalar) |
-| Frontend | **Vue 3** (`<script setup>` + Composition API), TypeScript, [Pinia](https://pinia.vuejs.org/), Vue Router |
+| Frontend | **Vue 3** (`<script setup>` + Composition API), TypeScript, [Pinia](https://pinia.vuejs.org/), Vue Router, `@simplewebauthn/browser` (passkeys) |
 | Build | **Vite** on Node **26+** (outputs to `frontend/dist`) |
 | Styling | **Bulma 1.x** + custom `style.css` (token layer), FontAwesome (kit script) |
 | Tests | **Pest 5** (`backend/tests/`, in-memory SQLite) + **Vitest** (`frontend/src/__tests__/`, happy-dom) |
@@ -65,7 +66,7 @@ SaaS. Key features:
 │   │   │   └── Resources/             # The JSON shapes: Media, Tag, TagCategory, mappings, …
 │   │   ├── Models/                    # Eloquent: Media, Tag, TagCategory, DismissedDuplicate,
 │   │   │                              #   DanbooruCategoryMapping, DanbooruTagMapping,
-│   │   │                              #   User (an account), FavoriteList, SavedSearch
+│   │   │                              #   User (an account, with laravel/passkeys' Passkey), FavoriteList, SavedSearch
 │   │   ├── Services/
 │   │   │   ├── Danbooru/              # DanbooruTagger (MD5 → IQDB, import rules), DanbooruFailure
 │   │   │   ├── Duplicates/            # DuplicateScanner (LSH → Hamming → RegionDifference), ScanSettings
@@ -73,7 +74,8 @@ SaaS. Key features:
 │   │   │   └── Fingerprinter.php      # The perceptual hash (pHash on GD)
 │   │   ├── Jobs/                      # ProcessNewMedia, ImportDanbooruTags, RebuildFromFile
 │   │   ├── Console/Commands/          # gallery:ingest, gallery:import-tags, gallery:regenerate, gallery:dupes
-│   │   ├── Support/                   # ResponseCache + CacheGroup: cached reads, invalidated by group
+│   │   ├── Support/                   # ResponseCache + CacheGroup (cached reads), Login (signing a session in and out),
+│   │   │                              #   Viewer (who reads a public listing), Cloudflare (its address ranges)
 │   │   ├── Exceptions/                # ApiException + ApiExceptionRenderer: { error, message } for all of /api
 │   │   ├── OpenApi/                   # Global OAS metadata (holds API_VERSION) + doc-only response schemas
 │   │   └── Providers/AppServiceProvider.php  # rate limiters, CORS origins, the media link, unwrapped resources
@@ -87,7 +89,7 @@ SaaS. Key features:
 │   ├── public/                  # Apache's DocumentRoot: index.php, .htaccess, .user.ini (upload limits), the built SPA
 │   │                            #   (the deploy copies frontend/dist here), media → the media folder
 │   ├── resources/spa/index.html # The built SPA's index.html, which the shell serves (deploy copies it; gitignored)
-│   ├── storage/                 # Logs, the file cache (responses, rate limits, locks); contents gitignored
+│   ├── storage/                 # Logs, the file cache (responses, rate limits, locks), sessions; contents gitignored
 │   ├── tests/
 │   │   ├── Feature/             # HTTP, console, jobs, models, services; Contract/ replays the recordings
 │   │   ├── Unit/                # The OpenAPI document, the fingerprinter, the region difference
@@ -221,9 +223,10 @@ php artisan gallery:dupes --tune --max-distance=8 --max-region-diff=off  # calib
   deploy sends `queue:restart` so it picks up new code. Jobs: `ProcessNewMedia` (one ingested file,
   unique per name), `ImportDanbooruTags` (rate-limited to 30 a minute, retried for a day),
   `RebuildFromFile`.
-- **The schedule** (`routes/console.php`) runs `gallery:ingest` at midnight and
-  `sanctum:prune-expired` daily, in `SCHEDULE_TIMEZONE` (UTC on the droplet).
-  `/etc/cron.d/gallery-scheduler` runs `php artisan schedule:run` every minute as `www-data`.
+- **The schedule** (`routes/console.php`) runs `gallery:ingest` at midnight, in
+  `SCHEDULE_TIMEZONE` (UTC on the droplet). `/etc/cron.d/gallery-scheduler` runs
+  `php artisan schedule:run` every minute as `www-data`. Expired sessions need no schedule: the
+  file driver sweeps them as requests arrive (`session.lottery`).
 - `gallery:ingest` refuses to remove anything when none of the gallery's files are in
   `media/full`, which is what a wrong `GALLERY_MEDIA_PATH` looks like.
 
@@ -271,8 +274,10 @@ Everything for the gallery lives in **`/var/www/gallery.mathdad.me/`**, as every
 ### Config (`backend/.env`, gitignored; documented in `backend/.env.example`)
 
 Laravel's own keys (`APP_KEY`, `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, `LOG_*`,
-`QUEUE_CONNECTION=database`, `CACHE_STORE=file`, `DB_DATABASE`) plus the gallery's, which
-`config/gallery.php` reads:
+`QUEUE_CONNECTION=database`, `CACHE_STORE=file`, `DB_DATABASE`, and the session's:
+`SESSION_DRIVER=file`, `SESSION_LIFETIME=1440`, `SESSION_EXPIRE_ON_CLOSE=true`) plus the
+gallery's, which `config/gallery.php` reads. `APP_URL`'s host is the site passkeys belong to
+(`config/passkeys.php`), and an https `APP_URL` makes the session cookie Secure.
 
 ```text
 GALLERY_ALLOW_SIGNUP       # anyone may make an account unless "false" (admins come from gallery:user)
@@ -311,18 +316,20 @@ danbooru_category_map(danbooru_category_id PK, danbooru_category_name, gallery_c
 danbooru_tag_map(id PK, danbooru_tag UNIQUE, gallery_tag)
 dismissed_duplicates(media_id_1, media_id_2, dismissed_at)  # PK(id1,id2), stored with id1<id2
 
-users(id, username UNIQUE NOCASE, password[hashed], is_admin)   # accounts
+users(id, username UNIQUE NOCASE, password[hashed], remember_token, is_admin)   # accounts
 favorite_lists(list_id, user_id FK, name NOCASE, is_default)      # UNIQUE(user_id, name); one default each
 favorite_list_items(list_id FK, media_id FK, added_at)            # PK(list_id, media_id)
 blocked_tags(user_id FK, tag_id FK, created_at)                   # PK(user_id, tag_id)
 saved_searches(search_id, user_id FK, name NOCASE, query)         # UNIQUE(user_id, name)
-personal_access_tokens                          # Sanctum: login tokens, stored hashed, a day or 30 (expires_at)
+passkeys(id, user_id FK, name, credential_id UNIQUE, credential[json], last_used_at)  # laravel/passkeys
 jobs · job_batches · failed_jobs                # the database queue
 migrations                                      # Laravel's migration log
 ```
 
 The live database also still holds the Slim app's `auth_tokens`, `rate_limits` and
-`phinx_migrations` until Phase 8 drops them. Rate limits now live in the cache, not a table.
+`phinx_migrations` until Phase 8 drops them. Rate limits now live in the cache, and sessions in
+files (`storage/framework/sessions`), not tables. Sanctum's `personal_access_tokens` went with
+the bearer tokens in 7.0.0.
 
 Key indexes (in the baseline migration): `media(hash)`, `media(file_time, media_id)`,
 `media(media_type)`, `media_tags(tag_id, media_id)` (reverse index for tag search),
@@ -350,19 +357,20 @@ Notes:
 The **authoritative contract** is the generated OpenAPI 3.1 spec (`backend/openapi.json`,
 `composer docs`), served at **`/api/openapi.json`** and browsable via **Scalar** at
 **`/api/docs`**. Every operation has a readable `operationId` (`listMedia`, `uploadMedia`, …).
-Below is the shape; 🔓 = public, 🔒 = bearer token required.
+Below is the shape; 🔓 = public, 🔑 = any signed-in account, 🔒 = an admin account.
 
 REST-RPC conventions: reads → `200`, create → `201` (created resource), update → `200`
 (updated resource), delete → `204`, RPC action/batch → `200`. Non-CRUD state changes are
 `POST …/{verb}`.
 
-🔑 = any signed-in account; 🔒 = an admin account.
-
 - **System / Auth:** `GET /version`, `GET /openapi.json`, `GET /docs` (🔓); `GET /auth/config`
-  (🔓 sign-up open?, Turnstile site key), `POST /auth/register`, `POST /auth/login` (🔓, with
-  `turnstile_token` while Turnstile is on); `GET /auth/me`, `DELETE /auth/token` (🔑 log out).
+  (🔓 sign-up open?, Turnstile site key), `GET /auth/session` (🔓 who this browser is signed in
+  as, or `null`), `POST /auth/register`, `POST /auth/login` (🔓, with `turnstile_token` while
+  Turnstile is on; each answers `{ user }` and sets the session cookie), `POST /auth/passkey/options`
+  and `POST /auth/passkey` (🔓 sign in with a passkey); `DELETE /auth/session` (🔑 log out).
 - **Account (`/account`, 🔑):** `PATCH /password`, `DELETE` (with `{ password }`), `GET
-  /blocked-tags`, `PUT|DELETE /blocked-tags/{tag_id}`.
+  /blocked-tags`, `PUT|DELETE /blocked-tags/{tag_id}`; `GET /passkeys`, `POST /passkeys/options`
+  (with `{ password }`), `POST /passkeys`, `PATCH|DELETE /passkeys/{passkey_id}`.
 - **Lists (`/lists`, 🔑):** `GET`, `POST`, `PATCH|DELETE /{list_id}`, `GET /{list_id}/ids`,
   `GET /{list_id}/media?page&per_page`, `POST /{list_id}/media` (`{ media_ids }`, ≤ 2000),
   `PUT|DELETE /{list_id}/media/{media_id}`; `GET /media/{media_id}/lists`. Someone else's list
@@ -436,13 +444,20 @@ REST-RPC conventions: reads → `200`, create → `201` (created resource), upda
    (`403 ForbiddenOrigin`) unless its `Origin`, or failing that its `Referer`, is allowed; a write
    with **neither** is refused too (it's a client working around CORS, such as curl). It runs
    before the rate limiter and authentication, so a refused request is neither counted nor told
-   whether its token was good.
-4. **`throttle:api`** (the `api` group): 120 requests a minute per IP, then
-   `429 RateLimitExceeded` with `retry_after`. It runs before authentication (a priority list in
-   `bootstrap/app.php`), so every request counts, signed in or not.
-5. **`auth:sanctum`** on the account and admin groups in `routes/api.php`: no valid token is
-   `401 Unauthorized` as `{ error, message }`; there is no login page to redirect to.
-6. **`admin`** (`EnsureAdmin`) on the admin group: an account that isn't an admin is
+   whether its session was signed in.
+4. **The session** (the `api` group, first): `EncryptCookies`, `AddQueuedCookiesToResponse`,
+   `StartSession`, then `AuthenticateSession`, which signs out a session (or a remember cookie)
+   whose account's password changed since it signed in: that request is a 401.
+5. **`PreventRequestForgery`**, origin-only (`preventRequestForgery(originOnly: true)`): a write
+   the browser doesn't mark `Sec-Fetch-Site: same-origin` is `403 ForbiddenOrigin`, so no CSRF
+   token is needed. Laravel skips it in tests; `ApiMiddlewareTest` switches it back on.
+6. **`throttle:api`**: 120 requests a minute per IP, then `429 RateLimitExceeded` with
+   `retry_after`. It runs before authentication (a priority list in `bootstrap/app.php`), so every
+   request counts, signed in or not.
+7. **`auth`** (the session guard) on the account and admin groups in `routes/api.php`: a request
+   not signed in is `401 Unauthorized` as `{ error, message }`; there is no login page to redirect
+   to.
+8. **`admin`** (`EnsureAdmin`) on the admin group: an account that isn't an admin is
    `403 Forbidden`. It runs before the route's bindings, so it never says whether a record exists.
 
 **`trustProxies`** (global) trusts Cloudflare's ranges (`App\Support\Cloudflare`) and nothing
@@ -451,12 +466,12 @@ count per visitor. Without it they counted per Cloudflare server, shared by ever
 A request from anywhere else keeps its own address; its `X-Forwarded-For` is ignored. Update the
 list if Cloudflare changes theirs (cloudflare.com/ips).
 
-Public reads take no auth middleware, but a valid token sent with one still counts:
-`App\Support\Viewer` finds the account, and its blocked tags leave the media listings. An
-invalid token there reads as signed out.
+Public reads take no auth middleware, but a signed-in browser's session still counts:
+`App\Support\Viewer` finds the account, and its blocked tags leave the media listings.
 
-The `web` group is empty: the SPA shell keeps no session and sets no cookies. `TrimStrings` and
-`ConvertEmptyStringsToNull` are removed, so a password or tag name arrives exactly as sent.
+The `web` group is empty: the SPA shell keeps no session and sets no cookies; only `/api` does.
+`TrimStrings` and `ConvertEmptyStringsToNull` are removed, so a password or tag name arrives
+exactly as sent.
 
 ---
 
@@ -464,17 +479,20 @@ The `web` group is empty: the SPA shell keeps no session and sets no cookies. `T
 
 Keep these invariants when editing auth or routes:
 
-- **Every state-changing route needs a bearer token**: an admin's write sits in the
-  `['auth:sanctum', 'admin']` group in `routes/api.php`, an account's own (its lists, blocked
-  tags, searches, password) in the `auth:sanctum` group, and acts only on that account's rows;
-  someone else's is a 404. A new write goes in one of the two.
+- **Every state-changing route needs a signed-in session**: an admin's write sits in the
+  `['auth', 'admin']` group in `routes/api.php`, an account's own (its lists, blocked tags,
+  searches, passkeys, password) in the `auth` group, and acts only on that account's rows;
+  someone else's is a 404. A new write goes in one of the two. Signing in (password, sign-up or
+  passkey) is a public write by nature.
 - **The public writes**, deliberately outside the group, each its own route: `PATCH /media/{id}/tags`
   and `DELETE /media/{id}/tags/{tag_id}` (anyone may tag media — an *intentional* design choice), and
   `POST /media/by-ids` (a read that uses POST only to carry a large id list). Being exact routes, a
   public sub-route can't widen a protected one (`DELETE /media/{id}` stays 🔒). Don't add to them
   lightly. They still pass the origin check.
-- **CSRF**: writes are refused unless `Origin` (or, failing that, `Referer`) is in
-  `GALLERY_ALLOWED_ORIGINS`; a write with neither header is refused.
+- **CSRF**: writes are refused unless the browser marks them `Sec-Fetch-Site: same-origin`
+  (`PreventRequestForgery`), and unless `Origin` (or, failing that, `Referer`) is in
+  `GALLERY_ALLOWED_ORIGINS` (`VerifyOrigin`); a write with neither header is refused. The session
+  cookie is `SameSite=Lax` besides.
 - **Sign-up and login** pass Cloudflare Turnstile first (`Services/Turnstile`, while
   `CLOUDFLARE_TURNSTILE_SECRET` is set): a token passes once, for its own form (`action`), and
   Cloudflare out of reach is `503 CaptchaUnavailable`, never a sign-in. Login is throttled to 10
@@ -482,12 +500,22 @@ Keep these invariants when editing auth or routes:
   wrong username and a wrong password get the same answer, after the same hash check. Sign-up
   never makes an admin; `gallery:user` or another admin does. A wrong *current* password (changing
   it, deleting the account) is `403 IncorrectPassword`, since the app reads a 401 as signed out.
-- **Tokens**: Sanctum tokens: 64 random hex characters, **stored as a SHA-256 hash**, each with
-  its own `expires_at`: a day, or 30 with "keep me signed in" (`User::issueToken()`;
-  `sanctum.expiration` is the 30-day cap). Pruned daily. A new password signs out the account's
-  other tokens. `sanctum.last_used_at` is off: a signed-in reader sends its token with every
-  listing, and recording it made each read a write. Sent as `Authorization: Bearer …`; the
-  frontend keeps it in `sessionStorage`, or `localStorage` when remembered (`useApi.ts`).
+- **Sessions, not tokens** (since 7.0.0): a browser signs in with Laravel's session cookie,
+  encrypted and **HttpOnly**, so no script on the page (the FontAwesome kit, Turnstile, an
+  injected one) can read or copy it. It lasts until the browser closes, and a day without a
+  request ends it; "keep me signed in" adds a 30-day remember cookie (`auth.guards.web.remember`).
+  Signing in moves the session to a new id (`App\Support\Login`), so one planted beforehand
+  signs no one in; signing out ends this browser's session only. A new password
+  (`User::setNewPassword()`: the account itself, an admin, or `gallery:user --password`) replaces
+  the remember token and ends every other session at its next request (`AuthenticateSession`);
+  the browser that changed its own password signs in again. Sessions are files, not database
+  rows, since every API request writes its session. There are no bearer tokens: a script can't
+  sign in.
+- **Passkeys** (`PasskeyController`, on `laravel/passkeys`' actions; the package's own routes are
+  off): adding one needs the account's password; each challenge waits in the session for five
+  minutes, answers once, and belongs to the account it was made for. A passkey belongs to
+  `APP_URL`'s host and is checked against `GALLERY_ALLOWED_ORIGINS`. Signing in with one skips
+  Turnstile but counts against the login limit; a refused one is `401 PasskeyNotAccepted`.
 - **Only `public/` is served.** `.env`, the code, the data folders, `backups/` and
   `slim-rollback/` sit beside it, out of reach; an unknown path gets the SPA page, never a file.
   Never point a vhost at the app folder itself.
@@ -499,17 +527,24 @@ Keep these invariants when editing auth or routes:
 - **Vue 3 `<script setup lang="ts">` + Composition API only.** No Options API, no class components.
 - **State**: Pinia stores (`stores/`). `gallery` holds `knownTags`, `categories`, `totalMedia`,
   `blurThumbnails` (persisted to `localStorage`), and `lastViewedItemIds` (used for prev/next
-  navigation on the media detail page). `auth` holds the signed-in `user` (`isAdmin`), restored
-  at start-up; `account` its blocked tags and saved searches. `favorites` is the heart: this
+  navigation on the media detail page). `auth` holds the signed-in `user` (`isAdmin`), asked of
+  the server at start-up (`GET /auth/session`: the page can't read the session cookie);
+  `account` its blocked tags and saved searches. `favorites` is the heart: this
   browser's ids in `localStorage` while signed out, the account's default list (and its other
   `lists`) while signed in; `signedIn()` moves the browser's into the account. `toast` drives
   `ToastContainer`.
 - **What a page shows depends on who is reading.** Signing in or out, and blocking a tag, call
   `gallery.listingsChanged()`: the count reloads, and a kept-alive `GalleryView` loads its page
-  again when it is next on screen. Admin-only controls read `auth.isAdmin`, never "is there a
-  token"; a page that needs an account or an admin wraps itself in `SignInGate` (`admin`), which
-  offers a sign-in that comes back. Sign-up and sign-in render `TurnstileWidget` when
-  `GET /auth/config` gives a site key, and reset it after every try (a token passes once).
+  again when it is next on screen. Admin-only controls read `auth.isAdmin`; a page that needs an
+  account or an admin wraps itself in `SignInGate` (`admin`), which offers a sign-in that comes
+  back. Sign-up and sign-in render `TurnstileWidget` when `GET /auth/config` gives a site key,
+  and reset it after every try (a Turnstile token passes once).
+- **Passkeys** go through `composables/usePasskeys.ts` (`@simplewebauthn/browser` asks the
+  browser). The login page has a "Sign in with a passkey" button and offers saved passkeys in the
+  username field's autofill (`autocomplete="username webauthn"`), a request that waits until
+  one is picked; asking with the button cancels it, and leaving the page does too
+  (`cancelPasskeyRequest`). A closed prompt (`passkeyCancelled`) is not an error. The Account
+  page lists them (`AccountPasskeys`).
 - **The app never loads every tag.** There are thousands. `knownTags` holds the tags seen so far
   (by id), from searches and lookups: a picker searches the server (`store.searchTags`, or
   `useTagSearch` for a plain input), and a chip or a breadcrumb looks its tag up with
@@ -535,10 +570,11 @@ Keep these invariants when editing auth or routes:
   Dismiss and Undo dead on any toast raised from inside a dialog, and without the `none` on the
   viewport its mostly-empty rectangle would swallow clicks meant for the page behind it.
 - **API calls** go through `composables/useApi.ts` (`get/post/put/patch/del/upload`), using paths from
-  `api/endpoints.ts`. It auto-attaches the bearer token, throws a structured `ApiError`
-  (`status`, `code`, `message`, and a validation's `fields`), clears the token on 401, and
-  resolves `204`/empty bodies to
-  `undefined`. Don't call `fetch` directly in components.
+  `api/endpoints.ts`. The browser sends the session cookie with each request; `useApi` keeps no
+  token. It throws a structured `ApiError` (`status`, `code`, `message`, and a validation's
+  `fields`), reports a 401 to the auth store (`whenUnauthorized`: the session ended, so the app
+  forgets the account), and resolves `204`/empty bodies to `undefined`. Don't call `fetch`
+  directly in components.
 - **Types are generated** from the OpenAPI spec into `types/api.generated.ts` (`npm run gen:types`);
   import domain types from `types/index.ts` (friendly `Required<>` aliases), never the generated file.
 - **Lint + format are shared** via the `@jwill89/eslint-config` git submodule at `frontend/eslint-config`
@@ -749,6 +785,13 @@ Keep these invariants when editing auth or routes:
 - **The queue worker runs old code until it restarts.** Deploys send `queue:restart`; after any
   change made outside a deploy, run it yourself. A job already queued is unserialized with the
   class as it is when it runs, so rename a job's properties with care.
+- **Tests sign in two ways.** Most act as an account directly (`asAccount()`, `asAdmin()` in
+  `tests/Pest.php`, on Laravel's `actingAs`). The tests of signing in and out use a
+  `Tests\Support\TestBrowser`, which keeps only the cookies the server set, so two browsers are
+  two strangers. A test's requests share one app, whose session store would merge one request's
+  sign-in into the next, so `Tests\TestCase::call()` empties it first, as a real server starts
+  each request afresh. Passkey tests answer with `Tests\Support\FakeAuthenticator` (a real P-256
+  key and signatures); PHP on Windows needs `tests/Fixtures/openssl.cnf` to make that key.
 - **CI runs lint, static analysis, tests and build.** GitHub Actions (`.github/workflows/ci.yml`)
   runs, on the backend, `composer audit` + `composer lint` (Pint) + `composer rector:check` +
   `composer analyse` (Larastan level 8 + strict and deprecation rules) + `composer docs` with
@@ -817,7 +860,7 @@ Keep these invariants when editing auth or routes:
 ### A new API endpoint
 
 1. Add the route to `routes/api.php`: public reads at the top, an account's own writes in the
-   `auth:sanctum` group, an admin's in the `['auth:sanctum', 'admin']` group (a public write only
+   `auth` group, an admin's in the `['auth', 'admin']` group (a public write only
    deliberately, see §7).
 2. For a write with a body, add a Form Request extending `ApiRequest`: `rules()`, `messages()` in
    the contract's wording, and `errorCodes()` for each rule's code and status.

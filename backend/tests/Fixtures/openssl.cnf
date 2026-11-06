@@ -1,0 +1,2 @@
+# The config OpenSSL needs to make a key. PHP on Windows ships none, so the
+# passkey tests (tests/Support/FakeAuthenticator.php) point it at this one.

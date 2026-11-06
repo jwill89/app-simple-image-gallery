@@ -54,7 +54,7 @@ final class TagImplicationController extends Controller
         operationId: 'createTagImplication',
         summary: 'Create a tag implication',
         tags: ['Tag Implications'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(
             required: ['tag_id', 'implied_tag_id'],
             properties: [
@@ -109,7 +109,7 @@ final class TagImplicationController extends Controller
         operationId: 'deleteTagImplication',
         summary: 'Remove a tag implication',
         tags: ['Tag Implications'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [
             new OAS\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
             new OAS\Parameter(name: 'implied_tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),

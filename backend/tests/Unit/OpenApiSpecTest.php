@@ -44,7 +44,7 @@ test('every operation has its own readable operationId', function (): void {
     // accounts: 7 for sign-up and an account's own settings, 10 for lists, 4
     // for saved searches and 3 for the admin's Users page; and the sign-up and
     // login pages' settings (GET /auth/config).
-    expect($ids)->toHaveCount(71)
+    expect($ids)->toHaveCount(78)
         ->and(array_unique($ids))->toHaveCount(count($ids));
     foreach ($ids as $operation => $id) {
         expect($id)->toMatch('/^[a-z][a-zA-Z]+$/', "{$operation} has no readable operationId.");

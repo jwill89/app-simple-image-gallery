@@ -13,6 +13,7 @@ import SignInGate from '../components/SignInGate.vue'
 import TagMultiSelect from '../components/TagMultiSelect.vue'
 import AppDialog from '../components/AppDialog.vue'
 import EmptyState from '../components/EmptyState.vue'
+import AccountPasskeys from '../components/AccountPasskeys.vue'
 
 const api = useApi()
 const router = useRouter()
@@ -121,8 +122,8 @@ async function deleteAccount() {
     await api.del(endpoints.account.self, { password: deletePassword.value })
     deleteOpen.value = false
     toast.success('Your account is deleted.', 5000, 'Account')
-    // The token went with the account; forget it here too.
-    await auth.signOut()
+    // The server signed this browser out with it.
+    auth.sessionEnded()
     void router.push('/')
   } catch (e) {
     deleteError.value = getErrorMessage(e, 'Could not delete the account.')
@@ -195,6 +196,8 @@ async function deleteAccount() {
           </ul>
         </div>
 
+        <AccountPasskeys />
+
         <form class="box" @submit.prevent="changePassword">
           <h3 class="title is-5">Change password</h3>
           <input
@@ -256,8 +259,8 @@ async function deleteAccount() {
         <div class="box">
           <h3 class="title is-5">Delete account</h3>
           <p class="section-note">
-            Deletes your account with its lists, blocked tags and saved searches. The media stays in
-            the gallery.
+            Deletes your account with its lists, blocked tags, saved searches and passkeys. The
+            media stays in the gallery.
           </p>
           <button type="button" class="button is-danger is-outlined" @click="deleteOpen = true">
             Delete my account

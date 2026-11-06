@@ -41,6 +41,8 @@ return [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+            // "Keep me signed in": the remember cookie's lifetime, in minutes (30 days).
+            'remember' => 43200,
         ],
     ],
 

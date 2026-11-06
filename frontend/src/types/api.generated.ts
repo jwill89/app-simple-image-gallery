@@ -19,8 +19,9 @@ export interface paths {
         head?: never;
         /**
          * Change your password
-         * @description PATCH /account/password — Change the password. Every other login of the
-         *     account is signed out; this one stays.
+         * @description PATCH /account/password — Change the password. Every other browser
+         *     signed in as the account is signed out; this one stays, and stays kept
+         *     signed in if it was.
          */
         patch: operations["changePassword"];
         trace?: never;
@@ -114,6 +115,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Who this browser is signed in as
+         * @description GET /auth/session — The account this browser is signed in as, or null.
+         *     The page asks once as it starts, since it can't read the session cookie.
+         */
+        get: operations["currentSession"];
+        put?: never;
+        post?: never;
+        /**
+         * Log out
+         * @description DELETE /auth/session — Log out this browser. The account's other
+         *     browsers stay signed in.
+         */
+        delete: operations["logout"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/register": {
         parameters: {
             query?: never;
@@ -125,8 +152,8 @@ export interface paths {
         put?: never;
         /**
          * Create an account
-         * @description POST /auth/register — Create an account and sign it in. Body:
-         *     { username, password, remember?, turnstile_token? }.
+         * @description POST /auth/register — Create an account and sign this browser in as it.
+         *     Body: { username, password, remember?, turnstile_token? }.
          */
         post: operations["register"];
         delete?: never;
@@ -146,53 +173,11 @@ export interface paths {
         put?: never;
         /**
          * Log in
-         * @description POST /auth/login — Exchange a username and password for a bearer token.
-         *     Body: { username, password, remember?, turnstile_token? }. The token
-         *     lasts a day, or 30 with remember.
+         * @description POST /auth/login — Sign this browser in with a username and password.
+         *     Body: { username, password, remember?, turnstile_token? }.
          */
         post: operations["login"];
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * The signed-in account
-         * @description GET /auth/me — The account the token signs in.
-         */
-        get: operations["currentUser"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/auth/token": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Log out (revoke this token)
-         * @description DELETE /auth/token — Log out: the token this request carries stops
-         *     working at once, rather than when it expires.
-         */
-        delete: operations["logout"];
         options?: never;
         head?: never;
         patch?: never;
@@ -788,6 +773,121 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/passkey/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start signing in with a passkey
+         * @description POST /auth/passkey/options — A challenge to sign in with: any passkey
+         *     saved for this site may answer it, and names its account itself.
+         */
+        post: operations["passkeySignInOptions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/passkey": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign in with a passkey
+         * @description POST /auth/passkey — Sign this browser in with a passkey's answer to the
+         *     challenge. Body: { credential, remember? }.
+         */
+        post: operations["passkeySignIn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/passkeys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your passkeys
+         * @description GET /account/passkeys — The account's passkeys, oldest first.
+         */
+        get: operations["listPasskeys"];
+        put?: never;
+        /**
+         * Add a passkey
+         * @description POST /account/passkeys — Add the passkey that answered the challenge.
+         *     Body: { credential, name? }. Unnamed, it is named after where it is kept,
+         *     when its maker says (Windows Hello, iCloud Keychain, …).
+         */
+        post: operations["addPasskey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/passkeys/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start adding a passkey
+         * @description POST /account/passkeys/options — A challenge to add a passkey with, once
+         *     the account's password confirms who is asking. Body: { password }.
+         */
+        post: operations["passkeyAddOptions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/passkeys/{passkey_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a passkey
+         * @description DELETE /account/passkeys/{passkey_id} — Remove a passkey: it no longer
+         *     signs anyone in (the browser or password manager still lists it until
+         *     it is deleted there).
+         */
+        delete: operations["deletePasskey"];
+        options?: never;
+        head?: never;
+        /**
+         * Rename a passkey
+         * @description PATCH /account/passkeys/{passkey_id} — Rename a passkey. Body: { name }.
+         */
+        patch: operations["renamePasskey"];
+        trace?: never;
+    };
     "/saved-searches": {
         parameters: {
             query?: never;
@@ -1240,12 +1340,6 @@ export interface components {
             /** @description Human-readable message for display. */
             message?: string;
         };
-        /** @description A bearer token, and the account it signs in. */
-        LoginResponse: {
-            /** @description Bearer token, valid for a day, or 30 with remember. */
-            token?: string;
-            user?: components["schemas"]["User"];
-        };
         /** @description Media items after a cursor. */
         MediaFeed: {
             items?: components["schemas"]["Media"][];
@@ -1272,6 +1366,13 @@ export interface components {
             /** @description The target tag that received the media. */
             target_tag_id?: number;
         };
+        /** @description WebAuthn options for the browser (PublicKeyCredentialRequestOptionsJSON to sign in, PublicKeyCredentialCreationOptionsJSON to add a passkey), with a challenge this session answers once. */
+        PasskeyOptions: {
+            /** @description Random, base64url. */
+            challenge: string;
+        } & {
+            [key: string]: unknown;
+        };
         /** @description Duplicate-scan summary statistics. */
         ScanResult: {
             success?: boolean;
@@ -1284,6 +1385,15 @@ export interface components {
              * @description Execution time in seconds.
              */
             execution_time?: number;
+        };
+        /** @description Who this browser is signed in as. */
+        SessionResponse: {
+            /** @description Null when signed out. */
+            user: components["schemas"]["User"] | null;
+        };
+        /** @description The account this browser is now signed in as. */
+        SignInResponse: {
+            user: components["schemas"]["User"];
         };
         /** @description A tag implication (tag -> implied tag). */
         TagImplication: {
@@ -1424,6 +1534,17 @@ export interface components {
             name?: string;
             /** @description As the gallery's URL writes it: "cat,-dog", or "untagged". */
             query?: string;
+        };
+        /** @description A passkey an account signs in with. */
+        Passkey: {
+            id?: number;
+            name?: string;
+            /** @description Where it is kept (iCloud Keychain, Google Password Manager, Windows Hello…), when its maker says. */
+            authenticator?: string | null;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            last_used_at?: string | null;
         };
     };
     responses: never;
@@ -1629,6 +1750,53 @@ export interface operations {
             };
         };
     };
+    currentSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The account, or null when signed out */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionResponse"];
+                };
+            };
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Signed out */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     register: {
         parameters: {
             query?: never;
@@ -1641,7 +1809,7 @@ export interface operations {
                 "application/json": {
                     username: string;
                     password: string;
-                    /** @description Keep the login for 30 days instead of one. */
+                    /** @description Keep this browser signed in for 30 days, not just until it closes. */
                     remember?: boolean;
                     /** @description The Turnstile widget's token (action "register"), when GET /auth/config gives a site key. */
                     turnstile_token?: string;
@@ -1655,7 +1823,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["LoginResponse"];
+                    "application/json": components["schemas"]["SignInResponse"];
                 };
             };
             /** @description InvalidUsername, WeakPassword, CaptchaRequired */
@@ -1717,7 +1885,7 @@ export interface operations {
                 "application/json": {
                     username: string;
                     password: string;
-                    /** @description Keep the login for 30 days instead of one. */
+                    /** @description Keep this browser signed in for 30 days, not just until it closes. */
                     remember?: boolean;
                     /** @description The Turnstile widget's token (action "login"), when GET /auth/config gives a site key. */
                     turnstile_token?: string;
@@ -1725,13 +1893,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Issued token */
+            /** @description Signed in */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["LoginResponse"];
+                    "application/json": components["schemas"]["SignInResponse"];
                 };
             };
             /** @description MissingCredentials, CaptchaRequired */
@@ -1772,62 +1940,6 @@ export interface operations {
             };
             /** @description CaptchaUnavailable */
             503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    currentUser: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The account */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["User"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    logout: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Revoked */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Unauthorized */
-            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3078,6 +3190,262 @@ export interface operations {
             };
             /** @description InvalidInput */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    passkeySignInOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The options for navigator.credentials.get() */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyOptions"];
+                };
+            };
+        };
+    };
+    passkeySignIn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description The PublicKeyCredential navigator.credentials.get() gave, as its toJSON() writes it. */
+                    credential: {
+                        [key: string]: unknown;
+                    };
+                    /** @description Keep this browser signed in for 30 days, not just until it closes. */
+                    remember?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Signed in */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignInResponse"];
+                };
+            };
+            /** @description InvalidPasskey (the answer is unreadable), PasskeyExpired (no challenge waiting, or too old) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description PasskeyNotAccepted */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description TooManyAttempts */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPasskeys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The passkeys */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Passkey"][];
+                };
+            };
+        };
+    };
+    addPasskey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description The PublicKeyCredential navigator.credentials.create() gave, as its toJSON() writes it. */
+                    credential: {
+                        [key: string]: unknown;
+                    };
+                    name?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The passkey */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Passkey"];
+                };
+            };
+            /** @description InvalidPasskey, InvalidPasskeyName, PasskeyExpired, PasskeyRejected (its answer didn't check out, or it is already added) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    passkeyAddOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    password: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The options for navigator.credentials.create() */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyOptions"];
+                };
+            };
+            /** @description MissingCredentials */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description IncorrectPassword */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deletePasskey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                passkey_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description PasskeyNotFound */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    renamePasskey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                passkey_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The passkey */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Passkey"];
+                };
+            };
+            /** @description InvalidPasskeyName */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description PasskeyNotFound */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -60,8 +60,8 @@ final class ManageUser extends Command
             if ($password === null) {
                 return self::FAILURE;
             }
-            $user->password = $password;
-            $user->tokens()->delete();
+            // Signed out everywhere, as a new password always signs one out.
+            $user->setNewPassword($password);
         }
         $user->save();
         $this->info("{$user->username} is " . ($user->is_admin ? 'an admin.' : 'an ordinary account.'));

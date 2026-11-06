@@ -104,7 +104,7 @@ $missingRecord = $superseded('A path id is digits and names a record that exists
 $danbooru = $superseded('The Danbooru import no longer returns `all_tags` (every tag in the gallery). tests/Feature/Http/Api5Test.php.');
 $upload = $superseded('An upload queues its thumbnails and Danbooru lookup: a file says tags_status "queued" (or why not, as tags_error), GET /media/tag-imports reports the outcome, and total_tags_applied is gone. tests/Feature/Http/UploadQueueTest.php.');
 $partial = $superseded('A PUT or PATCH changes only the fields it sends; API 4 reset the rest to their defaults. tests/Feature/Http/Api5Test.php.');
-$accounts = $superseded('API 6 has accounts: login takes a username and password (MissingCredentials 400, InvalidCredentials 401) and answers { token, user }; the shared GALLERY_ADMIN_PASSWORD, and AdminNotConfigured with it, are gone. tests/Feature/Http/AccountsTest.php.');
+$accounts = $superseded('API 6 has accounts: login takes a username and password (MissingCredentials 400, InvalidCredentials 401); the shared GALLERY_ADMIN_PASSWORD, and AdminNotConfigured with it, are gone. API 7 signs the browser in with a session cookie and answers { user }, with no token. tests/Feature/Http/AccountsTest.php.');
 
 return [
     ...$divergences,

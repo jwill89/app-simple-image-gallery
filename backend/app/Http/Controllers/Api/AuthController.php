@@ -11,6 +11,7 @@ use App\Http\Requests\RegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\Turnstile;
+use App\Support\Login;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -18,23 +19,23 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
-use Laravel\Sanctum\PersonalAccessToken;
 use OpenApi\Spec as OAS;
 
 /**
- * Accounts: sign-up, login and logout. Sign-up and login pass Cloudflare
- * Turnstile first (App\Services\Turnstile), when it is set up. Login is
- * throttled to 10 attempts per 5 minutes per IP, and sign-up to 5 accounts an
- * hour, on top of the API's limit. That is checked here rather than by a second
- * throttle middleware, which would report its own, smaller
- * X-RateLimit-Remaining: the contract's header is the API limit's.
+ * Accounts: sign-up, login and logout. A signed-in browser carries its session
+ * in a cookie (App\Support\Login). Sign-up and login pass Cloudflare Turnstile
+ * first (App\Services\Turnstile), when it is set up. Login is throttled to 10
+ * attempts per 5 minutes per IP, and sign-up to 5 accounts an hour, on top of
+ * the API's limit. That is checked here rather than by a second throttle
+ * middleware, which would report its own, smaller X-RateLimit-Remaining: the
+ * contract's header is the API limit's.
  */
 final class AuthController extends Controller
 {
     /** Login attempts allowed per IP in LOGIN_WINDOW seconds, successful ones included. */
-    private const int LOGIN_ATTEMPTS = 10;
+    public const int LOGIN_ATTEMPTS = 10;
 
-    private const int LOGIN_WINDOW = 300;
+    public const int LOGIN_WINDOW = 300;
 
     /** Accounts one IP may create in SIGNUP_WINDOW seconds. */
     private const int SIGNUPS = 5;
@@ -69,8 +70,28 @@ final class AuthController extends Controller
     }
 
     /**
-     * POST /auth/register — Create an account and sign it in. Body:
-     * { username, password, remember?, turnstile_token? }.
+     * GET /auth/session — The account this browser is signed in as, or null.
+     * The page asks once as it starts, since it can't read the session cookie.
+     */
+    #[OAS\Operation\Get(
+        path: '/auth/session',
+        operationId: 'currentSession',
+        summary: 'Who this browser is signed in as',
+        tags: ['Auth'],
+        responses: [
+            new OAS\Response(response: 200, description: 'The account, or null when signed out', content: new OAS\MediaType\Json(ref: '#/components/schemas/SessionResponse')),
+        ],
+    )]
+    public function session(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        return new JsonResponse(['user' => $user instanceof User ? new UserResource($user)->resolve($request) : null]);
+    }
+
+    /**
+     * POST /auth/register — Create an account and sign this browser in as it.
+     * Body: { username, password, remember?, turnstile_token? }.
      */
     #[OAS\Operation\Post(
         path: '/auth/register',
@@ -84,13 +105,13 @@ final class AuthController extends Controller
                 properties: [
                     new OAS\Property(property: 'username', schema: new OAS\Schema(type: 'string', maxLength: 32, minLength: 3, pattern: '^[A-Za-z0-9._-]{3,32}$')),
                     new OAS\Property(property: 'password', schema: new OAS\Schema(type: 'string', maxLength: 200, minLength: 8)),
-                    new OAS\Property(property: 'remember', schema: new OAS\Schema(type: 'boolean', description: 'Keep the login for 30 days instead of one.')),
+                    new OAS\Property(property: 'remember', schema: new OAS\Schema(type: 'boolean', description: 'Keep this browser signed in for 30 days, not just until it closes.')),
                     new OAS\Property(property: 'turnstile_token', schema: new OAS\Schema(type: 'string', description: 'The Turnstile widget\'s token (action "register"), when GET /auth/config gives a site key.')),
                 ],
             ),
         ),
         responses: [
-            new OAS\Response(response: 201, description: 'The account, signed in', content: new OAS\MediaType\Json(ref: '#/components/schemas/LoginResponse')),
+            new OAS\Response(response: 201, description: 'The account, signed in', content: new OAS\MediaType\Json(ref: '#/components/schemas/SignInResponse')),
             new OAS\Response(response: 400, description: 'InvalidUsername, WeakPassword, CaptchaRequired', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
             new OAS\Response(response: 403, description: 'SignupClosed, CaptchaFailed', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
             new OAS\Response(response: 409, description: 'UsernameTaken', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
@@ -121,17 +142,14 @@ final class AuthController extends Controller
         ]);
         $user->defaultList();
         Log::info('Account created', ['user_id' => $user->id, 'ip' => $request->ip()]);
+        Login::start($user, $request->boolean('remember'));
 
-        return new JsonResponse([
-            'token' => $user->issueToken($request->boolean('remember')),
-            'user' => new UserResource($user)->resolve($request),
-        ], 201);
+        return new JsonResponse(['user' => new UserResource($user)->resolve($request)], 201);
     }
 
     /**
-     * POST /auth/login — Exchange a username and password for a bearer token.
-     * Body: { username, password, remember?, turnstile_token? }. The token
-     * lasts a day, or 30 with remember.
+     * POST /auth/login — Sign this browser in with a username and password.
+     * Body: { username, password, remember?, turnstile_token? }.
      */
     #[OAS\Operation\Post(
         path: '/auth/login',
@@ -145,13 +163,13 @@ final class AuthController extends Controller
                 properties: [
                     new OAS\Property(property: 'username', schema: new OAS\Schema(type: 'string')),
                     new OAS\Property(property: 'password', schema: new OAS\Schema(type: 'string')),
-                    new OAS\Property(property: 'remember', schema: new OAS\Schema(type: 'boolean', description: 'Keep the login for 30 days instead of one.')),
+                    new OAS\Property(property: 'remember', schema: new OAS\Schema(type: 'boolean', description: 'Keep this browser signed in for 30 days, not just until it closes.')),
                     new OAS\Property(property: 'turnstile_token', schema: new OAS\Schema(type: 'string', description: 'The Turnstile widget\'s token (action "login"), when GET /auth/config gives a site key.')),
                 ],
             ),
         ),
         responses: [
-            new OAS\Response(response: 200, description: 'Issued token', content: new OAS\MediaType\Json(ref: '#/components/schemas/LoginResponse')),
+            new OAS\Response(response: 200, description: 'Signed in', content: new OAS\MediaType\Json(ref: '#/components/schemas/SignInResponse')),
             new OAS\Response(response: 400, description: 'MissingCredentials, CaptchaRequired', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
             new OAS\Response(response: 401, description: 'InvalidCredentials', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
             new OAS\Response(response: 403, description: 'CaptchaFailed', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
@@ -161,15 +179,7 @@ final class AuthController extends Controller
     )]
     public function login(LoginRequest $request): JsonResponse
     {
-        $throttleKey = 'login:' . $request->ip();
-        if (RateLimiter::tooManyAttempts($throttleKey, self::LOGIN_ATTEMPTS)) {
-            Log::warning('Login rate limit exceeded', ['ip' => $request->ip()]);
-
-            throw new ApiException('TooManyAttempts', 429, 'Too many login attempts. Please wait a few minutes and try again.', [
-                'Retry-After' => (string) RateLimiter::availableIn($throttleKey),
-            ]);
-        }
-        RateLimiter::hit($throttleKey, self::LOGIN_WINDOW);
+        self::throttleLogin($request);
         $this->turnstile->verify(self::turnstileToken($request), 'login', $request->ip());
 
         // The column is COLLATE NOCASE, so the name matches in any case. An
@@ -183,55 +193,49 @@ final class AuthController extends Controller
             throw new ApiException('InvalidCredentials', 401, 'The username or password is incorrect.');
         }
         Log::info('Login', ['user_id' => $user->id, 'ip' => $request->ip()]);
+        Login::start($user, $request->boolean('remember'));
 
-        return new JsonResponse([
-            'token' => $user->issueToken($request->boolean('remember')),
-            'user' => new UserResource($user)->resolve($request),
-        ]);
+        return new JsonResponse(['user' => new UserResource($user)->resolve($request)]);
     }
 
     /**
-     * GET /auth/me — The account the token signs in.
-     */
-    #[OAS\Operation\Get(
-        path: '/auth/me',
-        operationId: 'currentUser',
-        summary: 'The signed-in account',
-        tags: ['Auth'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
-        responses: [
-            new OAS\Response(response: 200, description: 'The account', content: new OAS\MediaType\Json(ref: '#/components/schemas/User')),
-            new OAS\Response(response: 401, description: 'Unauthorized', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-        ],
-    )]
-    public function me(Request $request): UserResource
-    {
-        return new UserResource($request->user());
-    }
-
-    /**
-     * DELETE /auth/token — Log out: the token this request carries stops
-     * working at once, rather than when it expires.
+     * DELETE /auth/session — Log out this browser. The account's other
+     * browsers stay signed in.
      */
     #[OAS\Operation\Delete(
-        path: '/auth/token',
+        path: '/auth/session',
         operationId: 'logout',
-        summary: 'Log out (revoke this token)',
+        summary: 'Log out',
         tags: ['Auth'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         responses: [
-            new OAS\Response(response: 204, description: 'Revoked'),
+            new OAS\Response(response: 204, description: 'Signed out'),
             new OAS\Response(response: 401, description: 'Unauthorized', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ],
     )]
     public function logout(Request $request): Response
     {
-        $token = $request->user()?->currentAccessToken();
-        if ($token instanceof PersonalAccessToken) {
-            $token->delete();
-        }
+        Login::end($request);
 
         return response()->noContent();
+    }
+
+    /**
+     * Count a login attempt from this address, refusing it (429
+     * TooManyAttempts) past the limit. A passkey login counts too
+     * (PasskeyController).
+     */
+    public static function throttleLogin(Request $request): void
+    {
+        $throttleKey = 'login:' . $request->ip();
+        if (RateLimiter::tooManyAttempts($throttleKey, self::LOGIN_ATTEMPTS)) {
+            Log::warning('Login rate limit exceeded', ['ip' => $request->ip()]);
+
+            throw new ApiException('TooManyAttempts', 429, 'Too many login attempts. Please wait a few minutes and try again.', [
+                'Retry-After' => (string) RateLimiter::availableIn($throttleKey),
+            ]);
+        }
+        RateLimiter::hit($throttleKey, self::LOGIN_WINDOW);
     }
 
     private static function turnstileToken(Request $request): ?string

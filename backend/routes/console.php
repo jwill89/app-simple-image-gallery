@@ -18,6 +18,3 @@ use Illuminate\Support\Facades\Schedule;
 // The files dropped into the media folder during the day. A run that takes
 // past the next midnight isn't started twice.
 Schedule::command(IngestMedia::class)->dailyAt('00:00')->withoutOverlapping();
-
-// Tokens expire after 24 hours (sanctum.expiration); drop them a day after.
-Schedule::command('sanctum:prune-expired --hours=24')->daily();

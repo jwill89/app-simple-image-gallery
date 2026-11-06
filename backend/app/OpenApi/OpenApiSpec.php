@@ -33,21 +33,26 @@ use OpenApi\Spec as OAS;
           with a `4xx`/`5xx` status. `error` is a stable PascalCase code safe to
           branch on; `message` is for display and may change.
 
-        **Auth** — a Bearer token (`Authorization: Bearer <token>`) obtained from
-        `POST /auth/login` (valid 24h). All `GET`s are public; state-changing
-        methods require a token, except a small public allowlist (media tagging
-        and the batched `POST /media/by-ids` read).
+        **Auth** — a session cookie, set by `POST /auth/login`, `POST /auth/register`
+        or `POST /auth/passkey`, which the browser sends with every request. It is
+        HttpOnly, so the page's scripts never see it; `GET /auth/session` says who
+        it signs in. Writes are refused (`403 ForbiddenOrigin`) unless the browser
+        marks them same-origin (`Sec-Fetch-Site`) and they come from an allowed
+        origin. Reads are public; a write needs a signed-in account (or an admin),
+        except a small public allowlist (media tagging and the batched
+        `POST /media/by-ids` read).
         MD,
 )]
 #[OAS\Server(url: '/api', description: 'Same-origin API base path')]
 #[OAS\Security\Scheme(
-    component: 'bearerAuth',
-    type: 'http',
-    scheme: 'bearer',
-    description: 'Admin bearer token issued by POST /auth/login (valid 24 hours).',
+    component: 'sessionCookie',
+    type: 'apiKey',
+    in: 'cookie',
+    name: 'gallery-session',
+    description: 'The session cookie a sign-in sets: until the browser closes, or 30 days with "keep me signed in".',
 )]
 #[OAS\Tag(name: 'System', description: 'Version and API documentation endpoints.')]
-#[OAS\Tag(name: 'Auth', description: 'Admin authentication.')]
+#[OAS\Tag(name: 'Auth', description: 'Sign-up, sign-in (password or passkey) and sign-out.')]
 #[OAS\Tag(name: 'Media', description: 'Media items (images + videos), listing, upload, and tagging.')]
 #[OAS\Tag(name: 'Tags', description: 'Tags CRUD and migration.')]
 #[OAS\Tag(name: 'Tag Categories', description: 'Tag category CRUD.')]
@@ -61,5 +66,5 @@ final class OpenApiSpec
      * `api_version`. It moves only when the API surface changes, never with
      * an application release.
      */
-    public const string API_VERSION = '6.0.0';
+    public const string API_VERSION = '7.0.0';
 }

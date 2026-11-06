@@ -6,19 +6,17 @@ namespace App\Support;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * Who is reading a public listing. Those routes take no auth middleware, since
- * anyone may read them; a valid bearer token, when one is sent, still names
- * the account, whose blocked tags then leave its listings. An invalid one
- * reads as nobody, as no token does.
+ * anyone may read them; a browser's session, when it is signed in, still names
+ * the account, whose blocked tags then leave its listings.
  */
 final class Viewer
 {
     public static function of(Request $request): ?User
     {
-        $user = $request->user() ?? Auth::guard('sanctum')->user();
+        $user = $request->user();
 
         return $user instanceof User ? $user : null;
     }

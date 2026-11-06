@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "6.0.0",
+  "version": "7.0.0",
   "type": "module",
   "engines": {
     "node": ">=26"
@@ -24,6 +24,7 @@
     "lint:md": "cd .. && markdownlint-cli2"
   },
   "dependencies": {
+    "@simplewebauthn/browser": "^14.0.0",
     "bulma": "^1.0.4",
     "pinia": "^4.1.0",
     "reka-ui": "^2.11.0",

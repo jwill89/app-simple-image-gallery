@@ -30,7 +30,7 @@ return [
     // releases from) and the HTTP API contract version, which moves only when
     // the API surface changes and is set in the OpenAPI document's metadata.
     // Both are served by GET /api/version.
-    'version' => '6.0.0',
+    'version' => '7.0.0',
     'api_version' => App\OpenApi\OpenApiSpec::API_VERSION,
 
     // Whether anyone may create an account: on unless set to "false" (or "0",

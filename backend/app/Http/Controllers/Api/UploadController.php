@@ -44,7 +44,7 @@ final class UploadController extends Controller
         operationId: 'uploadMedia',
         summary: 'Upload media (create)',
         tags: ['Media'],
-        security: [new OAS\Security\Requirement(scheme: 'bearerAuth')],
+        security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         requestBody: new OAS\RequestBody(
             required: true,
             content: new OAS\MediaType(

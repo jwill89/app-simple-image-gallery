@@ -5,8 +5,9 @@ declare(strict_types=1);
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 
-// routes/console.php: the nightly ingest, as cron.php ran, and the daily
-// clean-up of expired tokens.
+// routes/console.php: the nightly ingest, as cron.php ran. Expired sessions
+// need no schedule: the file driver sweeps them as requests arrive
+// (session.lottery).
 
 /** @return array<string, Event> */
 function scheduled(): array
@@ -27,6 +28,6 @@ test('the ingest runs at midnight, never two at once', function (): void {
         ->and($ingest?->withoutOverlapping)->toBeTrue();
 });
 
-test('expired tokens are pruned daily', function (): void {
-    expect(scheduled()['sanctum:prune-expired --hours=24']->expression ?? null)->toBe('0 0 * * *');
+test('nothing else is scheduled', function (): void {
+    expect(array_keys(scheduled()))->toBe(['gallery:ingest']);
 });

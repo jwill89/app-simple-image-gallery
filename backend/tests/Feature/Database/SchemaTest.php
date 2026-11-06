@@ -9,10 +9,10 @@ use Tests\Support\ContractFixture;
 // Phase 2's finish line (docs/laravel-migration.md): a fresh migrate builds the
 // production schema, and migrating the live database adds only Laravel's tables.
 
-/** The tables the Laravel app adds: Laravel's own, and the accounts' (2026_11_04_000000_create_accounts). */
+/** The tables the Laravel app adds: Laravel's own, and the accounts' (2026_11_04_000000_create_accounts and after). */
 const LARAVEL_TABLES = [
-    'failed_jobs', 'job_batches', 'jobs', 'migrations', 'personal_access_tokens', 'users',
-    'blocked_tags', 'favorite_list_items', 'favorite_lists', 'saved_searches',
+    'failed_jobs', 'job_batches', 'jobs', 'migrations', 'users',
+    'blocked_tags', 'favorite_list_items', 'favorite_lists', 'passkeys', 'saved_searches',
 ];
 
 /** The production tables the Laravel app replaces rather than keeps (see the baseline migration). */
