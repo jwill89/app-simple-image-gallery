@@ -59,7 +59,7 @@ const hasSelectedTags = computed(() => props.modelValue.length > 0)
     <TagMultiSelect v-model="selectedIds" placeholder="Search tags..." @submit="emit('search')">
       <template #actions>
         <div v-if="!hasSelectedTags" class="control">
-          <button type="button" class="button" disabled>
+          <button type="button" class="button" aria-label="Search" disabled>
             <span class="icon"><i class="fa-solid fa-magnifying-glass" /></span>
           </button>
         </div>
@@ -71,7 +71,12 @@ const hasSelectedTags = computed(() => props.modelValue.length > 0)
             </button>
           </div>
           <div class="control">
-            <button type="button" class="button is-light" @click="emit('reset')">
+            <button
+              type="button"
+              class="button is-light"
+              aria-label="Clear search"
+              @click="emit('reset')"
+            >
               <span class="icon"><i class="fa-solid fa-xmark" /></span>
             </button>
           </div>

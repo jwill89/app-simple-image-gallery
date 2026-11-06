@@ -20,7 +20,7 @@ tasks:
       - cd frontend && npm ci
 
   dev:
-    desc: Run the Vite dev server on :5173; it sends /api and /media to the backend at http://localhost
+    desc: Run the Vite dev server on :5173; it sends /api and the media files to the backend at http://localhost (or GALLERY_BACKEND_URL)
     dir: frontend
     cmds:
       - npm run dev
@@ -63,6 +63,13 @@ tasks:
     dir: frontend
     cmds:
       - npm test
+
+  test:e2e:
+    desc: Run the end-to-end suite (Playwright and axe) on the built SPA and the API, on a throwaway database
+    aliases: [tests:e2e]
+    dir: frontend
+    cmds:
+      - npm run test:e2e
 
   lint:
     desc: Lint, format-check, and statically analyse everything
@@ -109,6 +116,7 @@ tasks:
       - task: vuln
       - task: test
       - task: build
+      - task: test:e2e
 
   deploy:
     desc: Build the SPA and deploy it with the Laravel code, then migrate (pass flags after --, e.g. -- -SkipMigrate)

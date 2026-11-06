@@ -109,7 +109,7 @@ async function register() {
             </router-link>
           </EmptyState>
           <form v-else class="box" @submit.prevent="register">
-            <h2 class="title is-4 has-text-centered">Create an account</h2>
+            <h1 class="title is-4 has-text-centered">Create an account</h1>
             <p class="account-why">
               An account keeps your favorites and lists on the server, hides the tags you block, and
               saves your searches.

@@ -141,7 +141,7 @@ async function signIn() {
       <div class="columns is-centered">
         <div class="column is-5-tablet is-4-desktop">
           <form class="box" @submit.prevent="signIn">
-            <h2 class="title is-4 has-text-centered">Sign in</h2>
+            <h1 class="title is-4 has-text-centered">Sign in</h1>
             <div class="field">
               <label class="label" for="login-username">Username</label>
               <div class="control has-icons-left">

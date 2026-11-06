@@ -45,6 +45,17 @@
       5. Fetch the health URL and the site from here, through Cloudflare. If either
          fails, the previous code goes back (the database stays as it is), unless
          -NoBackup left nothing to go back to.
+      6. Check the daily backup (shared-tooling's Install-BackupTimer): a systemd timer
+         that runs as www-data at 10:00 UTC and copies the database with VACUUM INTO to
+         db/backups/gallery-YYYY-MM-DD.db, integrity-checked, keeping 28 days. Those sit
+         apart from step 4's snapshots in db/.backups/. If the timer is already as it
+         should be, nothing changes; if it is new or changed, it runs once first, and a
+         failed run puts the previous timer back.
+      7. Pull a copy of the live database to the local one backend/.env names
+         (DB_DATABASE), keeping the three previous local copies     (skip with -NoDbPull).
+         It is skipped, with a warning, while the local database is in use.
+    Steps 6 and 7 run only once the site checks pass, so a deploy that rolled back
+    changes neither.
 
     The first deploy to a new AppRoot needs its .env first (the plan's Deployment
     section, docs/laravel-migration.md); this script refuses to run without one.
@@ -66,7 +77,8 @@
 .PARAMETER SkipBuild    Deploy the existing frontend/dist without rebuilding.
 .PARAMETER SkipComposer Don't run `composer install` on the host.
 .PARAMETER SkipMigrate  Don't run database migrations on the host.
-.PARAMETER NoBackup     Don't keep the previous code in .deploy-backup once the deploy succeeds (it is still put back on a failure), or snapshot the database.
+.PARAMETER NoBackup     Don't keep the previous code in .deploy-backup once the deploy succeeds (it is still put back on a failure), or snapshot the database. The daily backup is unaffected.
+.PARAMETER NoDbPull     Don't pull a copy of the live database to the local one.
 
 .EXAMPLE
     .\scripts\deploy.ps1                       # full build + deploy + composer + migrate
@@ -89,7 +101,8 @@ param(
     [switch]$SkipBuild,
     [switch]$SkipComposer,
     [switch]$SkipMigrate,
-    [switch]$NoBackup
+    [switch]$NoBackup,
+    [switch]$NoDbPull
 )
 
 $ErrorActionPreference = 'Stop'
@@ -107,6 +120,20 @@ $repoRoot = Split-Path $PSScriptRoot -Parent
 $backendDir = Join-Path $repoRoot 'backend'
 $frontendDir = Join-Path $repoRoot 'frontend'
 $distDir = Join-Path $frontendDir 'dist' # vite outDir is frontend/dist
+
+# The local database the pull refreshes: the one backend/.env names, which the app reads.
+# backend/database/gallery.db is gitignored for it, and the deploy never packs it.
+$devDatabase = $null
+if (-not $NoDbPull) {
+    $envPath = Join-Path $backendDir '.env'
+    $line = if (Test-Path -LiteralPath $envPath) { Get-Content -LiteralPath $envPath | Where-Object { $_ -match '^DB_DATABASE=' } | Select-Object -First 1 }
+    $value = if ($line) { ($line -replace '^DB_DATABASE=', '').Trim() -replace '^["'']|["'']$', '' }
+    if ($value -and [IO.Path]::IsPathRooted($value)) {
+        $devDatabase = $value
+    } else {
+        Write-Warning 'backend/.env names no absolute DB_DATABASE, so the live database will not be pulled. Point it at backend/database/gallery.db to have each deploy refresh that copy.'
+    }
+}
 
 # The code, by its top-level entries: what the archive carries, and vendor/, which the
 # host builds beside it. The new set is built whole and swapped in by renames, so the
@@ -268,6 +295,24 @@ try {
             Restore-RemoteItemSet -Root $appRoot -Item $code -OnRestore $queueRestart
         }
     }
+
+    # From here the new code is live and stays; these keep the data safe. The live database
+    # is the one the host's .env names.
+    $database = @(Invoke-Remote (Format-RemoteScript -Value @{ ENV = "$appRoot/.env" } -Template @'
+grep -E '^DB_DATABASE=' "__ENV__" | head -n 1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//'
+'@))[0]
+    if (-not $database) { throw "The Gallery is deployed and live, but $appRoot/.env names no DB_DATABASE, so its daily backup was not checked." }
+
+    # The daily copies go in db/backups/, apart from the deploy's snapshots in db/.backups/,
+    # whose pruning (the newest five gallery-*.db) would otherwise remove them.
+    Write-Step 'Checking the daily backup...'
+    try {
+        Install-BackupTimer -Name 'gallery' -Database $database -Owner 'www-data' -Description 'Gallery daily database backup'
+    } catch {
+        throw "The Gallery is deployed and live, but its daily backup is not: $($_.Exception.Message)"
+    }
+
+    if ($devDatabase) { $null = Copy-LiveDatabase -Database $database -Destination $devDatabase }
 } finally {
     Close-DeployConnection
     Remove-Item -LiteralPath $archive.Path -ErrorAction SilentlyContinue

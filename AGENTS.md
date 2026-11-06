@@ -48,7 +48,7 @@ SaaS. Key features:
 | Frontend | **Vue 3** (`<script setup>` + Composition API), TypeScript, [Pinia](https://pinia.vuejs.org/), Vue Router, `@simplewebauthn/browser` (passkeys) |
 | Build | **Vite** on Node **26+** (outputs to `frontend/dist`) |
 | Styling | **Bulma 1.x** + custom `style.css` (token layer), FontAwesome (kit script) |
-| Tests | **Pest 5** (`backend/tests/`, in-memory SQLite) + **Vitest** (`frontend/src/__tests__/`, jsdom) |
+| Tests | **Pest 5** (`backend/tests/`, in-memory SQLite) + **Vitest** (`frontend/src/__tests__/`, jsdom) + **Playwright** with axe (`frontend/e2e/`, the built SPA and the API) |
 | Shared tooling | **[shared-tooling](https://github.com/jwill89/shared-tooling)**, the submodule at `shared/`: lint, test, CI and deploy settings every project uses |
 
 ---
@@ -103,6 +103,8 @@ SaaS. Key features:
 │
 ├── frontend/                  # Vue 3 + Vite source
 │   ├── vite.config.ts         # Vite + Vitest config (build outDir, dev proxy, test block, the service worker's build)
+│   ├── playwright.config.ts   # The end-to-end run: vite preview + PHP's server on a throwaway database
+│   ├── e2e/                   # Its specs (*.spec.ts), settings (env.ts) and database prepare script (server/)
 │   ├── tsconfig.{app,sw,node}.json  # the app (DOM), the service worker (WebWorker), the Vite config
 │   ├── vitest.setup.ts        # Vitest setup (pins TZ=UTC)
 │   ├── eslint.config.ts       # shared config (@jwill89/lint-web, from shared/lint/web) + this project's rules
@@ -174,9 +176,10 @@ composer dev          # php artisan serve, on http://localhost:8000
 ```
 
 Never point `DB_DATABASE` at a database another app is using. Fill in the `GALLERY_*` and
-`DANBOORU_*` settings as `.env.example` describes. The Vite dev server proxies `/api` and
-`/media` to `http://localhost` (`frontend/vite.config.ts`), so serve the backend there, or point
-the proxy at `php artisan serve`'s port while you work.
+`DANBOORU_*` settings as `.env.example` describes. The Vite dev server proxies `/api` and the
+media files (`/media/full`, `/media/thumbs`) to `http://localhost` (`frontend/vite.config.ts`), so
+serve the backend there, or set `GALLERY_BACKEND_URL` to `php artisan serve`'s address
+(`http://127.0.0.1:8000`) before `npm run dev`. The SPA's own pages under `/media` stay with Vite.
 
 The checks CI runs, from `backend/`:
 
@@ -204,7 +207,8 @@ run on the droplet.
 ```bash
 cd frontend
 npm install
-npm run dev        # Vite dev server on :5173, proxies /api and /media to http://localhost
+npm run dev        # Vite dev server on :5173, proxies /api and the media files to http://localhost
+npm run test:e2e   # the end-to-end suite: builds, then serves the SPA and the API on a throwaway database
 npm run build      # vue-tsc type-check + vite build → outputs to frontend/dist
 npm run preview
 ```
@@ -264,6 +268,14 @@ Then, from your machine through Cloudflare, it fetches `/api/media/count` and `/
 fails, the previous code goes back from `.deploy-backup/` (the database stays as it is), unless
 `-NoBackup` left nothing to go back to.
 
+Once both pass, it checks the **daily backup** (shared-tooling's `Install-BackupTimer`): the
+`gallery-backup.timer` systemd unit runs as `www-data` at 10:00 UTC and copies the database with
+`VACUUM INTO` to `db/backups/gallery-YYYY-MM-DD.db`, integrity-checked, keeping 28 days. A new
+or changed timer runs once before it is kept, and a failed run puts the previous one back. Then
+it **pulls a copy of the live database** to the local one `backend/.env` names (`-NoDbPull`
+skips it), keeping the three previous local copies as `<file>.bak-<time>`. They hold live
+accounts, so they stay on your machine (`database/gallery.db*` is gitignored).
+
 **Never change code in place on the live site.** Until 2026-11-03 the deploy deleted the code
 and unpacked the new code over the live folder, then ran Composer, the migration and
 `optimize`. For those 10–20 s every request failed: `bootstrap/cache` belonged to root, so
@@ -282,7 +294,7 @@ Everything for the gallery lives in **`/var/www/gallery.mathdad.me/`**, as every
 | `app/`, `bootstrap/`, `config/`, `database/`, `resources/`, `routes/`, `vendor/`, … | The code, replaced by each deploy |
 | `public/` | Apache's DocumentRoot, the only part served (both gallery vhosts) |
 | `.env`, `storage/` | Settings and Laravel's runtime files, kept across deploys |
-| `db/`, `media/`, `dupes/` | The data: `gallery.db` (+ `.backups/` snapshots), the media and the ingest folder, scan reports |
+| `db/`, `media/`, `dupes/` | The data: `gallery.db` (+ `.backups/`, the deploy's snapshots, and `backups/`, the daily copies), the media and the ingest folder, scan reports |
 | `backups/` | The pre-cutover backup, `ROLLBACK.txt`, the vhost files for a rollback; root-only |
 | `slim-rollback/` | The Slim app as it last ran, until Phase 8 deletes it |
 
@@ -825,7 +837,16 @@ Keep these invariants when editing auth or routes:
   (Vitest, failing below the floor in `vite.config.ts`). The scripts job (`pwsh.yml`) runs
   PSScriptAnalyzer with the shared settings over every tracked script. The docs job (`docs.yml`)
   runs markdownlint over every `.md` (`.markdownlint-cli2.jsonc`), checks `.editorconfig` and
-  `.gitattributes` match shared-tooling's, and checks the workflow refs. Backend feature tests run
+  `.gitattributes` match shared-tooling's, and checks the workflow refs. The e2e job (`e2e.yml`)
+  runs `npm run test:e2e` once the backend and frontend jobs pass: `frontend/playwright.config.ts`
+  builds the SPA, serves it with `vite preview`, and serves the API with PHP's built-in server (run
+  from `public/`, through Laravel's own router) on a throwaway SQLite database that
+  `e2e/server/prepare.ts` migrates and loads with the contract fixture. Its settings
+  (`e2e/env.ts`) override `backend/.env`, and the prepare script refuses to run if Laravel would
+  use another database. Every main page must show its data and pass axe at WCAG 2.2 AA (shared-tooling's
+  `test/a11y`), and a new account must keep a favorite across a reload. The specs find elements
+  by role and name, never by a Bulma class, so they hold when the component kit replaces Bulma.
+  Backend feature tests run
   on a fresh in-memory SQLite database per test (`RefreshDatabase`), with Danbooru (`Http::fake`),
   ffmpeg (`Process::fake`) and the queue faked where they're touched.
 - **Deploys snapshot the database before migrating** — `scripts/deploy.ps1` writes
@@ -835,6 +856,8 @@ Keep these invariants when editing auth or routes:
   **not** auto-restored by the failure trap — that trap fires on any non-zero exit, including
   after a migration has already succeeded, and reverting data could discard media uploaded during
   the deploy window; a failed migration prints the path and the restore command instead.
+  The daily copies are the backup timer's, in `db/backups/`, kept out of `db/.backups/` so the
+  deploy's pruning (the newest five `gallery-*.db`) never reaches them. Restore one the same way.
 - **OpenAPI is swagger-php 7's spec attributes** (`use OpenApi\Spec as OAS;`). The document is built
   by `tests/Support/OpenApiDocument::builder()`, which both `composer docs` (`bin/openapi.php`) and
   `OpenApiSpecTest` use, so the two can't disagree about how it's built. That builder drops v7's

@@ -11,7 +11,7 @@ const version = __APP_VERSION__
         All images &copy; their respective creators. All characters in images &copy; their
         respective owners.
       </p>
-      <p class="is-size-7 has-text-grey">
+      <p class="is-size-7">
         Gallery <a href="/api/docs" target="_blank" rel="noopener">v{{ version }}</a>
       </p>
     </div>

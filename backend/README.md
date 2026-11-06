@@ -14,7 +14,8 @@ composer setup            # install, create .env from .env.example, generate APP
 
 Then set `DB_DATABASE` in `.env` to an absolute path to a copy of the gallery database,
 never a database another app is using. `database/gallery.db` is gitignored for that
-purpose. Fill in the `GALLERY_*` and `DANBOORU_*` values; `.env.example` says what each is.
+purpose. Each `task deploy` refreshes the copy `DB_DATABASE` names from the live database,
+keeping the three previous ones beside it, unless run with `-NoDbPull`. Fill in the `GALLERY_*` and `DANBOORU_*` values; `.env.example` says what each is.
 
 Every path outside `/api` is the SPA shell (`SpaController`): the built `index.html` with
 the page's link-preview tags. It reads `resources/spa/index.html`, which the deploy copies

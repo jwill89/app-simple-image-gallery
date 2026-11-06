@@ -14,6 +14,42 @@ release body taken from that version's section below. So bump the version and
 update its section here in the same commit and push a green commit — no manual
 tagging.
 
+## [Unreleased]
+
+### Added
+
+- **A daily database backup.** Each deploy now installs and checks a systemd timer
+  (shared-tooling's `Install-BackupTimer`) that copies the database every day with
+  `VACUUM INTO` to `db/backups/gallery-YYYY-MM-DD.db`, checks the copy's integrity, and
+  keeps 28 days. Until now the database was copied only when a deploy migrated it.
+- **The deploy pulls a copy of the live database** to the local one `backend/.env` names,
+  keeping the three previous local copies; `-NoDbPull` skips it.
+- **End-to-end tests** (`npm run test:e2e`, `task test:e2e`, and a CI job on shared-tooling's
+  `e2e.yml`): Playwright opens each main page on the built SPA and the real API, on a
+  throwaway database holding the contract fixture, and checks it with axe at WCAG 2.2 AA; a
+  new account signs up, hearts an item and finds it in its favorites after a reload.
+
+### Changed
+
+- **The Vite dev server proxies only the media files** (`/media/full`, `/media/thumbs`), not
+  all of `/media`, so reloading a gallery page such as `/media/1/40` gets the SPA instead of
+  Laravel's shell. `GALLERY_BACKEND_URL` points the proxy at another backend, such as
+  `php artisan serve`.
+- **The first page appears without fading in.** Pages still fade from one to the next, but
+  the first had faded in from nothing, its text too faint to read for a quarter-second.
+
+### Fixed
+
+What the new axe checks found, at WCAG 2.2 AA:
+
+- **Every page has a `main` landmark** around its content, so a screen reader can jump to it.
+- **The search box's icon-only buttons have names**: "Search" and "Clear search".
+- **The sign-in and sign-up pages each have a level-one heading**, which looks as before.
+- **Muted text is darker** (`--text-3`, light theme: #7d828a to #676c74), reaching 4.5:1 on
+  every light surface, where it measured 3.3 to 3.9. The footer's version line uses it too,
+  in place of Bulma's grey.
+- **A link inside a sentence is underlined**, so it doesn't depend on colour alone.
+
 ## [7.0.1] - 2026-11-06
 
 **Shared tooling.** The lint, test, CI and deploy settings now come from

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { START_LOCATION, useRouter } from 'vue-router'
 import { TooltipProvider } from 'reka-ui'
 import { useGalleryStore } from './stores/gallery'
 import { useAuthStore } from './stores/auth'
@@ -12,6 +13,14 @@ const store = useGalleryStore()
 const auth = useAuthStore()
 const navbarHeight = ref(52)
 let resizeObserver: ResizeObserver | null = null
+
+// Pages fade from one to the next, but the first page appears as it is: there
+// is no page before it to fade from, and fading it in from nothing left its
+// text washed out (failing contrast) for its first quarter-second.
+const fade = ref(false)
+const stopFadeWatch = useRouter().afterEach((_to, from) => {
+  fade.value = from !== START_LOCATION
+})
 
 onMounted(() => {
   void store.initialize()
@@ -33,6 +42,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   resizeObserver?.disconnect()
+  stopFadeWatch()
 })
 </script>
 
@@ -44,15 +54,17 @@ onUnmounted(() => {
   <TooltipProvider :delay-duration="350" :skip-delay-duration="300">
     <div class="sticky-footer has-navbar-fixed-top" :style="{ paddingTop: navbarHeight + 'px' }">
       <AppNavbar />
-      <ErrorBoundary>
-        <router-view v-slot="{ Component }">
-          <Transition name="page-fade" mode="out-in">
-            <KeepAlive :include="['GalleryView']">
-              <component :is="Component" />
-            </KeepAlive>
-          </Transition>
-        </router-view>
-      </ErrorBoundary>
+      <main>
+        <ErrorBoundary>
+          <router-view v-slot="{ Component }">
+            <Transition name="page-fade" mode="out-in" :css="fade">
+              <KeepAlive :include="['GalleryView']">
+                <component :is="Component" />
+              </KeepAlive>
+            </Transition>
+          </router-view>
+        </ErrorBoundary>
+      </main>
       <AppFooter />
       <ToastContainer />
     </div>

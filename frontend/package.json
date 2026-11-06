@@ -21,7 +21,8 @@
     "gen:check": "npm run gen:types && git diff --exit-code src/types/api.generated.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@simplewebauthn/browser": "^14.0.0",
@@ -33,6 +34,8 @@
   },
   "devDependencies": {
     "@jwill89/lint-web": "file:../shared/lint/web",
+    "@jwill89/test-a11y": "file:../shared/test/a11y",
+    "@playwright/test": "^1.65.0",
     "@types/node": "^26.6.6",
     "@vitejs/plugin-vue": "^6.0.10",
     "@vitest/coverage-v8": "^5.0.5",

@@ -45,6 +45,11 @@ function serviceWorker(): Plugin {
   }
 }
 
+// The Laravel app the dev server (and `vite preview`) sends the API and the media
+// files to: http://localhost, or GALLERY_BACKEND_URL (the end-to-end run's server,
+// e2e/env.ts).
+const backend = process.env.GALLERY_BACKEND_URL ?? 'http://localhost'
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue(), serviceWorker()],
@@ -52,15 +57,12 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   server: {
+    // Only the media files, not all of /media: the SPA's own pages live there too
+    // (/media/1/40, /media/5/tags), and a reload of one must get the SPA.
     proxy: {
-      '/api': {
-        target: 'http://localhost',
-        changeOrigin: true,
-      },
-      '/media': {
-        target: 'http://localhost',
-        changeOrigin: true,
-      },
+      '/api': { target: backend, changeOrigin: true },
+      '/media/full': { target: backend, changeOrigin: true },
+      '/media/thumbs': { target: backend, changeOrigin: true },
     },
   },
   build: {

@@ -25,6 +25,9 @@
 /frontend/node_modules/
 /frontend/dist/
 /frontend/coverage/
+# Playwright's traces of a failed end-to-end run.
+/frontend/test-results/
+/frontend/playwright-report/
 /frontend/.gitignore
 /frontend/.vscode/
 # Generated / branding assets supplied at deploy time.

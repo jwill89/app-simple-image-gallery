@@ -193,7 +193,10 @@ the host it:
 4. restarts the queue worker.
 
 Then it fetches the API and the home page from outside, and puts the previous code back if
-either fails. The whole deploy is one upload over one held SSH connection.
+either fails. Once both pass, it checks the daily backup timer, which copies the database to
+`db/backups/` every day and keeps 28 days, and pulls a copy of the live database to the local
+one `backend/.env` names (`-NoDbPull` skips that). The whole deploy is one upload over one held
+SSH connection.
 
 If a passphrase-protected key is used, load it into Pageant first (`pageant.exe <key>`).
 

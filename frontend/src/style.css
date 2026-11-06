@@ -32,7 +32,7 @@
   /* ── Chrome: text ─────────────────────────────────────── */
   --text-1: #16181c;
   --text-2: #53575e;
-  --text-3: #7d828a;
+  --text-3: #676c74; /* ≥4.5:1 on surface-0/1/2 (5.28, 4.93, 4.55) */
   --text-inverse: #fff;
 
   /* ── Focus: functional, not a brand accent ────────────── */
@@ -190,6 +190,13 @@ code {
   color: var(--text-2);
   font-size: 0.9em;
   padding: 0.1em 0.35em;
+}
+
+/* A link inside a sentence must stand out by more than its colour, which sits
+   too close to the text around it (WCAG 1.4.1). */
+p a:not(.button, .tag) {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 hr {
