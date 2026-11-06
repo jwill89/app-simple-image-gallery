@@ -18,7 +18,7 @@ jobs:
   # The Laravel backend. The contract recorded from the Slim app it replaced
   # (tests/Fixtures/contract/) is replayed by its tests.
   backend:
-    uses: jwill89/shared-tooling/.github/workflows/php.yml@v1.1.2
+    uses: jwill89/shared-tooling/.github/workflows/php.yml@v1.2.0
     with:
       dir: backend
       php-version: '8.5'
@@ -33,16 +33,16 @@ jobs:
 
   # The frontend's generated API types come from backend/openapi.json (gen:check).
   frontend:
-    uses: jwill89/shared-tooling/.github/workflows/web.yml@v1.1.2
+    uses: jwill89/shared-tooling/.github/workflows/web.yml@v1.2.0
     with:
       dir: frontend
       scripts: gen:check lint lint:css knip format:check build test:coverage
 
   scripts:
-    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v1.1.2
+    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v1.2.0
 
   docs:
-    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v1.1.2
+    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v1.2.0
 
   # On a push to the default branch, AFTER the gate passes, tag + release the
   # project version if it has no release yet. Tag = v<version> (frontend/
