@@ -1,5 +1,6 @@
 #!/usr/bin/env pwsh
 #Requires -Version 7.4
+
 <#
 .SYNOPSIS
     Build and deploy the Gallery (Laravel backend + Vue SPA) to the DigitalOcean droplet.
@@ -34,8 +35,8 @@
            - snapshot the database next to it in .backups/ via SQLite VACUUM INTO,
              keeping the five most recent                  (skip with -NoBackup),
            - php artisan migrate --force                   (skip with -SkipMigrate),
-           - storage:link (public/media), optimize, queue:restart. storage/ and
-             .env are left alone throughout.
+           - storage:link (public/media), optimize, queue:restart. Neither storage/
+             nor the .env file is touched.
          If a step fails before the swap, the live code was never touched; after it,
          the previous CODE is moved back automatically. The database is NOT rolled
          back automatically: the failure trap fires on any non-zero exit, including
@@ -68,17 +69,28 @@
     The droplet runs `ufw limit ssh` (drops the IP after ~6 connections in 30s); the
     whole deploy rides one held connection, plus one only if it drops and reconnects.
 
-.PARAMETER VpsHost      Droplet IP/hostname. Resolved from -VpsHost, then $env:DEPLOY_VPS_HOST, then scripts/deploy.config.ps1 ($DeployVpsHost).
-.PARAMETER VpsUser      SSH user. Resolved from -VpsUser, then $env:DEPLOY_VPS_USER, then $DeployVpsUser.
-.PARAMETER KeyPath      PuTTY .ppk private key. Resolved from -KeyPath, then $env:DEPLOY_KEY_PATH, then $DeployKeyPath.
-.PARAMETER AppRoot      The Laravel app's folder on the host (its public/ is the DocumentRoot). Resolved from -AppRoot, then $env:DEPLOY_APP_ROOT, then $DeployAppRoot.
-.PARAMETER HealthUrl    URL fetched after the deploy. Default: https://<PublicHost>/api/media/count.
-.PARAMETER PublicHost   The site's public host name.
-.PARAMETER SkipBuild    Deploy the existing frontend/dist without rebuilding.
-.PARAMETER SkipComposer Don't run `composer install` on the host.
-.PARAMETER SkipMigrate  Don't run database migrations on the host.
-.PARAMETER NoBackup     Don't keep the previous code in .deploy-backup once the deploy succeeds (it is still put back on a failure), or snapshot the database. The daily backup is unaffected.
-.PARAMETER NoDbPull     Don't pull a copy of the live database to the local one.
+.PARAMETER VpsHost
+    Droplet IP/hostname. Resolved from -VpsHost, then $env:DEPLOY_VPS_HOST, then scripts/deploy.config.ps1 ($DeployVpsHost).
+.PARAMETER VpsUser
+    SSH user. Resolved from -VpsUser, then $env:DEPLOY_VPS_USER, then $DeployVpsUser.
+.PARAMETER KeyPath
+    PuTTY .ppk private key. Resolved from -KeyPath, then $env:DEPLOY_KEY_PATH, then $DeployKeyPath.
+.PARAMETER AppRoot
+    The Laravel app's folder on the host (its public/ is the DocumentRoot). Resolved from -AppRoot, then $env:DEPLOY_APP_ROOT, then $DeployAppRoot.
+.PARAMETER HealthUrl
+    URL fetched after the deploy. Default: https://<PublicHost>/api/media/count.
+.PARAMETER PublicHost
+    The site's public host name.
+.PARAMETER SkipBuild
+    Deploy the existing frontend/dist without rebuilding.
+.PARAMETER SkipComposer
+    Don't run `composer install` on the host.
+.PARAMETER SkipMigrate
+    Don't run database migrations on the host.
+.PARAMETER NoBackup
+    Don't keep the previous code in .deploy-backup once the deploy succeeds (it is still put back on a failure), or snapshot the database. The daily backup is unaffected.
+.PARAMETER NoDbPull
+    Don't pull a copy of the live database to the local one.
 
 .EXAMPLE
     .\scripts\deploy.ps1                       # full build + deploy + composer + migrate
