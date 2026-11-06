@@ -1,9 +1,10 @@
-# Larastan, phpstan-strict-rules and phpstan-deprecation-rules load through
-# phpstan/extension-installer, so they need no `includes:` here. Same level as the
-# Slim backend's phpstan.neon.
+# The shared PHPStan bar (shared-tooling's lint/php): level 8. Larastan,
+# phpstan-strict-rules and phpstan-deprecation-rules load through
+# phpstan/extension-installer, so they need no `includes:` here.
+includes:
+    - ../shared/lint/php/phpstan.neon
 
 parameters:
-    level: 8
     paths:
         - app
         - bootstrap/app.php

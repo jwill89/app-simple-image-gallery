@@ -1,21 +1,13 @@
-// markdownlint (https://github.com/DavidAnson/markdownlint) for the docs:
-// `npm run lint:md` from frontend/, and in CI. The rules are markdownlint's
-// defaults but for two, set to how these documents are written.
+// markdownlint for the docs (`task shared:lint:md`, and CI): the shared config from
+// shared-tooling's lint/markdown, which sets no line length (decided 2026-11-05). The VS
+// Code markdownlint extension reads this file too.
 {
-  "config": {
-    "default": true,
-    // Prose wraps at 100 columns, as .editorconfig's editors show it; a table
-    // row or a code line can't wrap, so they may run longer.
-    "MD013": { "line_length": 100, "tables": false, "code_blocks": false },
-    // Keep a Changelog repeats "### Added", "### Fixed" … under every release;
-    // a heading may repeat, just not beside the same one under one parent.
-    "MD024": { "siblings_only": true }
-  },
+  "config": { "extends": "shared/lint/markdown/markdownlint.jsonc" },
   "globs": ["**/*.md"],
   "ignores": [
     "**/node_modules/**",
     "**/vendor/**",
-    "frontend/eslint-config/**",
+    "shared/**",
     "frontend/dist/**",
     "backend/public/**",
     "IMPROVEMENTS.md"

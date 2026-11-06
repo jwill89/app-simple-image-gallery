@@ -47,11 +47,15 @@ const ready = computed(
     (siteKey.value === null || turnstileToken.value !== ''),
 )
 
-if (auth.isSignedIn) void router.replace(redirect.value)
+if (auth.isSignedIn) {
+  void router.replace(redirect.value)
+}
 
 onMounted(async () => {
   autofill = canUsePasskeys && (await passkeyAutofillSupported())
-  if (autofill) void offerPasskeys()
+  if (autofill) {
+    void offerPasskeys()
+  }
   const config = await auth.loadConfig().catch(() => null)
   siteKey.value = config?.turnstile_site_key ?? null
   signupOpen.value = config?.signup_open ?? false
@@ -75,29 +79,41 @@ async function offerPasskeys() {
   try {
     await finish(await passkeys.signIn(() => remember.value, true))
   } catch (e) {
-    if (passkeyCancelled(e)) return
+    if (passkeyCancelled(e)) {
+      return
+    }
     error.value = getErrorMessage(e, 'Could not sign in with that passkey.')
-    if (['PasskeyExpired', 'PasskeyNotAccepted'].includes(getErrorCode(e))) void offerPasskeys()
+    if (['PasskeyExpired', 'PasskeyNotAccepted'].includes(getErrorCode(e))) {
+      void offerPasskeys()
+    }
   }
 }
 
 async function signInWithPasskey() {
-  if (passkeyBusy.value) return
+  if (passkeyBusy.value) {
+    return
+  }
   passkeyBusy.value = true
   error.value = ''
   try {
     await finish(await passkeys.signIn(() => remember.value))
   } catch (e) {
-    if (!passkeyCancelled(e)) error.value = getErrorMessage(e, 'Could not sign in with a passkey.')
+    if (!passkeyCancelled(e)) {
+      error.value = getErrorMessage(e, 'Could not sign in with a passkey.')
+    }
     // Asking here ended the autofill offer; make it again.
-    if (autofill && !auth.isSignedIn) void offerPasskeys()
+    if (autofill && !auth.isSignedIn) {
+      void offerPasskeys()
+    }
   } finally {
     passkeyBusy.value = false
   }
 }
 
 async function signIn() {
-  if (!ready.value || busy.value) return
+  if (!ready.value || busy.value) {
+    return
+  }
   busy.value = true
   error.value = ''
   try {

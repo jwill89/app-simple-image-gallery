@@ -136,7 +136,9 @@ function askRemoveImplication(tagId: number, impliedTagId: number, label: string
 
 async function removeImplication() {
   const target = removeTarget.value
-  if (!target) return
+  if (!target) {
+    return
+  }
   const { tagId, impliedTagId } = target
   removeTarget.value = null
 

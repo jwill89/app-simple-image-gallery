@@ -1,0 +1,36 @@
+# Weekly dependency updates, grouped so a quiet week is one pull request per ecosystem:
+# minors and patches together, majors one by one (they can need code changes). The
+# shape every repo follows (shared-tooling's repo/dependabot.example.yml). It would have
+# raised November's Symfony advisories as a pull request before the audit failed CI.
+version: 2
+
+updates:
+  - package-ecosystem: composer
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      composer-minor:
+        patterns: ['*']
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      npm-minor:
+        patterns: ['*']
+        update-types: [minor, patch]
+    ignore:
+      # Held on purpose: TypeScript stays on 6.x until vue-tsc supports TypeScript 7.1.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday

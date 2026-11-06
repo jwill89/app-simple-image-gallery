@@ -14,6 +14,39 @@ release body taken from that version's section below. So bump the version and
 update its section here in the same commit and push a green commit — no manual
 tagging.
 
+## [7.0.1] - 2026-11-06
+
+**Shared tooling.** The lint, test, CI and deploy settings now come from
+[shared-tooling](https://github.com/jwill89/shared-tooling), the submodule at
+`shared/` (v1.1.1), as they do in every project. Nothing the gallery serves
+changes.
+
+### Changed
+
+- **The frontend's lint and format settings** come from shared-tooling's
+  `@jwill89/lint-web`, replacing the `frontend/eslint-config` submodule: ESLint,
+  Prettier, Stylelint and the TypeScript settings. Two rules are new here:
+  `curly`, which put braces on every one-line `if`, and `noUncheckedIndexedAccess`,
+  so each array or record index is now checked before use.
+- **PHP CS Fixer replaces Pint**, with the shared PER Coding Style 3.0 rules; the
+  code already met them, so no file changed. Rector and Larastan start from the
+  shared sets.
+- **Coverage floors.** CI fails below them: the backend's at 94% of lines and 86%
+  of methods, the frontend's in `vite.config.ts`. The frontend tests run on jsdom
+  instead of happy-dom, and PHPUnit now fails on a warning, deprecation or notice.
+- **CI runs on the shared workflows** (PHP, web, PowerShell and docs). The docs
+  job also checks `.editorconfig` and `.gitattributes` against shared-tooling's,
+  and that the workflow refs match the submodule. Dependabot opens grouped weekly
+  updates for Composer, npm and GitHub Actions.
+- **The deploy runs on the shared SharedDeploy module:** one archive, which the
+  host checks by SHA-256 and file count before anything changes, over one held
+  SSH connection. The host builds the new code beside the live code and swaps it
+  in, as before. After the swap, the deploy fetches `/api/media/count` and `/` from
+  outside; if either fails, the previous code goes back. `task deploy` runs it.
+- PSScriptAnalyzer and markdownlint use the shared settings, so
+  `PSScriptAnalyzerSettings.psd1` and the frontend's `lint:md` script are gone
+  (`task lint` runs both).
+
 ## [7.0.0] - 2026-11-03
 
 **Sessions and passkeys.** A browser now signs in with a session cookie the page's
@@ -836,6 +869,7 @@ from the git history, not a formal release.
   with a dedicated tag page, sorting by tag name, a sticky footer with copyright/
   disclaimer, and a **cron** ingest script for importing media (including videos).
 
+[7.0.1]: https://github.com/jwill89/simple-image-gallery/compare/v7.0.0...v7.0.1
 [7.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v6.0.0...v7.0.0
 [6.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v5.0.0...v6.0.0
 [5.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v4.0.0...v5.0.0

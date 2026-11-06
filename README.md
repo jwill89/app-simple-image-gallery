@@ -172,13 +172,14 @@ from `frontend/src/api/endpoints.ts` — never the generated file directly.
 ## Deploying
 
 The app is deployed to the DigitalOcean droplet with [`scripts/deploy.ps1`](scripts/deploy.ps1)
-(PowerShell + PuTTY `pscp`/`plink`, using the DigitalOcean `.ppk` key; host, user, key and app
-folder come from the untracked `scripts/deploy.config.ps1`):
+(PowerShell and PuTTY `plink`, on shared-tooling's SharedDeploy module, using the DigitalOcean
+`.ppk` key; host, user, key and app folder come from the untracked `scripts/deploy.config.ps1`).
+`task deploy` runs it, passing flags after `--`:
 
 ```powershell
-.\scripts\deploy.ps1                              # build the SPA, push the code, composer install, migrate
-.\scripts\deploy.ps1 -SkipBuild                   # redeploy the current dist without rebuilding
-.\scripts\deploy.ps1 -SkipComposer -SkipMigrate   # code-only push
+task deploy                                   # build the SPA, push the code, composer install, migrate
+task deploy -- -SkipBuild                     # redeploy the current dist without rebuilding
+task deploy -- -SkipComposer -SkipMigrate     # code-only push
 ```
 
 It ships the code only — never `.env`, `storage/`, `vendor/`, the database or the media. On
@@ -189,7 +190,10 @@ the host it:
    `.deploy-backup/`, put back if a later step fails (kept afterwards unless `-NoBackup`);
 2. snapshots the database with `VACUUM INTO` and runs the migrations;
 3. links the media folder and caches the config, routes and events;
-4. restarts the queue worker and health-checks the API.
+4. restarts the queue worker.
+
+Then it fetches the API and the home page from outside, and puts the previous code back if
+either fails. The whole deploy is one upload over one held SSH connection.
 
 If a passphrase-protected key is used, load it into Pageant first (`pageant.exe <key>`).
 

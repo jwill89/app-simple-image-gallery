@@ -28,10 +28,14 @@ export function useTagSearch(term: Ref<string>, exclude: () => readonly number[]
     searchTimer = setTimeout(() => {
       store.searchTags(text, exclude(), limit).then(
         (tags) => {
-          if (seq === searchSeq) options.value = tags
+          if (seq === searchSeq) {
+            options.value = tags
+          }
         },
         () => {
-          if (seq === searchSeq) options.value = []
+          if (seq === searchSeq) {
+            options.value = []
+          }
         },
       )
     }, SEARCH_DELAY_MS)

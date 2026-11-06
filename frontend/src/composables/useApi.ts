@@ -63,9 +63,15 @@ async function parseApiError(response: Response, _url: string): Promise<ApiError
 
   try {
     const body = await response.json()
-    if (body?.error) code = body.error
-    if (body?.message) message = body.message
-    if (body?.errors && typeof body.errors === 'object') fields = body.errors
+    if (body?.error) {
+      code = body.error
+    }
+    if (body?.message) {
+      message = body.message
+    }
+    if (body?.errors && typeof body.errors === 'object') {
+      fields = body.errors
+    }
   } catch {
     // Response body wasn't valid JSON — fall through to defaults
   }

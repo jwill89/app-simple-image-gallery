@@ -9,152 +9,49 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
+# The shared workflows (shared-tooling, at the release the shared/ submodule holds; the
+# docs job fails if the two ever differ), and the release this repo makes of its own.
 jobs:
   # The Laravel backend. The contract recorded from the Slim app it replaced
   # (tests/Fixtures/contract/) is replayed by its tests.
   backend:
-    name: Backend (PHP / Laravel)
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        php: ['8.5']
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ matrix.php }}
-          # The ext-* composer.json requires; Laravel's others are in setup-php's defaults.
-          extensions: pdo, pdo_sqlite, curl, fileinfo, gd, mbstring
-          tools: composer
-          coverage: none
-
-      - name: Cache Composer packages
-        uses: actions/cache@v6
-        with:
-          path: backend/vendor
-          key: composer-laravel-${{ matrix.php }}-${{ hashFiles('backend/composer.lock') }}
-          restore-keys: composer-laravel-${{ matrix.php }}-
-
-      - name: Install dependencies
-        run: composer install --prefer-dist --no-interaction --no-progress
-
+    uses: jwill89/shared-tooling/.github/workflows/php.yml@v1.1.1
+    with:
+      dir: backend
+      php-version: '8.5'
+      # The ext-* composer.json requires; Laravel's others are in setup-php's defaults.
+      extensions: pdo, pdo_sqlite, curl, fileinfo, gd, mbstring
+      coverage: pcov
       # Larastan and Pest boot the app, which reads .env and needs an APP_KEY.
-      - name: Prepare the environment
-        run: |
-          cp .env.example .env
-          php artisan key:generate
+      before: cp .env.example .env && php artisan key:generate
+      # Advisories (dev packages included), the code style, Rector, Larastan, the OpenAPI
+      # document the attributes make, then the tests with their coverage floor.
+      commands: audit lint rector:check analyse docs:check test:coverage
 
-      # Dev packages included: their advisories matter in CI too.
-      - name: Security advisories (composer audit)
-        run: composer audit
-
-      - name: Coding standard (Pint / PER)
-        run: composer lint
-
-      - name: Current PHP idioms, Laravel rules, no dead code (Rector)
-        run: composer rector:check
-
-      - name: Static analysis (Larastan level 8 + strict and deprecation rules)
-        run: composer analyse
-
-      # The frontend's generated types are built from this file, so it must be
-      # what the #[OAS\*] attributes produce.
-      - name: OpenAPI spec is current (composer docs)
-        run: |
-          composer docs
-          git diff --exit-code openapi.json
-
-      - name: Test (Pest)
-        run: composer test
-
+  # The frontend's generated API types come from backend/openapi.json (gen:check).
   frontend:
-    name: Frontend (Vue / Vite)
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: ['26']
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          submodules: recursive # frontend/eslint-config (shared @jwill89/eslint-config)
-          # The default GITHUB_TOKEN can't read the private eslint-config repo, so
-          # supply a PAT with read access to both repos (checkout reuses it for
-          # submodule fetches on github.com). Falls back to GITHUB_TOKEN locally.
-          token: ${{ secrets.ESLINT_CONFIG_TOKEN || github.token }}
+    uses: jwill89/shared-tooling/.github/workflows/web.yml@v1.1.1
+    with:
+      dir: frontend
+      scripts: gen:check lint lint:css knip format:check build test:coverage
 
-      - name: Set up Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node }}
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      # Runtime packages only: what ships to the browser.
-      - name: Security advisories (npm audit)
-        run: npm audit --audit-level=high --omit=dev
-
-      - name: Verify generated API types are current
-        run: |
-          npm run gen:types
-          git diff --exit-code src/types/api.generated.ts
-
-      - name: Lint (ESLint, type-checked, incl. template accessibility)
-        run: npm run lint
-
-      - name: Lint styles (Stylelint, incl. the palette rule)
-        run: npm run lint:css
-
-      - name: Lint the Markdown docs (markdownlint, .markdownlint-cli2.jsonc)
-        run: npm run lint:md
-
-      - name: Unused files, exports and dependencies (Knip)
-        run: npm run knip
-
-      - name: Check formatting (Prettier)
-        run: npm run format:check
-
-      - name: Type-check & build
-        run: npm run build
-
-      - name: Test (Vitest + coverage)
-        run: npm run test:coverage
-
-  # The deploy scripts, with PSScriptAnalyzer as PSScriptAnalyzerSettings.psd1 sets it.
   scripts:
-    name: Scripts (PSScriptAnalyzer)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
+    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v1.1.1
 
-      - name: Lint the PowerShell scripts
-        shell: pwsh
-        run: |
-          Install-PSResource PSScriptAnalyzer -Version 1.25.0 -Scope CurrentUser -TrustRepository -Quiet
-          $found = foreach ($f in 'scripts/deploy.ps1', 'scripts/deploy.config.example.ps1') {
-            Invoke-ScriptAnalyzer -Path $f -Settings PSScriptAnalyzerSettings.psd1
-          }
-          $found | Format-Table -AutoSize
-          if ($found) { exit 1 }
+  docs:
+    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v1.1.1
 
   # On a push to the default branch, AFTER the gate passes, tag + release the
   # project version if it has no release yet. Tag = v<version> (frontend/
-  # package.json); release body = the CHANGELOG "## [<version>]" section — so a
+  # package.json); release body = the CHANGELOG "## [<version>]" section, so a
   # green version bump auto-publishes a release linked to its notes. Idempotent:
   # a version already released is skipped, so ordinary pushes are a no-op.
   release:
     name: Tag + release (on version bump)
-    needs: [backend, frontend, scripts]
+    needs: [backend, frontend, scripts, docs]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
     permissions:

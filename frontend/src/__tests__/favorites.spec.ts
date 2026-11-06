@@ -53,7 +53,9 @@ describe('signed out', () => {
 
   it('prunes ids that are no longer valid', async () => {
     const store = useFavoritesStore()
-    for (const id of [1, 2, 3]) await store.toggle(id)
+    for (const id of [1, 2, 3]) {
+      await store.toggle(id)
+    }
     store.prune(new Set([2, 3]))
     expect(store.allIds().sort((a, b) => a - b)).toEqual([2, 3])
   })
@@ -84,8 +86,12 @@ describe('signed out', () => {
 describe('signed in', () => {
   function server() {
     get.mockImplementation((url: string) => {
-      if (url === '/lists') return Promise.resolve([FAVORITES, WALLPAPERS])
-      if (url === '/lists/1/ids') return Promise.resolve([5, 6])
+      if (url === '/lists') {
+        return Promise.resolve([FAVORITES, WALLPAPERS])
+      }
+      if (url === '/lists/1/ids') {
+        return Promise.resolve([5, 6])
+      }
       return Promise.resolve(undefined)
     })
   }

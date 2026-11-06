@@ -10,8 +10,6 @@ const config: KnipConfig = {
   ignore: [
     // Generated from backend/openapi.json; its unused exports are the generator's.
     'src/types/api.generated.ts',
-    // The shared ESLint config is a git submodule with its own package.json.
-    'eslint-config/**',
   ],
 }
 

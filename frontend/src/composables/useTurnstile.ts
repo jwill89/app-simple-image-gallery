@@ -40,8 +40,11 @@ export function loadTurnstile(): Promise<TurnstileApi> {
     script.src = SCRIPT_URL
     script.async = true
     script.onload = () => {
-      if (window.turnstile) resolve(window.turnstile)
-      else reject(new Error('Turnstile did not load.'))
+      if (window.turnstile) {
+        resolve(window.turnstile)
+      } else {
+        reject(new Error('Turnstile did not load.'))
+      }
     }
     script.onerror = () => {
       // Let the next form try again.

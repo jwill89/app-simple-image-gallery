@@ -1,5 +1,4 @@
 dist
 coverage
 node_modules
-eslint-config
 src/types/api.generated.ts

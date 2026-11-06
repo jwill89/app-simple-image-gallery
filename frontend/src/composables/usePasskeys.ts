@@ -70,7 +70,9 @@ export function usePasskeys() {
       endpoints.auth.passkeyOptions,
       {},
     )
-    if (!optionsJSON) throw new Error('The server sent no passkey options.')
+    if (!optionsJSON) {
+      throw new Error('The server sent no passkey options.')
+    }
     const credential = await startAuthentication({ optionsJSON, useBrowserAutofill: autofill })
     return api.post<SignInResponse>(endpoints.auth.passkey, { credential, remember: remember() })
   }
@@ -81,7 +83,9 @@ export function usePasskeys() {
       endpoints.account.passkeyOptions,
       { password },
     )
-    if (!optionsJSON) throw new Error('The server sent no passkey options.')
+    if (!optionsJSON) {
+      throw new Error('The server sent no passkey options.')
+    }
     const credential = await startRegistration({ optionsJSON })
     return api.post<Passkey>(endpoints.account.passkeys, {
       credential,

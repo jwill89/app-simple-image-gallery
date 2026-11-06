@@ -42,7 +42,9 @@ async function loadReport() {
   } catch (e) {
     const status = getErrorStatus(e)
     // A 401 has signed the account out; the gate shows the sign-in link.
-    if (status === 401) return
+    if (status === 401) {
+      return
+    }
     if (status === 404) {
       report.value = null
     } else {
@@ -75,7 +77,9 @@ async function runScan() {
 }
 
 async function deleteSelected() {
-  if (!hasSelection.value) return
+  if (!hasSelection.value) {
+    return
+  }
   showDeleteConfirm.value = false
   deleting.value = true
 
@@ -145,7 +149,9 @@ function isSelected(mediaId: number): boolean {
 }
 
 function selectAll() {
-  if (!report.value) return
+  if (!report.value) {
+    return
+  }
   const newSet = new Set<number>()
   // Select the second image from each pair (likely the duplicate)
   for (const match of report.value.matches) {
@@ -163,24 +169,36 @@ function fullUrl(fileName: string): string {
 }
 
 function ssimLabel(ssim: number | null): string {
-  if (ssim === null) return 'N/A'
+  if (ssim === null) {
+    return 'N/A'
+  }
   const pct = (ssim * 100).toFixed(1)
   return `${pct}%`
 }
 
 function ssimClass(ssim: number | null): string {
-  if (ssim === null) return 'has-text-grey'
-  if (ssim >= 0.95) return 'has-text-danger'
-  if (ssim >= 0.85) return 'has-text-warning'
+  if (ssim === null) {
+    return 'has-text-grey'
+  }
+  if (ssim >= 0.95) {
+    return 'has-text-danger'
+  }
+  if (ssim >= 0.85) {
+    return 'has-text-warning'
+  }
   return 'has-text-info'
 }
 
 onMounted(() => {
-  if (authenticated.value) void loadReport()
+  if (authenticated.value) {
+    void loadReport()
+  }
 })
 // Signed in as an admin after the page opened (the account loads at start-up).
 watch(authenticated, (isAdmin) => {
-  if (isAdmin) void loadReport()
+  if (isAdmin) {
+    void loadReport()
+  }
 })
 </script>
 

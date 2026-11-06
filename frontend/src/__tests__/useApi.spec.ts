@@ -35,7 +35,7 @@ describe('useApi', () => {
     const fetchMock = mockFetch({ jsonData: { id: 1 } })
     await useApi().post('/create/', { name: 'x' })
 
-    const [, opts] = fetchMock.mock.calls[0]
+    const [, opts] = fetchMock.mock.calls[0]!
     expect(opts.method).toBe('POST')
     expect(opts.body).toBe(JSON.stringify({ name: 'x' }))
     expect((opts.headers as Record<string, string>)['Content-Type']).toBe('application/json')
@@ -45,7 +45,7 @@ describe('useApi', () => {
     const fetchMock = mockFetch()
     await useApi().get('/protected/')
 
-    const [, opts] = fetchMock.mock.calls[0]
+    const [, opts] = fetchMock.mock.calls[0]!
     expect(opts.credentials).toBe('same-origin')
     expect(opts.headers).toBeUndefined()
   })
@@ -55,7 +55,7 @@ describe('useApi', () => {
     const form = new FormData()
     await useApi().upload('/media', form)
 
-    const [, opts] = fetchMock.mock.calls[0]
+    const [, opts] = fetchMock.mock.calls[0]!
     expect(opts).toMatchObject({ method: 'POST', body: form, credentials: 'same-origin' })
     expect(opts.headers).toBeUndefined()
   })
@@ -73,7 +73,7 @@ describe('useApi', () => {
 
     const result = await useApi().del('/media/5')
     expect(result).toBeUndefined()
-    const [, opts] = fetchMock.mock.calls[0]
+    const [, opts] = fetchMock.mock.calls[0]!
     expect(opts.method).toBe('DELETE')
   })
 

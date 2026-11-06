@@ -68,14 +68,18 @@ let searchTimer: ReturnType<typeof setTimeout> | undefined
 
 async function search() {
   let query = searchTerm.value.trim()
-  if (query.startsWith('-')) query = query.substring(1).trim()
+  if (query.startsWith('-')) {
+    query = query.substring(1).trim()
+  }
   const usedIds = [...props.excludeTagIds, ...props.modelValue.map((id) => Math.abs(id))]
 
   // Only the latest search's answer counts; an earlier one may arrive later.
   const seq = ++searchSeq
   try {
     const tags = await store.searchTags(query, usedIds, RESULT_LIMIT)
-    if (seq !== searchSeq) return
+    if (seq !== searchSeq) {
+      return
+    }
     filteredTags.value = tags
     // Enter picks the best match for what's typed. Reka highlights the first
     // item only when the list goes from empty to not, and these arrive after
@@ -85,7 +89,9 @@ async function search() {
       combobox.value?.highlightFirstItem?.()
     }
   } catch {
-    if (seq === searchSeq) filteredTags.value = []
+    if (seq === searchSeq) {
+      filteredTags.value = []
+    }
   }
 }
 
@@ -98,7 +104,9 @@ function searchSoon() {
 // computed does whenever a lookup adds tags), and that is no reason to search.
 watch([searchTerm, () => props.modelValue.join(), () => props.excludeTagIds.join()], searchSoon)
 watch(open, (isOpen) => {
-  if (isOpen) void search()
+  if (isOpen) {
+    void search()
+  }
 })
 onBeforeUnmount(() => {
   clearTimeout(searchTimer)
@@ -151,8 +159,12 @@ function toggleNegate(signedId: number) {
  * otherwise Reka's own Enter handling should win and pick the highlighted tag.
  */
 function onEnter() {
-  if (open.value && filteredTags.value.length > 0) return
-  if (props.modelValue.length > 0) emit('submit')
+  if (open.value && filteredTags.value.length > 0) {
+    return
+  }
+  if (props.modelValue.length > 0) {
+    emit('submit')
+  }
 }
 
 function onBackspace() {

@@ -85,7 +85,9 @@ const viewMode = computed({
   get: () => (store.infiniteScroll ? CONTINUOUS : perPage.value),
   set: (value: number) => {
     const wantContinuous = value === CONTINUOUS
-    if (wantContinuous !== store.infiniteScroll) store.toggleInfiniteScroll()
+    if (wantContinuous !== store.infiniteScroll) {
+      store.toggleInfiniteScroll()
+    }
     if (!wantContinuous) {
       perPage.value = value
       onPerPageChange()
@@ -142,7 +144,9 @@ async function navigateRandom() {
       return
     }
     const item = await api.get<Media>(endpoints.media.random)
-    if (!item) return
+    if (!item) {
+      return
+    }
 
     // Clear gallery context so arrow keys are disabled for random access
     store.lastViewedItemIds = []
@@ -213,7 +217,9 @@ async function saveSearch() {
 }
 
 function searchWithTags() {
-  if (selectedTags.value.length === 0) return
+  if (selectedTags.value.length === 0) {
+    return
+  }
   void router.push({
     name: 'media-with-tags',
     params: { page: 1, perPage: perPage.value, tags: selectedTags.value.join(',') },

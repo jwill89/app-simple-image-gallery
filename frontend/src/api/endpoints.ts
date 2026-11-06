@@ -12,7 +12,9 @@ type Id = string | number
 function query(params: Record<string, string | number | boolean | undefined>): string {
   const search = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== '' && value !== false) search.set(key, String(value))
+    if (value !== undefined && value !== '' && value !== false) {
+      search.set(key, String(value))
+    }
   }
   const text = search.toString()
   return text === '' ? '' : `?${text}`
@@ -98,7 +100,9 @@ export const endpoints = {
      */
     search: (term: string, limit: number, exclude: readonly number[] = []) => {
       const params = new URLSearchParams({ search: term, limit: String(limit) })
-      if (exclude.length > 0) params.set('exclude', exclude.join(','))
+      if (exclude.length > 0) {
+        params.set('exclude', exclude.join(','))
+      }
       return `/tags?${params.toString()}`
     },
     byNames: (names: readonly string[]) => `/tags${query({ names: names.join(',') })}`,

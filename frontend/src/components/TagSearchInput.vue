@@ -29,7 +29,9 @@ const selectedIds = computed({
         const negated = name.startsWith('-')
         const cleanName = negated ? name.substring(1) : name
         const tag = store.tagByName(cleanName)
-        if (!tag) return undefined
+        if (!tag) {
+          return undefined
+        }
         return negated ? -tag.tag_id : tag.tag_id
       })
       .filter((id): id is number => id !== undefined)
@@ -39,7 +41,9 @@ const selectedIds = computed({
       .map((id) => {
         const negated = id < 0
         const tag = store.tagById(Math.abs(id))
-        if (!tag) return undefined
+        if (!tag) {
+          return undefined
+        }
         return negated ? `-${tag.tag_name}` : tag.tag_name
       })
       .filter((name): name is string => name !== undefined)

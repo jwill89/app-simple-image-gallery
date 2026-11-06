@@ -2,6 +2,11 @@ version: '3'
 
 # Day-to-day commands; `task` alone lists them. CI (.github/workflows/ci.yml) runs the same checks.
 
+# The tasks every repo shares, from the shared-tooling submodule (shared:lint:scripts,
+# shared:lint:md, shared:update and the rest).
+includes:
+  shared: ./shared/repo/Taskfile.yml
+
 tasks:
   default:
     silent: true
@@ -65,6 +70,9 @@ tasks:
       - task: lint:backend
       - task: lint:frontend
       - task: lint:scripts
+      - task: shared:lint:md
+      - task: shared:repo:check
+      - task: shared:version:check
 
   lint:backend:
     dir: backend
@@ -78,16 +86,15 @@ tasks:
     cmds:
       - npm run lint
       - npm run lint:css
-      - npm run lint:md
       - npm run knip
       - npm run format:check
 
-  # PSScriptAnalyzer with PSScriptAnalyzerSettings.psd1, on the tracked scripts only.
-  # Install it once: Install-PSResource PSScriptAnalyzer -Version 1.25.0 -Scope CurrentUser -TrustRepository
+  # PSScriptAnalyzer, with the shared settings, on every tracked script (the local
+  # deploy.config.ps1 is the owner's and untracked). Install it once with
+  # Install-PSResource PSScriptAnalyzer -Version 1.25.0 -Scope CurrentUser -TrustRepository
   lint:scripts:
     cmds:
-      # Single-quoted so the task's own shell leaves PowerShell's $ alone.
-      - pwsh -NoProfile -Command 'foreach ($f in "scripts/deploy.ps1", "scripts/deploy.config.example.ps1") { $r = Invoke-ScriptAnalyzer -Path $f -Settings PSScriptAnalyzerSettings.psd1; $r | Format-Table -AutoSize | Out-String | Write-Output; if ($r) { exit 1 } }'
+      - task: shared:lint:scripts
 
   vuln:
     desc: Check dependencies for known vulnerabilities

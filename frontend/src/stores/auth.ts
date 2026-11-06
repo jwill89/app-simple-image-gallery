@@ -41,7 +41,9 @@ export const useAuthStore = defineStore('auth', () => {
       // Signed out, or the server is out of reach: browse as anyone may.
       user.value = null
     }
-    if (user.value !== null) await loadAccount()
+    if (user.value !== null) {
+      await loadAccount()
+    }
   }
 
   /** Whether sign-up is open, and Turnstile's site key: asked once. */
@@ -70,14 +72,18 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await api.del(endpoints.auth.session)
     } catch (e) {
-      if (getErrorStatus(e) !== 401) throw e
+      if (getErrorStatus(e) !== 401) {
+        throw e
+      }
     }
     sessionEnded()
   }
 
   /** A sign-in's answer: the account this browser's session now names. */
   async function signedIn(result: SignInResponse | undefined): Promise<void> {
-    if (!result) throw new Error('The server did not say who signed in.')
+    if (!result) {
+      throw new Error('The server did not say who signed in.')
+    }
     user.value = result.user
     useGalleryStore().listingsChanged()
     await loadAccount()
@@ -85,7 +91,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   /** The server has ended this browser's session: forget the account here. */
   function sessionEnded(): void {
-    if (user.value === null) return
+    if (user.value === null) {
+      return
+    }
     user.value = null
     useFavoritesStore().signedOut()
     useAccountStore().clear()

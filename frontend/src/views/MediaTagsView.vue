@@ -113,7 +113,9 @@ const groupedTags = computed(() => {
  * so the precision is still there on demand rather than clipped off the edge.
  */
 const formattedDate = computed(() => {
-  if (!mediaItem.value?.file_time) return ''
+  if (!mediaItem.value?.file_time) {
+    return ''
+  }
   return new Date(mediaItem.value.file_time * 1000).toLocaleString(undefined, {
     year: 'numeric',
     month: 'short',
@@ -124,7 +126,9 @@ const formattedDate = computed(() => {
 })
 
 const fullDate = computed(() => {
-  if (!mediaItem.value?.file_time) return ''
+  if (!mediaItem.value?.file_time) {
+    return ''
+  }
   return new Date(mediaItem.value.file_time * 1000).toLocaleString(undefined, {
     weekday: 'long',
     year: 'numeric',
@@ -138,7 +142,9 @@ const fullDate = computed(() => {
 })
 
 const fullPath = computed(() => {
-  if (!mediaItem.value) return ''
+  if (!mediaItem.value) {
+    return ''
+  }
   return `/media/full/${mediaItem.value.file_name}`
 })
 
@@ -152,7 +158,9 @@ const dimensions = computed(() => {
 
 const formattedDuration = computed(() => {
   const secs = mediaItem.value?.duration ?? 0
-  if (!secs || secs <= 0) return ''
+  if (!secs || secs <= 0) {
+    return ''
+  }
   const total = Math.round(secs)
   const h = Math.floor(total / 3600)
   const m = Math.floor((total % 3600) / 60)
@@ -163,10 +171,18 @@ const formattedDuration = computed(() => {
 
 const formattedFileSize = computed(() => {
   const bytes = mediaItem.value?.file_size ?? 0
-  if (!bytes || bytes <= 0) return ''
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  if (!bytes || bytes <= 0) {
+    return ''
+  }
+  if (bytes < 1024) {
+    return `${bytes} B`
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`
+  }
+  if (bytes < 1024 * 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
 })
 
@@ -193,7 +209,9 @@ const holding = ref(new Set<number>())
 
 async function loadHolding() {
   holding.value = new Set()
-  if (!auth.isSignedIn) return
+  if (!auth.isSignedIn) {
+    return
+  }
   try {
     holding.value = new Set((await api.get<number[]>(endpoints.lists.holding(props.mediaId))) ?? [])
   } catch {
@@ -206,8 +224,11 @@ async function toggleInList(listId: number) {
   const present = !holding.value.has(listId)
   await favorites.setInList(listId, props.mediaId, present)
   const next = new Set(holding.value)
-  if (present) next.add(listId)
-  else next.delete(listId)
+  if (present) {
+    next.add(listId)
+  } else {
+    next.delete(listId)
+  }
   holding.value = next
 }
 
@@ -236,7 +257,9 @@ async function newRandom() {
       return
     }
     const item = await api.get<Media>(endpoints.media.random)
-    if (!item) return
+    if (!item) {
+      return
+    }
     // Clear gallery context (no prev/next for random access) and stay under the
     // `/random/media/...` route so the navbar/breadcrumb keep showing Random.
     store.lastViewedItemIds = []
@@ -247,7 +270,9 @@ async function newRandom() {
 }
 
 async function onAddTags() {
-  if (selectedTagIds.value.length === 0) return
+  if (selectedTagIds.value.length === 0) {
+    return
+  }
   await addTags(props.mediaId, [...selectedTagIds.value])
   selectedTagIds.value = []
 }
@@ -267,7 +292,9 @@ async function onRemoveTag(tagId: number) {
 
 async function copyHash() {
   const hash = mediaItem.value?.hash
-  if (!hash) return
+  if (!hash) {
+    return
+  }
   try {
     await navigator.clipboard.writeText(hash)
     toastStore.success('MD5 hash copied to clipboard.')
@@ -378,7 +405,9 @@ async function fetchDanbooruTags() {
       endpoints.media.danbooruTags(props.mediaId),
       payload,
     )
-    if (!data) throw new Error('No response from Danbooru import')
+    if (!data) {
+      throw new Error('No response from Danbooru import')
+    }
 
     tags.value = data.tags
     store.rememberTags(data.tags)
@@ -400,9 +429,14 @@ async function fetchDanbooruTags() {
 // ── Keyboard navigation ────────────────────────────────────
 
 function onGlobalKeydown(e: KeyboardEvent) {
-  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-  if (e.key === 'ArrowLeft') navigatePrev()
-  else if (e.key === 'ArrowRight') navigateNext()
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+    return
+  }
+  if (e.key === 'ArrowLeft') {
+    navigatePrev()
+  } else if (e.key === 'ArrowRight') {
+    navigateNext()
+  }
 }
 
 onMounted(() => {
@@ -415,25 +449,35 @@ onUnmounted(() => {
 // ── Touch/swipe navigation for mobile ──────────────────────
 
 function onTouchStart(e: TouchEvent) {
-  if (e.touches.length !== 1) return
-  touchStartX = e.touches[0].clientX
-  touchStartY = e.touches[0].clientY
+  const touch = e.touches.item(0)
+  if (e.touches.length !== 1 || !touch) {
+    return
+  }
+  touchStartX = touch.clientX
+  touchStartY = touch.clientY
   touchStartTime = Date.now()
 }
 
 function onTouchEnd(e: TouchEvent) {
-  if (e.changedTouches.length !== 1) return
+  const touch = e.changedTouches.item(0)
+  if (e.changedTouches.length !== 1 || !touch) {
+    return
+  }
 
-  const dx = e.changedTouches[0].clientX - touchStartX
-  const dy = e.changedTouches[0].clientY - touchStartY
+  const dx = touch.clientX - touchStartX
+  const dy = touch.clientY - touchStartY
   const elapsed = Date.now() - touchStartTime
 
   // Must be fast enough and far enough horizontally
-  if (elapsed > SWIPE_MAX_TIME || Math.abs(dx) < SWIPE_THRESHOLD) return
+  if (elapsed > SWIPE_MAX_TIME || Math.abs(dx) < SWIPE_THRESHOLD) {
+    return
+  }
 
   // Must be mostly horizontal (not a scroll gesture)
   const angle = Math.abs(Math.atan2(dy, dx) * (180 / Math.PI))
-  if (angle > SWIPE_ANGLE_LIMIT && angle < 180 - SWIPE_ANGLE_LIMIT) return
+  if (angle > SWIPE_ANGLE_LIMIT && angle < 180 - SWIPE_ANGLE_LIMIT) {
+    return
+  }
 
   if (dx < 0) {
     navigateNext() // swipe left → next

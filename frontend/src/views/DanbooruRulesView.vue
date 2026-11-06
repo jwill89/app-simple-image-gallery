@@ -128,7 +128,9 @@ function openDeleteCatModal(m: CategoryMapping) {
 }
 
 async function confirmDeleteCat() {
-  if (!deleteCatTarget.value) return
+  if (!deleteCatTarget.value) {
+    return
+  }
   deleteCatLoading.value = true
   try {
     await api.del(endpoints.danbooru.categoryMapping(deleteCatTarget.value.danbooru_category_id))
@@ -206,7 +208,9 @@ function openDeleteTagModal(m: TagMapping) {
 }
 
 async function confirmDeleteTag() {
-  if (!deleteTagTarget.value) return
+  if (!deleteTagTarget.value) {
+    return
+  }
   deleteTagLoading.value = true
   try {
     await api.del(endpoints.danbooru.tagMapping(deleteTagTarget.value.id))

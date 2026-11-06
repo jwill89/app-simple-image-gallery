@@ -22,9 +22,12 @@ const READER = { id: 1, username: 'reader', is_admin: false, created_at: '2026-1
 /** The server, signed in as `user` (or no one): its session, and the account's things. */
 function server(user: typeof READER | null) {
   get.mockImplementation((url: string) => {
-    if (url === '/auth/session') return Promise.resolve({ user })
-    if (url === '/lists')
+    if (url === '/auth/session') {
+      return Promise.resolve({ user })
+    }
+    if (url === '/lists') {
       return Promise.resolve([{ list_id: 1, name: 'Favorites', is_default: true, media_count: 0 }])
+    }
     return Promise.resolve([])
   })
 }

@@ -1,9 +1,13 @@
 #!/usr/bin/env pwsh
+#Requires -Version 7.4
 <#
 .SYNOPSIS
     Build and deploy the Gallery (Laravel backend + Vue SPA) to the DigitalOcean droplet.
 
 .DESCRIPTION
+    Built on shared-tooling's SharedDeploy module (shared/deploy/pwsh), the shape every
+    deploy follows: one archive, one held SSH connection, one remote run.
+
     The droplet runs the Laravel app from the gallery's domain folder (AppRoot),
     whose public/ is Apache's DocumentRoot. The database, media and duplicate
     reports sit beside the code in that folder (db/, media/, dupes/, at the paths
@@ -12,50 +16,52 @@
 
     Steps:
       1. Build the frontend (vue-tsc + vite) -> frontend/dist  (skip with -SkipBuild).
-      2. Stage and pack the payload, code only:
+      2. Stage and pack the payload, code only, as one archive:
            from backend/  -> app/, bootstrap/ (not its cache), config/, database/
                              (not a local gallery.db), public/, routes/, artisan,
                              composer.json, composer.lock, openapi.json
            from frontend/ -> dist/* into public/, except index.html, which goes to
                              resources/spa/index.html, where the SPA shell reads it
          Never .env, storage/, vendor/ or bootstrap/cache/.
-      3. Upload it in a single pscp stream.
-      4. On the host (one plink connection):
+      3. Open one SSH connection, held for the whole run, and upload the archive.
+      4. On the host, in one remote run, once the archive's SHA-256 and file count check:
            - build the new code whole in .deploy-next: unpacked, vendor/ copied from
              the live code, composer install --no-dev     (skip with -SkipComposer),
-             the public/media link copied, all of it given to www-data (the code
-             read-only to everyone else),
+             the public/media link copied, all of it given to www-data,
            - swap it in by renames, moving the previous code to .deploy-backup
              (kept afterwards unless -NoBackup), then package:discover; the site
              runs the old code or the new, never a half-replaced folder,
            - snapshot the database next to it in .backups/ via SQLite VACUUM INTO,
              keeping the five most recent                  (skip with -NoBackup),
            - php artisan migrate --force                   (skip with -SkipMigrate),
-           - storage:link (public/media), optimize, queue:restart, and health-check
-             the API. storage/ and .env are left alone throughout.
+           - storage:link (public/media), optimize, queue:restart. storage/ and
+             .env are left alone throughout.
          If a step fails before the swap, the live code was never touched; after it,
-         the previous CODE is moved back automatically. The database
-         is NOT rolled back automatically: the failure trap fires on any non-zero
-         exit, including after a migration has already succeeded, so reverting data
-         could discard media uploaded during the deploy. A failed migration prints
-         the snapshot path and the exact restore command.
+         the previous CODE is moved back automatically. The database is NOT rolled
+         back automatically: the failure trap fires on any non-zero exit, including
+         after a migration has already succeeded, so reverting data could discard
+         media uploaded during the deploy. A failed migration prints the snapshot
+         path and the exact restore command.
+      5. Fetch the health URL and the site from here, through Cloudflare. If either
+         fails, the previous code goes back (the database stays as it is), unless
+         -NoBackup left nothing to go back to.
 
     The first deploy to a new AppRoot needs its .env first (the plan's Deployment
     section, docs/laravel-migration.md); this script refuses to run without one.
 
-    Uses PuTTY's pscp/plink so the DigitalOcean .ppk key works directly. They run
-    in batch mode, so a passphrase-protected .ppk must be loaded into Pageant first:
+    Uses PuTTY's plink (0.85 or later) so the DigitalOcean .ppk key works directly.
+    It runs in batch mode, so a passphrase-protected .ppk must be loaded into
+    Pageant first:
         pageant.exe "<KeyPath>"   (enter the passphrase once per Windows session).
 
-    The droplet runs `ufw limit ssh` (drops the IP after ~6 connections in 30s), so
-    this uses just TWO SSH connections (one upload, one remote run). The upload is
-    retried once after a 35s wait if it looks rate-limited.
+    The droplet runs `ufw limit ssh` (drops the IP after ~6 connections in 30s); the
+    whole deploy rides one held connection, plus one only if it drops and reconnects.
 
 .PARAMETER VpsHost      Droplet IP/hostname. Resolved from -VpsHost, then $env:DEPLOY_VPS_HOST, then scripts/deploy.config.ps1 ($DeployVpsHost).
 .PARAMETER VpsUser      SSH user. Resolved from -VpsUser, then $env:DEPLOY_VPS_USER, then $DeployVpsUser.
 .PARAMETER KeyPath      PuTTY .ppk private key. Resolved from -KeyPath, then $env:DEPLOY_KEY_PATH, then $DeployKeyPath.
 .PARAMETER AppRoot      The Laravel app's folder on the host (its public/ is the DocumentRoot). Resolved from -AppRoot, then $env:DEPLOY_APP_ROOT, then $DeployAppRoot.
-.PARAMETER HealthUrl    URL fetched on the host after the deploy. Default: https://<PublicHost>/api/media/count.
+.PARAMETER HealthUrl    URL fetched after the deploy. Default: https://<PublicHost>/api/media/count.
 .PARAMETER PublicHost   The site's public host name.
 .PARAMETER SkipBuild    Deploy the existing frontend/dist without rebuilding.
 .PARAMETER SkipComposer Don't run `composer install` on the host.
@@ -72,13 +78,13 @@
 [CmdletBinding()]
 param(
     # Server-specific settings are NOT baked into this (tracked) script. Each is
-    # resolved below from its -param, then $env:DEPLOY_* (the default), then the
-    # untracked scripts/deploy.config.ps1. See deploy.config.example.ps1.
-    [string]$VpsHost = $env:DEPLOY_VPS_HOST,
-    [string]$VpsUser = $env:DEPLOY_VPS_USER,
-    [string]$KeyPath = $env:DEPLOY_KEY_PATH,
-    [string]$AppRoot = $env:DEPLOY_APP_ROOT,
-    [string]$PublicHost = "gallery.mathdad.me",
+    # resolved from its -param, then $env:DEPLOY_*, then the untracked
+    # scripts/deploy.config.ps1. See deploy.config.example.ps1.
+    [string]$VpsHost,
+    [string]$VpsUser,
+    [string]$KeyPath,
+    [string]$AppRoot,
+    [string]$PublicHost = 'gallery.mathdad.me',
     [string]$HealthUrl,
     [switch]$SkipBuild,
     [switch]$SkipComposer,
@@ -87,95 +93,49 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-# PowerShell 7.4+ makes a non-zero native exit throw under 'Stop', bypassing our
-# own $LASTEXITCODE checks. Disable so our checks/messages always run. (No-op on 5.1.)
 $PSNativeCommandUseErrorActionPreference = $false
+Import-Module (Join-Path $PSScriptRoot '..\shared\deploy\pwsh\SharedDeploy.psd1') -Force
+trap { Close-DeployConnection; Write-Host "`nERROR: $($_.Exception.Message)" -ForegroundColor Red; exit 1 }
 
-function Write-Step($msg) { Write-Host "`n==> $msg" -ForegroundColor Cyan }
-function Write-Ok($msg) { Write-Host "    $msg" -ForegroundColor Green }
-function Fail($msg) { Write-Host "`nERROR: $msg" -ForegroundColor Red; exit 1 }
-trap { Write-Host "`nERROR: $($_.Exception.Message)" -ForegroundColor Red; exit 1 }
-
-# ── Server settings resolution ────────────────────────────────────────────────
-$configPath = Join-Path $PSScriptRoot 'deploy.config.ps1'
-if (Test-Path $configPath) { . $configPath }
-if (-not $VpsHost) { $VpsHost = $DeployVpsHost }
-if (-not $VpsUser) { $VpsUser = $DeployVpsUser }
-if (-not $KeyPath) { $KeyPath = $DeployKeyPath }
-if (-not $AppRoot) { $AppRoot = $DeployAppRoot }
+$settings = Resolve-DeploySetting -ConfigPath (Join-Path $PSScriptRoot 'deploy.config.ps1') `
+    -Value @{ VpsHost = $VpsHost; VpsUser = $VpsUser; KeyPath = $KeyPath; AppRoot = $AppRoot } `
+    -Required VpsHost, VpsUser, KeyPath, AppRoot
+$appRoot = $settings.AppRoot
 if (-not $HealthUrl) { $HealthUrl = "https://$PublicHost/api/media/count" }
 
-$missing = @()
-if (-not $VpsHost) { $missing += 'VpsHost (-VpsHost / $env:DEPLOY_VPS_HOST / $DeployVpsHost)' }
-if (-not $VpsUser) { $missing += 'VpsUser (-VpsUser / $env:DEPLOY_VPS_USER / $DeployVpsUser)' }
-if (-not $KeyPath) { $missing += 'KeyPath (-KeyPath / $env:DEPLOY_KEY_PATH / $DeployKeyPath)' }
-if (-not $AppRoot) { $missing += 'AppRoot (-AppRoot / $env:DEPLOY_APP_ROOT / $DeployAppRoot)' }
-if ($missing.Count -gt 0) {
-    Fail "Missing deploy settings:`n  - $($missing -join "`n  - ")`nSet these via -params, `$env:DEPLOY_* variables, or scripts/deploy.config.ps1 (copy scripts/deploy.config.example.ps1)."
-}
+$repoRoot = Split-Path $PSScriptRoot -Parent
+$backendDir = Join-Path $repoRoot 'backend'
+$frontendDir = Join-Path $repoRoot 'frontend'
+$distDir = Join-Path $frontendDir 'dist' # vite outDir is frontend/dist
 
-# ── Resolve paths & tools ─────────────────────────────────────────────────────
-$RepoRoot = Split-Path $PSScriptRoot -Parent
-$BackendDir = Join-Path $RepoRoot "backend"
-$FrontendDir = Join-Path $RepoRoot "frontend"
-$DistDir = Join-Path $FrontendDir "dist" # vite outDir is frontend/dist
+# The code, by its top-level entries: what the archive carries, and vendor/, which the
+# host builds beside it. The new set is built whole and swapped in by renames, so the
+# site runs either the old code or the new: never a half-replaced folder, which failed
+# every request for the 10-20 s that composer install, the migration and optimize took.
+$shipped = 'app', 'bootstrap', 'config', 'database', 'public', 'resources', 'routes', 'artisan', 'composer.json', 'composer.lock', 'openapi.json'
+$code = @($shipped) + 'vendor'
+$queueRestart = 'php artisan queue:restart >/dev/null 2>&1 || true'
 
-if (-not (Test-Path $KeyPath)) { Fail "SSH key not found: $KeyPath" }
+Write-Host "Deploying Gallery -> $($settings.VpsUser)@$($settings.VpsHost):$appRoot" -ForegroundColor Yellow
 
-function Resolve-PuttyTool($name) {
-    $cmd = Get-Command $name -ErrorAction SilentlyContinue
-    if ($cmd) { return $cmd.Source }
-    $candidate = Join-Path "C:\Program Files\PuTTY" "$name.exe"
-    if (Test-Path $candidate) { return $candidate }
-    Fail "$name not found. Install PuTTY (winget install PuTTY.PuTTY) or add it to PATH."
-}
-$pscp = Resolve-PuttyTool "pscp"
-$plink = Resolve-PuttyTool "plink"
-if (-not (Get-Command tar -ErrorAction SilentlyContinue)) {
-    Fail "tar not found. Windows 10+ ships tar.exe; ensure C:\Windows\System32 is on PATH."
-}
-
-$remoteTarget = "$VpsUser@$VpsHost"
-$remoteTarball = "/tmp/gallery-deploy.tgz"
-
-# Upload one local file to a remote path, retrying once if it looks rate-limited.
-function Send-File([string]$localPath, [string]$remotePath) {
-    & $pscp -batch -i $KeyPath "$localPath" "${remoteTarget}:$remotePath"
-    if ($LASTEXITCODE -eq 0) { return $true }
-    Write-Host "    Upload failed - possibly the SSH rate limit (ufw limit ssh). Waiting 35s, then retrying once..." -ForegroundColor Yellow
-    Start-Sleep -Seconds 35
-    & $pscp -batch -i $KeyPath "$localPath" "${remoteTarget}:$remotePath"
-    return ($LASTEXITCODE -eq 0)
-}
-
-Write-Host "Deploying Gallery -> ${remoteTarget}:$AppRoot" -ForegroundColor Yellow
-
-# ── 1. Build the frontend ─────────────────────────────────────────────────────
+# 1. Build the frontend
 if ($SkipBuild) {
-    Write-Step "Skipping frontend build (-SkipBuild); using existing dist/"
+    Write-Step 'Skipping frontend build (-SkipBuild); using existing dist/'
 } else {
-    Write-Step "Building frontend (vue-tsc + vite)..."
-    Push-Location $FrontendDir
-    try {
-        npm run build
-        if ($LASTEXITCODE -ne 0) { Fail "Frontend build failed (exit $LASTEXITCODE). Live site untouched." }
-    } finally { Pop-Location }
+    Invoke-NpmBuild -Path $frontendDir -Output (Join-Path $distDir 'index.html')
 }
-if (-not (Test-Path (Join-Path $DistDir "index.html"))) {
-    Fail "frontend/dist/index.html is missing - nothing to deploy. (Run without -SkipBuild.)"
+if (-not (Test-Path (Join-Path $distDir 'index.html'))) {
+    throw 'frontend/dist/index.html is missing - nothing to deploy. (Run without -SkipBuild.)'
 }
-Write-Ok "Build present: $DistDir"
 
-# ── 2. Stage and pack the payload (code only; never data) ─────────────────────
-Write-Step "Packing deploy tarball..."
-$stage = Join-Path $env:TEMP ("gallery-deploy-{0}" -f [guid]::NewGuid())
-$tarball = "$stage.tgz"
+# 2. Stage and pack the payload (code only; never data)
+Write-Step 'Packing the deploy...'
+$stage = Join-Path ([IO.Path]::GetTempPath()) ('gallery-deploy-{0}' -f [guid]::NewGuid())
 New-Item -ItemType Directory -Path $stage | Out-Null
 try {
-    $backendItems = @('app', 'bootstrap', 'config', 'database', 'public', 'routes', 'artisan', 'composer.json', 'composer.lock', 'openapi.json')
-    foreach ($p in $backendItems) {
-        $source = Join-Path $BackendDir $p
-        if (-not (Test-Path $source)) { Fail "Expected path missing: backend/$p" }
+    foreach ($p in $shipped | Where-Object { $_ -ne 'resources' }) {
+        $source = Join-Path $backendDir $p
+        if (-not (Test-Path $source)) { throw "Expected path missing: backend/$p" }
         Copy-Item -Path $source -Destination $stage -Recurse
     }
     # What a local run leaves behind: cached config and package lists (they name
@@ -187,136 +147,62 @@ try {
         if (Test-Path $path) { Remove-Item $path -Recurse -Force }
     }
     # The built SPA: assets into public/, its index.html where SpaController reads it.
-    Get-ChildItem $DistDir | Where-Object { $_.Name -ne 'index.html' } | Copy-Item -Destination (Join-Path $stage 'public') -Recurse
+    Get-ChildItem $distDir | Where-Object { $_.Name -ne 'index.html' } | Copy-Item -Destination (Join-Path $stage 'public') -Recurse
     New-Item -ItemType Directory -Path (Join-Path $stage 'resources/spa') | Out-Null
-    Copy-Item (Join-Path $DistDir 'index.html') (Join-Path $stage 'resources/spa/index.html')
+    Copy-Item (Join-Path $distDir 'index.html') (Join-Path $stage 'resources/spa/index.html')
 
-    & tar -czf $tarball -C $stage .
-    if ($LASTEXITCODE -ne 0) { Fail "tar failed (exit $LASTEXITCODE)." }
+    $archive = Compress-DeployArchive -Root $stage -Item $shipped
 } finally {
     Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
 }
-$sizeMB = (Get-Item $tarball).Length / 1MB
-Write-Ok ("Tarball ready: {0:N1} MB" -f $sizeMB)
+Write-Ok ('{0} files, {1:N1} MB, one archive' -f $archive.FileCount, ((Get-Item $archive.Path).Length / 1MB))
 
-# ── 3. Upload the tarball (1 connection) ──────────────────────────────────────
-Write-Step "Uploading tarball to $remoteTarball ..."
-try {
-    if (-not (Send-File $tarball $remoteTarball)) {
-        Fail @"
-Upload failed. Live site untouched.
-  - If the .ppk has a passphrase, load it into Pageant first, then re-run:
-        pageant.exe "$KeyPath"
-  - First-ever connection also needs the host key cached once:
-        plink -i "$KeyPath" $remoteTarget   (accept the fingerprint)
-  - Otherwise verify host ($VpsHost) and user ($VpsUser).
-"@
-    }
-} finally {
-    Remove-Item $tarball -Force -ErrorAction SilentlyContinue
-}
-Write-Ok "Upload finished."
-
-# ── 4. Build the remote deploy script ─────────────────────────────────────────
-# Single-quoted here-strings keep shell $vars literal; {{APPROOT}}, {{TARBALL}} and
-# {{HEALTHURL}} are substituted by PowerShell afterwards. Closing '@ at column 0.
-
-$header = @'
-set -e
-cd "{{APPROOT}}" || { echo "ERROR: cannot cd to {{APPROOT}}" >&2; exit 2; }
-if [ ! -f .env ]; then echo "ERROR: {{APPROOT}}/.env is missing. Create it before the first deploy (docs/laravel-migration.md, Deployment)." >&2; exit 2; fi
-if [ ! -f "{{TARBALL}}" ]; then echo "ERROR: {{TARBALL}} not found (upload failed?)" >&2; exit 3; fi
-export COMPOSER_ALLOW_SUPERUSER=1
-# The code, by its top-level entries. The new set is built whole in STAGE and
-# swapped in by renames, so the site runs either the old code or the new: never
-# a half-replaced folder, which failed every request for the 10-20 s that
-# composer install, the migration and optimize took (thumbnails included, with
-# public/media missing).
-CODE="app bootstrap config database public resources routes vendor artisan composer.json composer.lock openapi.json"
-STAGE=.deploy-next
-# The previous code, moved aside by the swap: put back if a later step fails.
-BACKUP=.deploy-backup
-SWAPPED=0
-SUCCESS=0
-finish() {
-  rc=$?
-  rm -rf "$STAGE"
-  if [ "$SUCCESS" = "1" ]; then exit 0; fi
-  if [ "$SWAPPED" = "1" ]; then
-    echo "ERROR: deploy failed (rc=$rc) - restoring the previous code from $BACKUP" >&2
-    for p in $CODE; do
-      if [ -e "$BACKUP/$p" ] || [ -L "$BACKUP/$p" ]; then rm -rf "$p"; mv "$BACKUP/$p" "$p"; fi
-    done
-    php artisan queue:restart >/dev/null 2>&1 || true
-  else
-    echo "ERROR: deploy failed (rc=$rc) before the swap - the live code was not touched" >&2
-  fi
-  exit $rc
-}
-trap finish EXIT
-'@
-
-$unpack = @'
-echo "==> unpacking the new code into $STAGE"
-rm -rf "$STAGE"; mkdir "$STAGE"
-tar xzf "{{TARBALL}}" -C "$STAGE"
-rm -f "{{TARBALL}}"
-# The tarball is built on Windows, whose modes come through as 777/666.
-chmod -R u=rwX,go=rX "$STAGE"
-mkdir -p "$STAGE/bootstrap/cache"
-rm -f "$STAGE"/bootstrap/cache/*.php
-# Composer starts from the live vendor/, so it only applies what changed.
-if [ -d vendor ]; then cp -a vendor "$STAGE/vendor"; fi
-# The links storage:link made (public/media), so thumbnails are served the
-# moment the new public/ is in.
-find public -maxdepth 1 -type l -exec cp -P {} "$STAGE/public/" \; 2>/dev/null || true
-mkdir -p storage/app storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
-'@
+# 3. The host's steps. They run from AppRoot, with $stage (.deploy-next) and $backup
+# (.deploy-backup) set by the module.
 
 if ($SkipComposer) {
-    $composer = @'
-echo "==> -SkipComposer: skipping composer install"
-'@
+    $composer = "echo '==> -SkipComposer: skipping composer install'"
 } else {
-    # --no-scripts: its one hook, package:discover, boots the app, which needs
-    # the live .env and storage/. It runs after the swap.
+    # --no-scripts: its one hook, package:discover, boots the app, which needs the live
+    # .env and storage/. It runs after the swap.
     $composer = @'
-echo "==> composer install (no dev packages)"
-composer install --working-dir="$STAGE" --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts
+echo '==> composer install (no dev packages)'
+composer install --working-dir="$stage" --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts
 '@
 }
 
-$swap = @'
+$prepare = Format-RemoteScript -Value @{ COMPOSER = $composer } -Template @'
+if [ ! -f .env ]; then echo "$root/.env is missing. Create it before the first deploy (docs/laravel-migration.md, Deployment)." >&2; exit 2; fi
+export COMPOSER_ALLOW_SUPERUSER=1
+mkdir -p "$stage/bootstrap/cache"
+rm -f "$stage"/bootstrap/cache/*.php
+# Composer starts from the live vendor/, so it only applies what changed.
+if [ -d vendor ]; then cp -a vendor "$stage/vendor"; fi
+# The links storage:link made (public/media), so thumbnails are served the moment the
+# new public/ is in.
+find public -maxdepth 1 -type l -exec cp -P {} "$stage/public/" \; 2>/dev/null || true
+mkdir -p storage/app storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+__COMPOSER__
 # Owned by www-data before it goes live, so Laravel can write bootstrap/cache.
-chown -R www-data:www-data "$STAGE"
-echo "==> swapping the new code in (the previous code goes to $BACKUP)"
-rm -rf "$BACKUP"; mkdir "$BACKUP"
-SWAPPED=1
-for p in $CODE; do
-  if [ -e "$p" ] || [ -L "$p" ]; then mv "$p" "$BACKUP/$p"; fi
-  if [ -e "$STAGE/$p" ]; then mv "$STAGE/$p" "$p"; fi
-done
-php artisan package:discover --ansi
+chown -R www-data:www-data "$stage"
 '@
 
 if ($SkipMigrate) {
-    $migrate = @'
-echo "==> -SkipMigrate: skipping database migrations"
-'@
+    $migrate = "echo '==> -SkipMigrate: skipping database migrations'"
 } else {
     # Snapshot the database immediately before anything can modify it.
     #
-    # `cp gallery.db` is NOT safe: the connection runs in WAL mode, so a plain
-    # copy misses whatever is still in the -wal file. `VACUUM INTO` is atomic and
-    # WAL-aware, and reachable from PDO, so this needs no sqlite3 binary.
+    # `cp gallery.db` is NOT safe: the connection runs in WAL mode, so a plain copy
+    # misses whatever is still in the -wal file. `VACUUM INTO` is atomic and WAL-aware,
+    # and reachable from PDO, so this needs no sqlite3 binary.
     #
-    # The snapshot is deliberately NOT restored by the failure trap, which fires
-    # on *any* non-zero exit, including after a successful migration: rolling
-    # the database back would discard media uploaded during the deploy window.
-    # Rolling data back is a decision, so the path and command are printed.
+    # The snapshot is deliberately NOT restored by the failure trap, which fires on
+    # *any* non-zero exit, including after a successful migration: rolling the database
+    # back would discard media uploaded during the deploy window. Rolling data back is a
+    # decision, so the path and command are printed.
     if ($NoBackup) {
         $snapshot = @'
-echo "==> -NoBackup: skipping database snapshot"
+echo '==> -NoBackup: skipping database snapshot'
 DB_SNAPSHOT=""
 '@
     } else {
@@ -326,9 +212,9 @@ DB_SNAPSHOT=""
 if [ -n "$DB" ] && [ -f "$DB" ]; then
   DB_SNAPSHOT="$(dirname "$DB")/.backups/gallery-$(date +%Y%m%d-%H%M%S).db"
   mkdir -p "$(dirname "$DB_SNAPSHOT")"
-  echo "==> snapshotting the database before migrating"
+  echo '==> snapshotting the database before migrating'
   php -r '$pdo = new PDO("sqlite:" . $argv[1]); $pdo->exec("VACUUM INTO " . $pdo->quote($argv[2]));' "$DB" "$DB_SNAPSHOT" \
-    || { echo "ERROR: database snapshot failed - aborting before migrate" >&2; exit 4; }
+    || { echo 'The database snapshot failed; stopping before the migration.' >&2; exit 4; }
   echo "    snapshot: $DB_SNAPSHOT ($(du -h "$DB_SNAPSHOT" | cut -f1))"
   # Keep the five most recent; these are full copies of the database.
   ls -1t "$(dirname "$DB_SNAPSHOT")"/gallery-*.db 2>/dev/null | tail -n +6 | xargs -r rm -f
@@ -336,11 +222,11 @@ fi
 '@
     }
     $migrate = $snapshot + "`n" + @'
-echo "==> php artisan migrate"
+echo '==> php artisan migrate'
 if ! php artisan migrate --force --no-interaction; then
-  echo "ERROR: migrations failed." >&2
+  echo 'The migrations failed.' >&2
   if [ -n "$DB_SNAPSHOT" ]; then
-    echo "  Restore the database with:" >&2
+    echo '  Restore the database with:' >&2
     echo "    cp -a $DB_SNAPSHOT $DB && rm -f $DB-wal $DB-shm && chown www-data:www-data $DB" >&2
   fi
   exit 5
@@ -348,44 +234,47 @@ fi
 '@
 }
 
-$finish = @'
-echo "==> storage:link, optimize, queue:restart"
+$afterSwap = Format-RemoteScript -Value @{ MIGRATE = $migrate } -Template @'
+php artisan package:discover --ansi
+__MIGRATE__
+echo '==> storage:link, optimize, queue:restart'
 # The media link came over with the new code; this makes it on a first deploy.
 [ -L public/media ] || php artisan storage:link --no-interaction
 # Config, routes and events; the app has no Blade views to cache.
 php artisan optimize --except=views
 php artisan queue:restart
-# What the artisan runs above wrote as root. Not the whole folder: the data,
-# backups/ and slim-rollback/ sit beside the code and keep their own owners.
+# What the artisan runs above wrote as root. Not the whole folder: the data, backups/
+# and slim-rollback/ sit beside the code and keep their own owners.
 chown -R www-data:www-data bootstrap storage
-SUCCESS=1
-'@ + "`n" + $(if ($NoBackup) { 'rm -rf "$BACKUP"' } else { '' }) + "`n" + @'
-code=$(curl -s -o /dev/null -w "%{http_code}" "{{HEALTHURL}}" 2>/dev/null) || true
-echo "==> health check: GET {{HEALTHURL}} -> HTTP $code"
-echo "DEPLOY_OK"
 '@
 
-$remoteScript = ($header, $unpack, $composer, $swap, $migrate, $finish) -join "`n"
-$remoteScript = $remoteScript.Replace('{{APPROOT}}', $AppRoot).Replace('{{TARBALL}}', $remoteTarball).Replace('{{HEALTHURL}}', $HealthUrl)
+try {
+    $connection = $settings | Open-DeployConnection
+    Write-Step 'Uploading...'
+    $upload = Invoke-Upload -Path $archive.Path -Destination 'gallery-deploy.tgz' -Activity 'Uploading the Gallery' -FileCount $archive.FileCount
+    if (-not $upload.Ok) { throw "Upload failed; the live site is untouched.`n$($upload.Err)" }
 
-# ── 5. Run the remote deploy (1 connection) ───────────────────────────────────
-Write-Step "Running remote deploy (code -> composer -> migrate -> optimize)..."
-$out = & $plink -batch -i $KeyPath $remoteTarget $remoteScript 2>&1
-foreach ($line in $out) { if ("$line".Trim()) { Write-Host "    $line" } }
+    Write-Step 'Running the deploy on the host (code -> composer -> swap -> migrate -> optimize)...'
+    Switch-RemoteItemSet -Archive 'gallery-deploy.tgz' -Sha256 $archive.Sha256 -ExpectedFileCount $archive.FileCount `
+        -Root $appRoot -Item $code -Prepare $prepare -AfterSwap $afterSwap -OnRestore $queueRestart -NoBackup:$NoBackup
 
-if ($LASTEXITCODE -ne 0 -or -not ($out -match 'DEPLOY_OK')) {
-    Fail @"
-Remote deploy failed (exit $LASTEXITCODE).
-  The live CODE is the previous one: untouched if the failure came before the swap,
-  moved back from .deploy-backup if after (the host's output above says which).
-  The DATABASE was left as-is. If the failure was in the migrate step, the snapshot
-  path and restore command are printed above.
-  Inspect logs:  plink -i "$KeyPath" $remoteTarget "tail -n 50 $AppRoot/storage/logs/laravel-*.log"
-"@
+    Write-Step "Checking $PublicHost..."
+    if ($NoBackup) {
+        # Nothing was kept to go back to.
+        Invoke-SmokeCheck -Url $HealthUrl, "https://$PublicHost/" -Attempts 3 -DelaySeconds 2 -NoRollback
+    } else {
+        # The previous code goes back; the database stays as it is, as above.
+        Invoke-SmokeCheck -Url $HealthUrl, "https://$PublicHost/" -Attempts 3 -DelaySeconds 2 -Rollback {
+            Restore-RemoteItemSet -Root $appRoot -Item $code -OnRestore $queueRestart
+        }
+    }
+} finally {
+    Close-DeployConnection
+    Remove-Item -LiteralPath $archive.Path -ErrorAction SilentlyContinue
 }
 
-Write-Host "`n[OK] Gallery deployed to ${remoteTarget}:$AppRoot" -ForegroundColor Green
+Write-Host "`n[OK] Gallery deployed to $($connection.Target):$appRoot" -ForegroundColor Green
 if (-not $NoBackup) {
-    Write-Host "     Previous code kept at $AppRoot/.deploy-backup" -ForegroundColor DarkGray
+    Write-Host "     Previous code kept at $appRoot/.deploy-backup" -ForegroundColor DarkGray
 }
-Write-Host "     SPA assets are content-hashed and the service worker auto-updates; no manual cache bust needed." -ForegroundColor DarkGray
+Write-Host '     SPA assets are content-hashed and the service worker auto-updates; no manual cache bust needed.' -ForegroundColor DarkGray

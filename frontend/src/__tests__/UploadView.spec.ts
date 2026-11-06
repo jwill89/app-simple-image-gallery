@@ -59,7 +59,9 @@ function queuedAnswer(form: FormData) {
 function importsAnswer(statusFor: (id: number, poll: number) => Partial<TagImportStatus>) {
   let poll = 0
   get.mockImplementation((url: string) => {
-    if (!url.startsWith('/media/tag-imports')) return Promise.resolve(undefined)
+    if (!url.startsWith('/media/tag-imports')) {
+      return Promise.resolve(undefined)
+    }
     poll++
     const ids = (new URLSearchParams(url.split('?')[1]).get('ids') ?? '').split(',').map(Number)
     return Promise.resolve(
@@ -79,13 +81,15 @@ const importPolls = () =>
 
 const messages = () => useToastStore().toasts.map((t) => t.message)
 
-const sent = (call: number) => (upload.mock.calls[call][1] as FormData).getAll('files[]').length
+const sent = (call: number) => (upload.mock.calls[call]![1] as FormData).getAll('files[]').length
 
 let pinia: Pinia
 
 async function uploadThrough(files: File[], { fetchTags = false } = {}) {
   const wrapper = mount(UploadView, { global: { plugins: [pinia], stubs: { PageHeader: true } } })
-  if (fetchTags) await wrapper.get('input[type="checkbox"]').setValue(true)
+  if (fetchTags) {
+    await wrapper.get('input[type="checkbox"]').setValue(true)
+  }
   const input = wrapper.get('input[type="file"]')
   Object.defineProperty(input.element, 'files', { value: files, configurable: true })
   await input.trigger('change')
@@ -143,7 +147,7 @@ describe('UploadView', () => {
     expect(wrapper.text()).toContain('26 uploaded, 2 failed.')
     const left = wrapper.findAll('.file-item')
     expect(left.map((row) => row.get('.file-item-name').text())).toEqual(['f18.jpg', 'f19.jpg'])
-    expect(left[0].text()).toContain('The server did not receive this file')
+    expect(left[0]!.text()).toContain('The server did not receive this file')
     expect(useToastStore().toasts.map((t) => t.message)).toContain(
       '2 file(s) could not be uploaded. Check the results below for details.',
     )

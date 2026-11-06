@@ -51,12 +51,16 @@ const addError = ref('')
 const adding = ref(false)
 
 async function add() {
-  if (addPassword.value === '' || adding.value) return
+  if (addPassword.value === '' || adding.value) {
+    return
+  }
   adding.value = true
   addError.value = ''
   try {
     const passkey = await passkeys.add(addPassword.value, addName.value.trim())
-    if (passkey) list.value.push(passkey)
+    if (passkey) {
+      list.value.push(passkey)
+    }
     addOpen.value = false
     addPassword.value = addName.value = ''
     toast.success(
@@ -87,7 +91,9 @@ async function finishRename() {
   const id = renaming.value
   const name = newName.value.trim()
   renaming.value = null
-  if (id === null || name === '') return
+  if (id === null || name === '') {
+    return
+  }
   try {
     const renamed = await api.patch<Passkey>(endpoints.account.passkey(id), { name })
     list.value = list.value.map((p) => (p.id === id && renamed ? renamed : p))
@@ -102,7 +108,9 @@ const removeBusy = ref(false)
 
 async function remove() {
   const passkey = removing.value
-  if (passkey === null) return
+  if (passkey === null) {
+    return
+  }
   removeBusy.value = true
   try {
     await api.del(endpoints.account.passkey(passkey.id))

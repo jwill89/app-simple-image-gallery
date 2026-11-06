@@ -27,12 +27,15 @@ CI's `backend` job runs each of these:
 
 ```bash
 composer audit
-composer lint             # Pint, PER preset (composer lint:fix applies)
+composer lint             # PHP CS Fixer, PER Coding Style 3.0 (composer lint:fix applies)
 composer rector:check     # PHP 8.5 idioms, dead code, Laravel rules (composer rector applies)
 composer analyse          # Larastan, level 8 + strict and deprecation rules
-composer docs             # rebuild openapi.json from the #[OAS\*] attributes; CI fails if it changes
-composer test             # Pest
+composer docs:check       # rebuild openapi.json from the #[OAS\*] attributes; fails if it changes
+composer test:coverage    # Pest, then the coverage floor (94% of lines, 86% of methods)
 ```
+
+The style, Rector and PHPStan settings start from shared-tooling's `lint/php` (the `shared/`
+submodule at the repo root), and the coverage floor is its `test/php/coverage-check.php`.
 
 ## Commands and background work
 

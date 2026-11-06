@@ -46,8 +46,11 @@ async function load() {
   loading.value = true
   loadFailed.value = false
   try {
-    if (favorites.isAccount) await loadList()
-    else await loadLocal()
+    if (favorites.isAccount) {
+      await loadList()
+    } else {
+      await loadLocal()
+    }
     // Gallery context for the detail page's previous/next.
     store.lastViewedItemIds = items.value.map((i) => i.media_id)
   } catch (e) {
@@ -107,7 +110,9 @@ watch(
 watch(
   () => favorites.count,
   () => {
-    if (!favorites.isAccount || selected.value?.is_default) void load()
+    if (!favorites.isAccount || selected.value?.is_default) {
+      void load()
+    }
   },
 )
 
@@ -134,7 +139,9 @@ async function saveName() {
   try {
     if (nameDialog.value === 'create') {
       const list = await favorites.createList(name)
-      if (list) selectList(list.list_id)
+      if (list) {
+        selectList(list.list_id)
+      }
     } else if (selected.value) {
       await favorites.renameList(selected.value.list_id, name)
     }
@@ -146,7 +153,9 @@ async function saveName() {
 
 async function deleteList() {
   const list = selected.value
-  if (!list) return
+  if (!list) {
+    return
+  }
   try {
     await favorites.deleteList(list.list_id)
     toastStore.success(`Deleted the list "${list.name}".`, 4000, 'Lists')

@@ -1,14 +1,11 @@
 {
-  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  // The shared app settings (shared-tooling's lint/web): Vue's DOM base, unused locals and
+  // parameters, switch fallthrough, and an index that may find nothing typed as such.
+  "extends": "@jwill89/lint-web/tsconfig.app.json",
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "types": ["vite/client"],
-
-    /* Linting */
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
+    "erasableSyntaxOnly": true
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "src/vite-env.d.ts"],
   // The service worker's entry needs a worker's globals (tsconfig.sw.json).

@@ -35,8 +35,12 @@ defineOptions({ name: 'GalleryView' })
 
 /** Build the media-listing path for a page + optional tag filter. */
 function listUrl(page: number, perPage: number, tags?: string): string {
-  if (tags === 'untagged') return endpoints.media.untagged(page, perPage)
-  if (tags) return endpoints.media.withTags(tags, page, perPage)
+  if (tags === 'untagged') {
+    return endpoints.media.untagged(page, perPage)
+  }
+  if (tags) {
+    return endpoints.media.withTags(tags, page, perPage)
+  }
   return endpoints.media.page(page, perPage)
 }
 
@@ -87,7 +91,9 @@ let nextBatch: { url: string; data: Promise<MediaFeed | undefined> } | null = nu
 const displayItems = computed(() => (isInfiniteScroll.value ? accumulatedItems.value : items.value))
 
 const headerTitle = computed(() => {
-  if (!props.tags) return 'Media'
+  if (!props.tags) {
+    return 'Media'
+  }
   return props.tags === 'untagged' ? 'Untagged' : props.tags.split(',').join(', ')
 })
 
@@ -95,7 +101,9 @@ const headerTitle = computed(() => {
  *  place the current position is reported. */
 const headerMeta = computed(() => {
   const total = store.totalMedia.toLocaleString()
-  if (isInfiniteScroll.value) return `${displayItems.value.length.toLocaleString()} loaded`
+  if (isInfiniteScroll.value) {
+    return `${displayItems.value.length.toLocaleString()} loaded`
+  }
   return props.tags
     ? `page ${props.page} of ${totalPages.value}`
     : `${total} items · page ${props.page} of ${totalPages.value}`
@@ -150,17 +158,23 @@ function onSlowConnection(): boolean {
 
 /** Ask for the batch after `cursor` now, and warm its thumbnails. */
 function prefetchNextBatch(cursor: string) {
-  if (onSlowConnection()) return
+  if (onSlowConnection()) {
+    return
+  }
   const url = feedUrl(cursor)
   const data = api.get<MediaFeed>(url)
   nextBatch = { url, data }
   data.then(
     (feed) => {
-      if (feed?.items.length) prefetchThumbnails(feed.items)
+      if (feed?.items.length) {
+        prefetchThumbnails(feed.items)
+      }
     },
     () => {
       // Best-effort: reaching the sentinel asks again.
-      if (nextBatch?.url === url) nextBatch = null
+      if (nextBatch?.url === url) {
+        nextBatch = null
+      }
     },
   )
 }
@@ -208,7 +222,9 @@ async function loadPage() {
 }
 
 async function prefetchAdjacentPage(page: number, perPage: number, tags?: string) {
-  if (page < 1 || page > totalPages.value || onSlowConnection()) return
+  if (page < 1 || page > totalPages.value || onSlowConnection()) {
+    return
+  }
 
   try {
     const data = await api.get<MediaPage>(listUrl(page, perPage, tags))
@@ -221,7 +237,9 @@ async function prefetchAdjacentPage(page: number, perPage: number, tags?: string
 }
 
 async function loadNextBatch() {
-  if (loadingMore.value || allLoaded.value) return
+  if (loadingMore.value || allLoaded.value) {
+    return
+  }
   loadingMore.value = true
   try {
     // Keep pulling batches while the sentinel is still within the trigger zone.
@@ -234,7 +252,9 @@ async function loadNextBatch() {
     // taller than the window.
     do {
       const cursor = nextCursor.value
-      if (cursor === null) break
+      if (cursor === null) {
+        break
+      }
       const data = await fetchBatch(cursor)
       const newItems = data?.items ?? []
       accumulatedItems.value = [...accumulatedItems.value, ...newItems]
@@ -265,7 +285,9 @@ async function loadNextBatch() {
  */
 function sentinelInTriggerZone(): boolean {
   const el = scrollSentinel.value
-  if (!el) return false
+  if (!el) {
+    return false
+  }
   const rect = el.getBoundingClientRect()
   return rect.top < window.innerHeight + SENTINEL_MARGIN && rect.bottom > -SENTINEL_MARGIN
 }
@@ -273,7 +295,9 @@ function sentinelInTriggerZone(): boolean {
 // Load the page *above* the current top (when the infinite list started partway
 // down) and prepend it, anchoring the scroll so the view doesn't jump.
 async function loadPrevBatch() {
-  if (topLoading.value || batchStartPage.value <= 1 || accumulatedItems.value.length === 0) return
+  if (topLoading.value || batchStartPage.value <= 1 || accumulatedItems.value.length === 0) {
+    return
+  }
   topLoading.value = true
   const prevPage = batchStartPage.value - 1
   try {
@@ -307,10 +331,14 @@ async function loadPrevBatch() {
 function setupObserver() {
   observer?.disconnect()
   const el = scrollSentinel.value
-  if (!el) return
+  if (!el) {
+    return
+  }
   observer = new IntersectionObserver(
     (entries) => {
-      if (entries[0].isIntersecting) void loadNextBatch()
+      if (entries[0]?.isIntersecting) {
+        void loadNextBatch()
+      }
     },
     { rootMargin: `${SENTINEL_MARGIN}px` },
   )
@@ -320,10 +348,14 @@ function setupObserver() {
 function setupTopObserver() {
   topObserver?.disconnect()
   const el = topSentinel.value
-  if (!el) return
+  if (!el) {
+    return
+  }
   topObserver = new IntersectionObserver(
     (entries) => {
-      if (entries[0].isIntersecting) void loadPrevBatch()
+      if (entries[0]?.isIntersecting) {
+        void loadPrevBatch()
+      }
     },
     // A small margin so it fires on approach but the anchored scroll then pushes
     // it clear of the viewport (no cascade of loads).
@@ -347,7 +379,9 @@ let scrollRaf = 0
 /** Offset of the topmost card currently visible, within the accumulated list. */
 function computeTopOffset(): number {
   const grid = gridEl.value
-  if (!grid || grid.children.length === 0) return 0
+  if (!grid || grid.children.length === 0) {
+    return 0
+  }
   const cards = grid.children
   // Cards are in document order, so `rect.bottom` increases with index — binary
   // search for the first card still visible below the navbar.
@@ -367,16 +401,22 @@ function computeTopOffset(): number {
 }
 
 function onScroll() {
-  if (!isInfiniteScroll.value) return
+  if (!isInfiniteScroll.value) {
+    return
+  }
   // Near the top: pull in earlier pages (the observer bootstraps the first one).
-  if (window.scrollY < 300) void loadPrevBatch()
+  if (window.scrollY < 300) {
+    void loadPrevBatch()
+  }
 
   // Everything that reads layout stays inside the animation frame. Each
   // `getBoundingClientRect()` in computeTopOffset forces a synchronous layout
   // flush, and the cards use `content-visibility: auto` — running that on every
   // scroll event pins the main thread hard enough that the sentinel's
   // IntersectionObserver never gets to fire, so the next batch never loads.
-  if (scrollRaf) return
+  if (scrollRaf) {
+    return
+  }
   scrollRaf = requestAnimationFrame(() => {
     scrollRaf = 0
     const offset = computeTopOffset()
@@ -394,13 +434,16 @@ function scrollToTop() {
 }
 
 function onKeydown(e: KeyboardEvent) {
-  if (isInfiniteScroll.value || loading.value) return
+  if (isInfiniteScroll.value || loading.value) {
+    return
+  }
   if (
     e.target instanceof HTMLInputElement ||
     e.target instanceof HTMLTextAreaElement ||
     e.target instanceof HTMLSelectElement
-  )
+  ) {
     return
+  }
 
   if (e.key === 'ArrowLeft' && props.page > 1) {
     onNavigate(props.page - 1)
@@ -457,7 +500,9 @@ onActivated(() => {
 watch(
   () => store.listingsVersion,
   () => {
-    if (isActive.value) void loadPage()
+    if (isActive.value) {
+      void loadPage()
+    }
   },
 )
 onDeactivated(() => {
@@ -477,7 +522,9 @@ onUnmounted(() => {
 watch(
   () => [props.page, props.perPage, props.tags] as const,
   (n, o) => {
-    if (isInfiniteScroll.value && n[0] !== o[0] && n[1] === o[1] && n[2] === o[2]) return
+    if (isInfiniteScroll.value && n[0] !== o[0] && n[1] === o[1] && n[2] === o[2]) {
+      return
+    }
     void loadPage()
   },
 )
@@ -487,7 +534,9 @@ watch(
 watch(
   () => store.galleryResetSeq,
   () => {
-    if (!isActive.value || !isInfiniteScroll.value) return
+    if (!isActive.value || !isInfiniteScroll.value) {
+      return
+    }
     restoreOnActivate = false
     bootstrapTopLoad = false
     batchStartPage.value = 1
@@ -501,7 +550,9 @@ watch(
 watch(
   () => store.infiniteScroll,
   (on) => {
-    if (!isActive.value) return
+    if (!isActive.value) {
+      return
+    }
     if (on) {
       // Entering infinite scroll: resume from the page we were viewing.
       batchStartPage.value = startPageFromPaged()

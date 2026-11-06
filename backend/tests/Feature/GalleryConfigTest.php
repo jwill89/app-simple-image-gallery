@@ -60,7 +60,7 @@ it('reads every gallery variable in .env.example', function (): void {
     ]);
 
     expect($config)->toBe([
-        'version' => '7.0.0',
+        'version' => '7.0.1',
         'api_version' => '7.0.0',
         'allow_signup' => false,
         'turnstile' => ['site_key' => 'site-key', 'secret' => 'secret-key'],

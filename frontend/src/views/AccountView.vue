@@ -36,7 +36,9 @@ const passwordReady = computed(
 )
 
 async function changePassword() {
-  if (!passwordReady.value) return
+  if (!passwordReady.value) {
+    return
+  }
   changingPassword.value = true
   passwordError.value = ''
   try {
@@ -65,10 +67,14 @@ async function onBlockedChange(ids: number[]) {
   try {
     for (const id of after) {
       const tag = gallery.tagById(id)
-      if (!before.has(id) && tag) await account.block(tag)
+      if (!before.has(id) && tag) {
+        await account.block(tag)
+      }
     }
     for (const id of before) {
-      if (!after.has(id)) await account.unblock(id)
+      if (!after.has(id)) {
+        await account.unblock(id)
+      }
     }
   } catch (e) {
     toast.error(getErrorMessage(e, 'Could not change your blocked tags.'), 6000, 'Blocked tags')
@@ -92,7 +98,9 @@ async function finishRename() {
   const id = renaming.value
   const name = newName.value.trim()
   renaming.value = null
-  if (id === null || name === '') return
+  if (id === null || name === '') {
+    return
+  }
   try {
     await account.renameSearch(id, name)
   } catch (e) {

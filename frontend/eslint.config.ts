@@ -1,9 +1,10 @@
-import shared from '@jwill89/eslint-config'
-import vueA11y from 'eslint-plugin-vuejs-accessibility'
+import shared, { tsStylistic, vueConventions } from '@jwill89/lint-web'
 
-// Shared ruleset (Vue 3 + TypeScript strictTypeChecked + Prettier) lives in the
-// @jwill89/eslint-config submodule (frontend/eslint-config). Project-specific
-// ignores and rules live here. Build/tooling config files are not linted.
+// The shared front-end rules (shared-tooling's lint/web): Vue 3 + TypeScript
+// strictTypeChecked, template accessibility, the Vue conventions AGENTS.md §8 holds
+// (<script setup lang="ts"> only, no inline styles) and typescript-eslint's stylistic
+// set, with Prettier's conflict list. Below them, what only this app needs. Build and
+// tooling config files are not linted.
 export default [
   {
     name: 'gallery/ignores',
@@ -11,7 +12,6 @@ export default [
       'dist/**',
       'coverage/**',
       'public/**',
-      'eslint-config/**', // the shared-config submodule itself
       'src/types/api.generated.ts', // generated from the OpenAPI spec
       '*.config.ts',
       '*.config.js',
@@ -20,13 +20,13 @@ export default [
     ],
   },
   ...shared,
-  // Template accessibility: labels, alt text, interactive roles.
-  ...vueA11y.configs['flat/recommended'],
+  vueConventions,
+  tsStylistic,
   {
     name: 'gallery/a11y',
     rules: {
-      // A label works by wrapping its control or by `for`/`id`; the plugin's
-      // default demands both.
+      // A label works by wrapping its control or by `for`/`id`, and a label whose
+      // control is a child component counts.
       'vuejs-accessibility/label-has-for': [
         'error',
         { required: { some: ['nesting', 'id'] }, allowChildren: true },
@@ -34,62 +34,11 @@ export default [
     },
   },
   {
-    // The parts of the Vue style guide the shared config leaves off, holding the
-    // conventions in AGENTS.md §8: <script setup lang="ts"> only, no inline styles.
+    // Only the router's components are registered globally here.
     name: 'gallery/vue',
     files: ['**/*.vue'],
     rules: {
-      'vue/block-lang': ['error', { script: { lang: 'ts' } }],
-      'vue/component-api-style': ['error', ['script-setup']],
-      'vue/no-static-inline-styles': 'error',
-      'vue/define-macros-order': 'error',
-      'vue/require-typed-ref': 'error',
-      'vue/prefer-use-template-ref': 'error',
-      'vue/no-required-prop-with-default': 'error',
       'vue/no-undef-components': ['error', { ignorePatterns: ['^Router(Link|View)$'] }],
-      'vue/no-unused-refs': 'error',
-      'vue/no-useless-v-bind': 'error',
-      'vue/no-useless-mustaches': 'error',
-      'vue/prefer-true-attribute-shorthand': 'error',
-      'vue/html-button-has-type': 'error',
-    },
-  },
-  {
-    // typescript-eslint's stylistic-type-checked set, on top of the shared
-    // strictTypeChecked. Named here rather than spread from typescript-eslint:
-    // the shared config registers the plugin from the submodule's own install,
-    // and a second copy from this package's node_modules can't be registered
-    // under the same name.
-    name: 'gallery/ts-stylistic',
-    files: ['**/*.{ts,vue}'],
-    rules: {
-      '@typescript-eslint/adjacent-overload-signatures': 'error',
-      '@typescript-eslint/array-type': 'error',
-      '@typescript-eslint/ban-tslint-comment': 'error',
-      '@typescript-eslint/class-literal-property-style': 'error',
-      '@typescript-eslint/consistent-generic-constructors': 'error',
-      '@typescript-eslint/consistent-indexed-object-style': 'error',
-      '@typescript-eslint/consistent-type-assertions': 'error',
-      '@typescript-eslint/consistent-type-definitions': 'error',
-      'dot-notation': 'off',
-      '@typescript-eslint/dot-notation': 'error',
-      '@typescript-eslint/no-confusing-non-null-assertion': 'error',
-      '@typescript-eslint/no-empty-function': 'error',
-      '@typescript-eslint/no-inferrable-types': 'error',
-      '@typescript-eslint/non-nullable-type-assertion-style': 'error',
-      '@typescript-eslint/prefer-find': 'error',
-      '@typescript-eslint/prefer-for-of': 'error',
-      '@typescript-eslint/prefer-function-type': 'error',
-      '@typescript-eslint/prefer-includes': 'error',
-      // An empty string or false falls back as nothing would, so || stays where
-      // it is meant.
-      '@typescript-eslint/prefer-nullish-coalescing': [
-        'error',
-        { ignorePrimitives: { string: true, boolean: true } },
-      ],
-      '@typescript-eslint/prefer-optional-chain': 'error',
-      '@typescript-eslint/prefer-regexp-exec': 'error',
-      '@typescript-eslint/prefer-string-starts-ends-with': 'error',
     },
   },
   {

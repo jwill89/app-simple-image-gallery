@@ -21,7 +21,9 @@ let widgetId: string | null = null
 onMounted(async () => {
   try {
     const turnstile = await loadTurnstile()
-    if (!container.value) return
+    if (!container.value) {
+      return
+    }
     widgetId = turnstile.render(container.value, {
       sitekey: props.siteKey,
       action: props.action,
@@ -42,12 +44,16 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (widgetId !== null) window.turnstile?.remove(widgetId)
+  if (widgetId !== null) {
+    window.turnstile?.remove(widgetId)
+  }
 })
 
 function reset(): void {
   token.value = ''
-  if (widgetId !== null) window.turnstile?.reset(widgetId)
+  if (widgetId !== null) {
+    window.turnstile?.reset(widgetId)
+  }
 }
 
 defineExpose({ reset })

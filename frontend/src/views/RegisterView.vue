@@ -55,7 +55,9 @@ const ready = computed(
     (siteKey.value === null || turnstileToken.value !== ''),
 )
 
-if (auth.isSignedIn) void router.replace(redirect.value)
+if (auth.isSignedIn) {
+  void router.replace(redirect.value)
+}
 
 onMounted(async () => {
   const config = await auth.loadConfig().catch(() => null)
@@ -65,7 +67,9 @@ onMounted(async () => {
 })
 
 async function register() {
-  if (!ready.value || busy.value) return
+  if (!ready.value || busy.value) {
+    return
+  }
   busy.value = true
   error.value = usernameError.value = passwordError.value = ''
   try {

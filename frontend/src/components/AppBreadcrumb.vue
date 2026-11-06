@@ -32,14 +32,18 @@ const store = useGalleryStore()
 watch(
   () => route.params.tagId,
   (tagId) => {
-    if (route.name === 'tag-implications') void store.loadTagsById([Number(tagId)])
+    if (route.name === 'tag-implications') {
+      void store.loadTagsById([Number(tagId)])
+    }
   },
   { immediate: true },
 )
 
 const crumbs = computed<Crumb[]>(() => {
   const name = route.name as string
-  if (!name) return []
+  if (!name) {
+    return []
+  }
 
   const list: Crumb[] = [{ label: 'Gallery', icon: 'fa-solid fa-house' }]
 

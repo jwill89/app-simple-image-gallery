@@ -43,25 +43,30 @@ server's origin, `http://localhost:5173`, must be in `GALLERY_ALLOWED_ORIGINS` f
 **Frontend** (run from `frontend/`):
 
 ```bash
-git submodule update --init --recursive   # fetch frontend/eslint-config (shared lint config)
+git submodule update --init   # fetch shared/ (shared-tooling: the lint, test, CI and deploy settings)
 cd frontend
 npm install
 npm run dev             # Vite dev server on :5173, proxies /api and /media to http://localhost
 ```
 
-> Clone with `git clone --recurse-submodules …` to fetch the submodule up front. Without the
-> submodule checked out, `npm install` fails (it resolves `@jwill89/eslint-config` from `file:eslint-config`).
+> Clone with `git clone --recurse-submodules …` to fetch the submodule up front. Without
+> `shared/` checked out, `npm install` fails (it installs `@jwill89/lint-web` from
+> `file:../shared/lint/web`), and so do the backend's lint, Rector and PHPStan configs, which
+> include shared-tooling's.
+>
+> [Task](https://taskfile.dev) runs the same checks from the repo root: `task lint`, `task test`,
+> `task check` (everything CI runs), and `task` alone lists the rest.
 
 ## Coding standards
 
 CI runs these checks on every push and pull request — please run them locally first.
 
-**PHP — Pint** (the `per` preset, PSR-12's successor; config in `backend/pint.json`), plus
-static analysis and Rector:
+**PHP — PHP CS Fixer** (PER Coding Style 3.0, PSR-12's successor, from shared-tooling's
+`lint/php`; config in `backend/.php-cs-fixer.dist.php`), plus static analysis and Rector:
 
 ```bash
 cd backend
-composer lint           # Pint: must report no files to fix
+composer lint           # PHP CS Fixer: must report no files to fix
 composer lint:fix       # apply the fixes
 composer analyse        # Larastan level 8 + strict and deprecation rules: must report no errors
 composer rector:check   # Rector (PHP 8.5 and Laravel idioms, dead code): must propose no changes
@@ -94,14 +99,17 @@ npm run format:check    # Prettier: verify formatting (CI gate)
 npm run build           # vue-tsc type-check + vite build; must succeed with no type errors
 ```
 
-The lint rules and Prettier config are shared across projects via the
-**[@jwill89/eslint-config](https://github.com/jwill89/eslint-config)** git submodule at
-`frontend/eslint-config` (Vue + TypeScript **strictTypeChecked**). `prettier.config.js`
-re-exports it; `eslint.config.ts` spreads it and adds this project's own rules (template
-accessibility, the Vue style-guide rules behind the conventions in AGENTS.md §8,
-typescript-eslint's stylistic set, no `fetch` outside `useApi.ts`). Change a rule every
-project should get **in the submodule** (commit + push there, then bump the submodule pointer
-here); keep project-specific ones in `eslint.config.ts`. Conventions the rules enforce:
+The lint rules, Prettier, Stylelint, TypeScript and Vitest settings are shared across projects
+by **[shared-tooling](https://github.com/jwill89/shared-tooling)**, the git submodule at
+`shared/`, whose `lint/web` package (`@jwill89/lint-web`) the frontend installs. Its ESLint
+config is Vue + TypeScript **strictTypeChecked** with template accessibility and `curly`;
+`eslint.config.ts` spreads it with the shared Vue style-guide (`vueConventions`) and
+typescript-eslint stylistic (`tsStylistic`) sets, then adds this project's own rules (the
+label rule's nesting option, Router's global components, no `fetch` outside `useApi.ts`).
+`prettier.config.js` re-exports the shared Prettier settings. A rule every project should get
+changes **in shared-tooling** (a release there, then `task shared:update -- vX.Y.Z` here, which
+moves the submodule and the CI workflow refs together); keep project-specific ones in
+`eslint.config.ts`. Conventions the rules enforce:
 prefer `catch (e)` (typed `unknown`) with the `getErrorMessage`/`getErrorStatus`/`getErrorCode`
 helpers from `composables/useApi.ts` over `catch (e: any)`; `void`-prefix intentional
 fire-and-forget promises (`void router.push(...)`); prefix genuinely-unused vars/args with `_`.
@@ -147,7 +155,8 @@ npm run test:watch       # watch mode
 npm run test:coverage    # with a coverage report
 ```
 
-Specs live in `frontend/src/__tests__/*.spec.ts` (happy-dom). Component specs mount a view with
+Specs live in `frontend/src/__tests__/*.spec.ts` (jsdom). `test:coverage` fails below the
+coverage floor in `vite.config.ts`. Component specs mount a view with
 `@vue/test-utils` and fake the server by mocking `useApi` (see `UploadView.spec.ts`).
 
 ## Database changes
@@ -190,4 +199,4 @@ php artisan migrate
    which `GET /api/version` serves; the footer reads `package.json`). Move
    `App\OpenApi\OpenApiSpec::API_VERSION` only if the API surface changed, then run `composer docs`.
 3. Merge to `main`: once CI is green, it tags `vX.Y.Z` and publishes the release from that
-   version's CHANGELOG section. Deploy with `scripts/deploy.ps1`.
+   version's CHANGELOG section. Deploy with `task deploy` (`scripts/deploy.ps1`).

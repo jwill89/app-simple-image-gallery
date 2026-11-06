@@ -19,7 +19,9 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const cacheName = cacheFor(event.request)
-  if (cacheName === null) return
+  if (cacheName === null) {
+    return
+  }
   event.respondWith(
     cacheFirst(event.request, cacheName, (work) => {
       event.waitUntil(work)

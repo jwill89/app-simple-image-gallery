@@ -18,7 +18,9 @@ const users = ref<User[]>([])
 const loading = ref(false)
 
 async function loadUsers() {
-  if (!auth.isAdmin) return
+  if (!auth.isAdmin) {
+    return
+  }
   loading.value = true
   try {
     users.value = (await api.get<User[]>(endpoints.users.all)) ?? []
@@ -39,7 +41,9 @@ function replace(user: User) {
 async function setAdmin(user: User, isAdmin: boolean) {
   try {
     const updated = await api.patch<User>(endpoints.users.byId(user.id), { is_admin: isAdmin })
-    if (updated) replace(updated)
+    if (updated) {
+      replace(updated)
+    }
     toast.success(
       isAdmin ? `${user.username} is now an admin.` : `${user.username} is no longer an admin.`,
       4000,
@@ -63,7 +67,9 @@ function askPassword(user: User) {
 
 async function setPassword() {
   const user = passwordFor.value
-  if (!user) return
+  if (!user) {
+    return
+  }
   try {
     await api.patch<User>(endpoints.users.byId(user.id), { password: newPassword.value })
     passwordFor.value = null
@@ -83,7 +89,9 @@ const deleting = ref<User | null>(null)
 
 async function deleteUser() {
   const user = deleting.value
-  if (!user) return
+  if (!user) {
+    return
+  }
   try {
     await api.del(endpoints.users.byId(user.id))
     users.value = users.value.filter((u) => u.id !== user.id)

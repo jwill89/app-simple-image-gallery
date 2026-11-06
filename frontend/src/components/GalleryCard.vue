@@ -20,7 +20,9 @@ const thumbnailPath = computed(() => thumbnailUrl(props.item.file_name))
 const thumbnail2xPath = computed(() => thumbnailUrl(props.item.file_name, '2x'))
 
 const isAnimated = computed(() => {
-  if (props.item.media_type === 'video') return true
+  if (props.item.media_type === 'video') {
+    return true
+  }
   const ext = props.item.file_name.split('.').pop()?.toLowerCase()
   return ext === 'gif'
 })

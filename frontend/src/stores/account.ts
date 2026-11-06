@@ -53,7 +53,9 @@ export const useAccountStore = defineStore('account', () => {
 
   async function saveSearch(name: string, query: string): Promise<SavedSearch | undefined> {
     const search = await api.post<SavedSearch>(endpoints.savedSearches.all, { name, query })
-    if (search) searches.value = [...searches.value, search].sort(byName)
+    if (search) {
+      searches.value = [...searches.value, search].sort(byName)
+    }
     return search
   }
 

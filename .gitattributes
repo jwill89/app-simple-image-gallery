@@ -1,32 +1,37 @@
-# Line endings.
+# LF everywhere, regardless of the machine's core.autocrlf: the deploy scripts send
+# shell to the droplet, and gofmt, Prettier and PHP CS Fixer all expect LF. eol=lf
+# overrides autocrlf, so no per-machine setup is needed.
 #
-# The repository stores LF, and every tool in the gate expects LF: PHP CS
-# Fixer's PER-CS rules (and phpcs before it) fail a file on CRLF line endings,
-# and Prettier rewrites CRLF on sight. Windows checkouts, however, get CRLF from
-# core.autocrlf=true — so `composer lint` failed on 34 files nobody had edited,
-# and `git checkout` kept undoing what Prettier had just fixed.
-#
-# `eol=lf` overrides core.autocrlf, so this holds regardless of each developer's
-# global git config, and no per-machine setup is required.
+# Copied in from shared-tooling/repo by Sync-RepoFiles.ps1. Edit only below the
+# project marker; everything above it is rewritten on the next sync.
 * text=auto eol=lf
 
-# Nothing here needs CRLF today (no .bat/.cmd exist). If one is ever added it
-# must opt out, because cmd.exe mis-parses LF-terminated batch files:
+# cmd.exe misreads LF-terminated batch files.
 *.bat text eol=crlf
 *.cmd text eol=crlf
 
-# Binary assets: excluded explicitly rather than relying on content detection,
-# so a stray text-looking header can never get "normalised" into corruption.
+# Binary: listed rather than left to content detection, so a text-looking header is
+# never normalised into corruption.
 *.png binary
 *.jpg binary
 *.jpeg binary
 *.gif binary
 *.webp binary
 *.avif binary
+*.bmp binary
 *.ico binary
+*.pdf binary
 *.woff binary
 *.woff2 binary
 *.ttf binary
+*.otf binary
 *.mp4 binary
 *.webm binary
+*.mid binary
+*.exe binary
 *.db binary
+*.sqlite binary
+*.xlsx binary
+*.pyc binary
+
+# ---- project: lines below this one are this repo's own ----

@@ -5,7 +5,9 @@ import type * as CacheModule from '../sw/cache'
 // CacheStorage and a fake network.
 
 function urlOf(request: RequestInfo | URL): string {
-  if (typeof request === 'string') return new URL(request, location.origin).href
+  if (typeof request === 'string') {
+    return new URL(request, location.origin).href
+  }
   return request instanceof URL ? request.href : request.url
 }
 
@@ -189,7 +191,9 @@ describe('prefetchThumbnails', () => {
     )
     for (let round = 0; round < 10; round++) {
       await new Promise((resolve) => setTimeout(resolve, 0))
-      for (const finish of finishers.splice(0)) finish()
+      for (const finish of finishers.splice(0)) {
+        finish()
+      }
     }
     await done
 
@@ -199,7 +203,9 @@ describe('prefetchThumbnails', () => {
 
   it('trims the cache to the newest 2000 once per hundred downloads, not after each', async () => {
     const cache = await thumbnails()
-    for (let i = 0; i < 2000; i++) cache.entries.set(thumb(`old-${String(i)}`), new Response(''))
+    for (let i = 0; i < 2000; i++) {
+      cache.entries.set(thumb(`old-${String(i)}`), new Response(''))
+    }
 
     await sw.prefetchThumbnails(
       Array.from({ length: 100 }, (_, i) => `/media/thumbs/new-${String(i)}.webp`),

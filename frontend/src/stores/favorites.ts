@@ -15,7 +15,9 @@ function loadFromStorage(): Set<number> {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const arr: unknown = JSON.parse(raw)
-      if (Array.isArray(arr)) return new Set(arr.filter(Number.isFinite) as number[])
+      if (Array.isArray(arr)) {
+        return new Set(arr.filter(Number.isFinite) as number[])
+      }
     }
   } catch {
     // Corrupted data — start fresh
@@ -58,8 +60,11 @@ export const useFavoritesStore = defineStore('favorites', () => {
 
   function withId(set: Set<number>, mediaId: number, present: boolean): Set<number> {
     const next = new Set(set)
-    if (present) next.add(mediaId)
-    else next.delete(mediaId)
+    if (present) {
+      next.add(mediaId)
+    } else {
+      next.delete(mediaId)
+    }
     return next
   }
 
@@ -76,19 +81,28 @@ export const useFavoritesStore = defineStore('favorites', () => {
       return
     }
     const list = defaultList.value
-    if (list) await setInList(list.list_id, mediaId, !accountIds.value.has(mediaId))
+    if (list) {
+      await setInList(list.list_id, mediaId, !accountIds.value.has(mediaId))
+    }
   }
 
   /** Put media in a list or take it out; shown at once, undone if the server refuses. */
   async function setInList(listId: number, mediaId: number, present: boolean): Promise<void> {
     const isDefault = listId === defaultList.value?.list_id
-    if (isDefault) accountIds.value = withId(accountIds.value, mediaId, present)
+    if (isDefault) {
+      accountIds.value = withId(accountIds.value, mediaId, present)
+    }
     try {
-      if (present) await api.put(endpoints.lists.item(listId, mediaId))
-      else await api.del(endpoints.lists.item(listId, mediaId))
+      if (present) {
+        await api.put(endpoints.lists.item(listId, mediaId))
+      } else {
+        await api.del(endpoints.lists.item(listId, mediaId))
+      }
       adjustCount(listId, present ? 1 : -1)
     } catch (e) {
-      if (isDefault) accountIds.value = withId(accountIds.value, mediaId, !present)
+      if (isDefault) {
+        accountIds.value = withId(accountIds.value, mediaId, !present)
+      }
       toast.error(getErrorMessage(e, 'Could not change the list.'), 6000, 'Lists')
     }
   }
@@ -98,7 +112,9 @@ export const useFavoritesStore = defineStore('favorites', () => {
     signedInState.value = true
     lists.value = (await api.get<FavoriteList[]>(endpoints.lists.all)) ?? []
     const list = defaultList.value
-    if (!list) return
+    if (!list) {
+      return
+    }
 
     const local = [...localIds.value]
     if (local.length > 0) {
@@ -134,13 +150,17 @@ export const useFavoritesStore = defineStore('favorites', () => {
 
   async function createList(name: string): Promise<FavoriteList | undefined> {
     const list = await api.post<FavoriteList>(endpoints.lists.all, { name })
-    if (list) lists.value = [...lists.value, list]
+    if (list) {
+      lists.value = [...lists.value, list]
+    }
     return list
   }
 
   async function renameList(listId: number, name: string): Promise<void> {
     const list = await api.patch<FavoriteList>(endpoints.lists.byId(listId), { name })
-    if (list) lists.value = lists.value.map((l) => (l.list_id === listId ? list : l))
+    if (list) {
+      lists.value = lists.value.map((l) => (l.list_id === listId ? list : l))
+    }
   }
 
   async function deleteList(listId: number): Promise<void> {
@@ -151,7 +171,9 @@ export const useFavoritesStore = defineStore('favorites', () => {
   /** Signed out: drop favorites whose media no longer exists. */
   function prune(validIds: Set<number>): void {
     const next = new Set([...localIds.value].filter((id) => validIds.has(id)))
-    if (next.size !== localIds.value.size) localIds.value = next
+    if (next.size !== localIds.value.size) {
+      localIds.value = next
+    }
   }
 
   /** Signed out: this browser's favorites. */

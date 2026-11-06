@@ -18,8 +18,13 @@ function cardsUse2x(): boolean {
  * worker isn't running.
  */
 export function prefetchThumbnails(items: MediaItem[]): void {
-  if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller || items.length === 0)
+  if (
+    !('serviceWorker' in navigator) ||
+    !navigator.serviceWorker.controller ||
+    items.length === 0
+  ) {
     return
+  }
 
   const size = cardsUse2x() ? '2x' : '1x'
   const message: PrefetchThumbnailsMessage = {

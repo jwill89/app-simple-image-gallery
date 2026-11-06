@@ -122,7 +122,9 @@ function openDeleteConfirm(cat: TagCategory) {
 }
 
 async function confirmDelete() {
-  if (!deleteTarget.value) return
+  if (!deleteTarget.value) {
+    return
+  }
   deleteLoading.value = true
   try {
     await api.del(endpoints.tagCategories.byId(deleteTarget.value.category_id))

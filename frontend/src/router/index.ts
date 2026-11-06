@@ -166,9 +166,13 @@ const router = createRouter({
     // The infinite-scroll gallery manages its own scroll: it syncs the URL to
     // the position while scrolling and restores the position manually on return
     // (its DOM is kept alive). So never auto-scroll when landing on it.
-    if (isMediaGrid(to) && useGalleryStore().infiniteScroll) return false
+    if (isMediaGrid(to) && useGalleryStore().infiniteScroll) {
+      return false
+    }
     // Everywhere else: restore on back/forward, otherwise go to the top.
-    if (savedPosition) return savedPosition
+    if (savedPosition) {
+      return savedPosition
+    }
     return { top: 0, behavior: 'smooth' }
   },
 })

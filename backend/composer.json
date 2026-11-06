@@ -21,9 +21,9 @@
     "require-dev": {
         "driftingly/rector-laravel": "^2.7",
         "fakerphp/faker": "^1.23",
+        "friendsofphp/php-cs-fixer": "^3.95",
         "larastan/larastan": "^3.13",
         "laravel/pail": "^1.2.5",
-        "laravel/pint": "^1.27",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
         "pestphp/pest": "^5.0",
@@ -58,13 +58,22 @@
         ],
         "analyse": "phpstan analyse --memory-limit=1G",
         "docs": "@php bin/openapi.php",
-        "lint": "pint --test",
-        "lint:fix": "pint",
+        "docs:check": [
+            "@docs",
+            "git diff --exit-code openapi.json"
+        ],
+        "lint": "php-cs-fixer check",
+        "lint:fix": "php-cs-fixer fix",
         "rector": "rector process",
         "rector:check": "rector process --dry-run",
         "test": [
             "@php artisan config:clear --ansi",
             "pest"
+        ],
+        "test:coverage": [
+            "@php artisan config:clear --ansi",
+            "@php -d xdebug.mode=coverage vendor/bin/pest --coverage-clover .phpunit.cache/clover.xml",
+            "@php ../shared/test/php/coverage-check.php .phpunit.cache/clover.xml --lines=94 --methods=86"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

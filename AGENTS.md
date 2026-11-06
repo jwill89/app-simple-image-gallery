@@ -48,7 +48,8 @@ SaaS. Key features:
 | Frontend | **Vue 3** (`<script setup>` + Composition API), TypeScript, [Pinia](https://pinia.vuejs.org/), Vue Router, `@simplewebauthn/browser` (passkeys) |
 | Build | **Vite** on Node **26+** (outputs to `frontend/dist`) |
 | Styling | **Bulma 1.x** + custom `style.css` (token layer), FontAwesome (kit script) |
-| Tests | **Pest 5** (`backend/tests/`, in-memory SQLite) + **Vitest** (`frontend/src/__tests__/`, happy-dom) |
+| Tests | **Pest 5** (`backend/tests/`, in-memory SQLite) + **Vitest** (`frontend/src/__tests__/`, jsdom) |
+| Shared tooling | **[shared-tooling](https://github.com/jwill89/shared-tooling)**, the submodule at `shared/`: lint, test, CI and deploy settings every project uses |
 
 ---
 
@@ -97,15 +98,16 @@ SaaS. Key features:
 │   │   └── Fixtures/            # Frozen contract recordings (contract/), contract.sql, schema.sql, files
 │   ├── bin/openapi.php          # `composer docs`: writes openapi.json
 │   ├── openapi.json             # Generated, committed; CI fails if it is stale
-│   ├── pint.json · phpstan.neon · rector.php · phpunit.xml
+│   ├── .php-cs-fixer.dist.php · phpstan.neon · rector.php · phpunit.xml  # each starts from shared/lint/php
 │   └── .env.example             # Every setting, documented
 │
 ├── frontend/                  # Vue 3 + Vite source
 │   ├── vite.config.ts         # Vite + Vitest config (build outDir, dev proxy, test block, the service worker's build)
 │   ├── tsconfig.{app,sw,node}.json  # the app (DOM), the service worker (WebWorker), the Vite config
 │   ├── vitest.setup.ts        # Vitest setup (pins TZ=UTC)
-│   ├── eslint.config.ts       # shared config (eslint-config submodule) + this project's rules
-│   ├── stylelint.config.js    # standard CSS rules + the palette rule
+│   ├── eslint.config.ts       # shared config (@jwill89/lint-web, from shared/lint/web) + this project's rules
+│   ├── stylelint.config.js    # the shared CSS rules + the palette rule
+│   ├── .npmrc · .nvmrc        # install-links (local packages copied, not linked) · Node 26
 │   ├── knip.ts                # unused files / exports / dependencies
 │   ├── src/
 │   │   ├── main.ts            # App bootstrap, global error handler, SW registration
@@ -123,12 +125,16 @@ SaaS. Key features:
 │   │   └── style.css          # Custom styles + extended Bulma color palette
 │   └── dist/                  # Vite build output (gitignored); the deploy copies it into backend/public
 │
-├── .github/workflows/ci.yml   # CI: lint, static analysis, tests + build per side; PSScriptAnalyzer; release
-├── .editorconfig              # LF, UTF-8, 4 spaces (2 for frontend files, YAML, Markdown)
-├── PSScriptAnalyzerSettings.psd1  # PowerShell lint settings for scripts/
+├── shared/                    # The shared-tooling submodule, pinned to a release tag (`task shared:update -- vX.Y.Z`)
+├── .github/workflows/ci.yml   # CI: the shared php, web, pwsh and docs workflows, then this repo's release
+├── .github/dependabot.yml     # Weekly Composer, npm and Actions updates, minors and patches grouped
+├── Taskfile.yml               # `task lint`, `task test`, `task check`, `task deploy`; the shared:* tasks
+├── .editorconfig · .gitattributes  # From shared/repo (Sync-RepoFiles): LF, UTF-8, 2 spaces (4 for PHP,
+│                              #   PowerShell, the backend's JSON); this repo's lines sit below the marker
+├── .markdownlint-cli2.jsonc   # markdownlint: the shared config, plus what it skips
 ├── README.md · CONTRIBUTING.md · CHANGELOG.md · LICENSE
 ├── docs/laravel-migration.md  # How the backend moved from Slim to Laravel: phases, contract changes, deployment
-└── scripts/                   # Dev-only: deploy.ps1 (PuTTY pscp/plink → droplet) + config template
+└── scripts/                   # Dev-only: deploy.ps1 (shared SharedDeploy module, PuTTY plink → droplet) + config template
 ```
 
 ### Layering convention (backend)
@@ -175,12 +181,15 @@ the proxy at `php artisan serve`'s port while you work.
 The checks CI runs, from `backend/`:
 
 ```bash
-composer lint            # Pint (per preset); `composer lint:fix` applies the fixes
+composer lint            # PHP CS Fixer (PER Coding Style 3.0); `composer lint:fix` applies the fixes
 composer analyse         # Larastan level 8 + strict and deprecation rules
 composer rector:check    # current PHP and Laravel idioms, no dead code; `composer rector` applies
 composer test            # Pest, including the contract replay
-composer docs            # regenerate openapi.json (CI fails if the committed one is stale)
+composer test:coverage   # the same, then the coverage floor (94% of lines, 86% of methods)
+composer docs:check      # regenerate openapi.json; fails if the committed one was stale
 ```
+
+`task lint`, `task test` and `task check` (everything CI runs) do the same from the repo root.
 
 ### Database
 
@@ -233,13 +242,15 @@ php artisan gallery:dupes --tune --max-distance=8 --max-region-diff=off  # calib
 ### Deploy (to the DigitalOcean droplet)
 
 ```powershell
-./scripts/deploy.ps1            # build the SPA → pack the code → upload → composer install → migrate → optimize
-./scripts/deploy.ps1 -SkipBuild # redeploy the existing frontend/dist
+task deploy                     # build the SPA → pack the code → upload → composer install → migrate → optimize
+task deploy -- -SkipBuild       # redeploy the existing frontend/dist (./scripts/deploy.ps1 -SkipBuild)
 ```
 
-`scripts/deploy.ps1` (PuTTY pscp/plink; host, user, key and app folder come from the untracked
-`scripts/deploy.config.ps1`) ships **code only**. It never ships `.env`, `storage/`, `vendor/`, the
-data or the backups. On the host it:
+`scripts/deploy.ps1` is built on shared-tooling's SharedDeploy module (`shared/deploy/pwsh`;
+PuTTY plink; host, user, key and app folder come from the untracked `scripts/deploy.config.ps1`).
+It ships **code only**, as one archive whose SHA-256 and file count the host checks before
+anything changes. It never ships `.env`, `storage/`, `vendor/`, the data or the backups. On the
+host it:
 
 1. builds the new code whole in `.deploy-next/`: unpacked (read-only to everyone but its owner),
    `vendor/` copied from the live code, `composer install --no-dev --no-scripts`, the
@@ -247,8 +258,11 @@ data or the backups. On the host it:
 2. swaps it in by renaming each top-level entry, moving the previous code to `.deploy-backup/`,
    which goes back in place automatically if a later step fails; then `package:discover`;
 3. snapshots the database (`VACUUM INTO`, see §10), then runs `php artisan migrate --force`;
-4. runs `storage:link`, `optimize --except=views` and `queue:restart`;
-5. health-checks `/api/media/count`.
+4. runs `storage:link`, `optimize --except=views` and `queue:restart`.
+
+Then, from your machine through Cloudflare, it fetches `/api/media/count` and `/`. If either
+fails, the previous code goes back from `.deploy-backup/` (the database stays as it is), unless
+`-NoBackup` left nothing to go back to.
 
 **Never change code in place on the live site.** Until 2026-11-03 the deploy deleted the code
 and unpacked the new code over the live folder, then ran Composer, the migration and
@@ -257,7 +271,8 @@ Laravel couldn't boot, and its error page then died on `Target class [view] does
 `public/media` was missing too, so thumbnail requests fell through to Laravel. A single deploy
 logged 75 fatal errors.
 
-It uses only two SSH connections, to respect the droplet's `ufw limit ssh`.
+It holds one SSH connection for the whole run (plink `-share`), to respect the droplet's
+`ufw limit ssh`, and opens a second only if that one drops.
 
 Everything for the gallery lives in **`/var/www/gallery.mathdad.me/`**, as every site in
 `/var/www` lives in a folder named for its domain:
@@ -577,22 +592,28 @@ Keep these invariants when editing auth or routes:
   directly in components.
 - **Types are generated** from the OpenAPI spec into `types/api.generated.ts` (`npm run gen:types`);
   import domain types from `types/index.ts` (friendly `Required<>` aliases), never the generated file.
-- **Lint + format are shared** via the `@jwill89/eslint-config` git submodule at `frontend/eslint-config`
-  (Vue + TS **strictTypeChecked** + Prettier); `prettier.config.js` re-exports it and
-  `eslint.config.ts` spreads it. Run `git submodule update --init` after cloning. Rules every project
-  should get change in the submodule; this project's own sit after the spread in `eslint.config.ts`:
-  template accessibility (`eslint-plugin-vuejs-accessibility`), the Vue style-guide rules that hold
-  the conventions here (`<script setup lang="ts">` only, no inline `style`, explicit button `type`,
-  `useTemplateRef`), typescript-eslint's stylistic set, and a ban on calling `fetch` outside
-  `useApi.ts`. A rule that doesn't fit one line is turned off at that line with the reason beside it.
-  The stylistic rules are listed by name rather than spread from `typescript-eslint`: the shared
-  config registers that plugin from the submodule's own `node_modules`, and ESLint refuses a second
-  copy under the same name. Idioms: `void` fire-and-forget promises (`void router.push(...)`);
-  `catch (e)` + the `getError*` helpers in `useApi.ts`; `_`-prefix unused vars.
-- **Stylelint** (`stylelint.config.js`, `npm run lint:css`) runs `stylelint-config-standard` over
-  `style.css` and the SFC style blocks, and holds the palette rule: no hex, and no `rgb()`/`hsl()`
-  other than neutral white/black, outside the `:root` token blocks in `style.css` (fenced by
-  `stylelint-disable`/`enable` comments). **Knip** (`knip.ts`, `npm run knip`) fails on unused
+- **Lint, format, TypeScript and test settings are shared** by shared-tooling's `lint/web`
+  package, `@jwill89/lint-web`, which the frontend installs from `file:../shared/lint/web` (copied,
+  not linked: `.npmrc` sets `install-links`). Run `git submodule update --init` after cloning.
+  `eslint.config.ts` spreads its default config (Vue + TS **strictTypeChecked**, template
+  accessibility from `eslint-plugin-vuejs-accessibility`, `curly`, Prettier) and its `vueConventions`
+  (the Vue style-guide rules that hold the conventions here: `<script setup lang="ts">` only, no
+  inline `style`, explicit button `type`, `useTemplateRef`) and `tsStylistic` (typescript-eslint's
+  stylistic set) sets. This project's own rules sit after them: the label rule's nesting option,
+  Router's global components, and a ban on calling `fetch` outside `useApi.ts`. `prettier.config.js`
+  re-exports the shared Prettier settings, and `tsconfig.{app,node}.json` extend the shared ones
+  (`noUncheckedIndexedAccess` among them: an index into an array or record may be `undefined`, so
+  check it, or use `!` in a test where the fixture guarantees it). A rule every project should get
+  changes in shared-tooling, then reaches here with `task shared:update -- vX.Y.Z`. A rule that
+  doesn't fit one line is turned off at that line with the reason beside it. Idioms: `void`
+  fire-and-forget promises (`void router.push(...)`); `catch (e)` + the `getError*` helpers in
+  `useApi.ts`; `_`-prefix unused vars.
+- **Stylelint** (`stylelint.config.js`, `npm run lint:css`) runs the shared config
+  (`stylelint-config-standard`, with Vue SFC support) over `style.css` and the SFC style blocks,
+  and holds the palette rule (the shared `paletteRules`): no hex, and no `rgb()`/`hsl()` other than
+  neutral white/black, outside the `:root` token blocks in `style.css` (fenced by
+  `stylelint-disable`/`enable` comments). `color-named` is off, so `color-mix(…, black)` can mix
+  toward neutral. **Knip** (`knip.ts`, `npm run knip`) fails on unused
   files, exports and dependencies. Component specs mount a view with `@vue/test-utils` and fake
   the server by mocking `useApi` (`UploadView.spec.ts`).
 - **Data-fetching composables**: `useGalleryData` (paginated lists), `useMediaTags` (detail + tag
@@ -792,17 +813,19 @@ Keep these invariants when editing auth or routes:
   sign-in into the next, so `Tests\TestCase::call()` empties it first, as a real server starts
   each request afresh. Passkey tests answer with `Tests\Support\FakeAuthenticator` (a real P-256
   key and signatures); PHP on Windows needs `tests/Fixtures/openssl.cnf` to make that key.
-- **CI runs lint, static analysis, tests and build.** GitHub Actions (`.github/workflows/ci.yml`)
-  runs, on the backend, `composer audit` + `composer lint` (Pint) + `composer rector:check` +
-  `composer analyse` (Larastan level 8 + strict and deprecation rules) + `composer docs` with
-  `git diff --exit-code openapi.json` + `composer test` (Pest). On the frontend:
-  `npm audit --omit=dev` + `npm run gen:types` with
-  `git diff --exit-code src/types/api.generated.ts` + `npm run lint`
-  (ESLint, type-checked, incl. accessibility) + `npm run lint:css` (Stylelint) + `npm run lint:md`
-  (markdownlint over every `.md` in the repo, `.markdownlint-cli2.jsonc`) + `npm run knip` +
-  `npm run format:check` (Prettier) + `npm run build` (vue-tsc + Vite) + `npm run test` (Vitest),
-  with coverage reported (no hard gate). A third job runs PSScriptAnalyzer over `scripts/*.ps1` with
-  `PSScriptAnalyzerSettings.psd1`. The frontend job checks out submodules. Backend feature tests run
+- **CI runs lint, static analysis, tests and build**, on shared-tooling's reusable workflows at
+  the release `shared/` holds (`.github/workflows/ci.yml`; the docs job fails if the two differ).
+  The backend job (`php.yml`) runs `composer audit` + `composer lint` (PHP CS Fixer) +
+  `composer rector:check` + `composer analyse` (Larastan level 8 + strict and deprecation rules) +
+  `composer docs:check` (regenerates `openapi.json`, fails on a diff) + `composer test:coverage`
+  (Pest, then the coverage floor). The frontend job (`web.yml`) runs `npm audit --omit=dev`, then
+  `npm run gen:check` (regenerates `src/types/api.generated.ts`, fails on a diff) + `npm run lint`
+  (ESLint, type-checked, incl. accessibility) + `npm run lint:css` (Stylelint) + `npm run knip` +
+  `npm run format:check` (Prettier) + `npm run build` (vue-tsc + Vite) + `npm run test:coverage`
+  (Vitest, failing below the floor in `vite.config.ts`). The scripts job (`pwsh.yml`) runs
+  PSScriptAnalyzer with the shared settings over every tracked script. The docs job (`docs.yml`)
+  runs markdownlint over every `.md` (`.markdownlint-cli2.jsonc`), checks `.editorconfig` and
+  `.gitattributes` match shared-tooling's, and checks the workflow refs. Backend feature tests run
   on a fresh in-memory SQLite database per test (`RefreshDatabase`), with Danbooru (`Http::fake`),
   ffmpeg (`Process::fake`) and the queue faked where they're touched.
 - **Deploys snapshot the database before migrating** — `scripts/deploy.ps1` writes
@@ -829,7 +852,7 @@ Keep these invariants when editing auth or routes:
 - **`config.platform.php` in `backend/composer.json` mirrors the droplet's PHP** (8.5.12 as of
   2026-11), so Composer resolves for what production runs, not your machine. Raise it only after
   upgrading the droplet.
-- **Line endings are LF, enforced by `.gitattributes` (`* text=auto eol=lf`).** Pint and Prettier
+- **Line endings are LF, enforced by `.gitattributes` (`* text=auto eol=lf`).** PHP CS Fixer and Prettier
   fail or rewrite a CRLF file, so a Windows checkout without this produced lint errors in files
   nobody had touched. `eol=lf` overrides `core.autocrlf`, so no per-developer git config is
   required — do not "fix" a CRLF complaint by changing your local `core.autocrlf`. Converting a

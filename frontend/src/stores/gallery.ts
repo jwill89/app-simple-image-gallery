@@ -59,7 +59,9 @@ export const useGalleryStore = defineStore('gallery', () => {
 
   // Actions
   async function initialize() {
-    if (initialized.value) return
+    if (initialized.value) {
+      return
+    }
     initialized.value = true
 
     try {
@@ -95,7 +97,9 @@ export const useGalleryStore = defineStore('gallery', () => {
   function tagByName(name: string): Tag | undefined {
     const wanted = name.toLowerCase()
     for (const tag of knownTags.value.values()) {
-      if (tag.tag_name.toLowerCase() === wanted) return tag
+      if (tag.tag_name.toLowerCase() === wanted) {
+        return tag
+      }
     }
     return undefined
   }
@@ -142,7 +146,9 @@ export const useGalleryStore = defineStore('gallery', () => {
       ])
       categories.value = cats ?? []
       knownTags.value = new Map()
-      for (const batch of batches) rememberTags(batch ?? [])
+      for (const batch of batches) {
+        rememberTags(batch ?? [])
+      }
     } catch (e) {
       console.error('Error refreshing tags:', e)
     }

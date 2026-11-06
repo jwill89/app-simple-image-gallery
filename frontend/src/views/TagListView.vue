@@ -91,12 +91,16 @@ function toggleSort(key: typeof sortKey.value) {
 }
 
 function sortIcon(key: string) {
-  if (sortKey.value !== key) return 'fa-sort'
+  if (sortKey.value !== key) {
+    return 'fa-sort'
+  }
   return sortAsc.value ? 'fa-sort-up' : 'fa-sort-down'
 }
 
 function ariaSort(key: string): 'ascending' | 'descending' | 'none' {
-  if (sortKey.value !== key) return 'none'
+  if (sortKey.value !== key) {
+    return 'none'
+  }
   return sortAsc.value ? 'ascending' : 'descending'
 }
 
@@ -104,7 +108,9 @@ const loadFailed = ref(false)
 let loadSeq = 0
 
 async function loadTags(showSpinner = true) {
-  if (showSpinner) loading.value = true
+  if (showSpinner) {
+    loading.value = true
+  }
   loadFailed.value = false
   // Only the latest request's answer counts; an earlier one may arrive later.
   const seq = ++loadSeq
@@ -118,19 +124,27 @@ async function loadTags(showSpinner = true) {
         direction: sortAsc.value ? 'asc' : 'desc',
       }),
     )
-    if (seq !== loadSeq) return
+    if (seq !== loadSeq) {
+      return
+    }
     pagedTags.value = page?.items ?? []
     totalTags.value = page?.total ?? 0
     totalPages.value = page?.total_pages ?? 1
     // Past the end (the last tag on the last page went): show the new last page.
-    if (currentPage.value > totalPages.value) currentPage.value = totalPages.value
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = totalPages.value
+    }
   } catch (e) {
-    if (seq !== loadSeq) return
+    if (seq !== loadSeq) {
+      return
+    }
     toastStore.error(getErrorMessage(e, 'Failed to load tags'))
     loadFailed.value = true
     pagedTags.value = []
   } finally {
-    if (seq === loadSeq) loading.value = false
+    if (seq === loadSeq) {
+      loading.value = false
+    }
   }
 }
 
@@ -141,8 +155,11 @@ watch(searchQuery, () => {
   clearTimeout(searchTimer)
   searchTimer = setTimeout(() => {
     // A new search starts from its first page (the page watcher then loads it).
-    if (currentPage.value !== 1) currentPage.value = 1
-    else void loadTags(false)
+    if (currentPage.value !== 1) {
+      currentPage.value = 1
+    } else {
+      void loadTags(false)
+    }
   }, INPUT_DELAY_MS)
 })
 
@@ -178,7 +195,9 @@ function closeModal() {
 /** An edit sends only what changed; a field left out stays as it is. */
 function changedFields(tag: TagListItem): { tag_name?: string; category_id?: number } {
   const changes: { tag_name?: string; category_id?: number } = {}
-  if (formTagName.value !== tag.tag_name) changes.tag_name = formTagName.value
+  if (formTagName.value !== tag.tag_name) {
+    changes.tag_name = formTagName.value
+  }
   if (Number(formCategoryId.value) !== tag.category_id) {
     changes.category_id = Number(formCategoryId.value)
   }
@@ -230,7 +249,9 @@ let tagNameTimer: ReturnType<typeof setTimeout> | undefined
 let tagNameSeq = 0
 
 function onTagNameInput() {
-  if (formMode.value === 'edit') return
+  if (formMode.value === 'edit') {
+    return
+  }
   clearTimeout(tagNameTimer)
   tagNameTimer = setTimeout(() => void checkTagName(), INPUT_DELAY_MS)
 }
@@ -246,7 +267,9 @@ async function checkTagName() {
   }
   try {
     const found = (await api.get<Tag[]>(endpoints.tags.byNames([name]))) ?? []
-    if (seq !== tagNameSeq || formMode.value === 'edit') return
+    if (seq !== tagNameSeq || formMode.value === 'edit') {
+      return
+    }
     if (found.length > 0) {
       formHelp.value = 'Tag already exists.'
       formHelpClass.value = 'is-danger'
@@ -256,7 +279,9 @@ async function checkTagName() {
     }
   } catch {
     // Saving says so if the name is taken; no hint is better than a wrong one.
-    if (seq === tagNameSeq) formHelp.value = ''
+    if (seq === tagNameSeq) {
+      formHelp.value = ''
+    }
   }
 }
 
@@ -328,7 +353,9 @@ function selectDeleteMigrateTarget(tag: Tag) {
 }
 
 async function submitDelete() {
-  if (!deleteTargetTag.value) return
+  if (!deleteTargetTag.value) {
+    return
+  }
 
   if (deleteMigrateFirst.value && !deleteMigrateTargetId.value) {
     deleteHelp.value = 'Please select a tag to migrate to, or uncheck the migrate option.'

@@ -34,7 +34,9 @@ const emit = defineEmits<{
 const page = computed({
   get: () => props.currentPage,
   set: (value: number) => {
-    if (value !== props.currentPage) emit('navigate', value)
+    if (value !== props.currentPage) {
+      emit('navigate', value)
+    }
   },
 })
 
@@ -46,10 +48,14 @@ const jumpValue = ref<number | null>(null)
 
 function submitJump() {
   const n = Number(jumpValue.value)
-  if (!Number.isFinite(n)) return
+  if (!Number.isFinite(n)) {
+    return
+  }
   const target = Math.min(Math.max(Math.trunc(n), 1), props.totalPages)
   jumpValue.value = null
-  if (target !== props.currentPage) emit('navigate', target)
+  if (target !== props.currentPage) {
+    emit('navigate', target)
+  }
 }
 </script>
 

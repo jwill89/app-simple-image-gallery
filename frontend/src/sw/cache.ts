@@ -58,8 +58,12 @@ const BLANK_GIF = 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
 /** The cache a request is answered from, or null to leave it to the network. */
 export function cacheFor(request: Request): CacheName | null {
   const url = new URL(request.url)
-  if (request.method !== 'GET' || url.origin !== location.origin) return null
-  if (url.pathname.startsWith(THUMBNAIL_PATH)) return THUMB_CACHE
+  if (request.method !== 'GET' || url.origin !== location.origin) {
+    return null
+  }
+  if (url.pathname.startsWith(THUMBNAIL_PATH)) {
+    return THUMB_CACHE
+  }
   if (
     url.pathname.startsWith('/assets/') ||
     url.pathname === '/favicon.png' ||
@@ -93,7 +97,9 @@ export async function cacheFirst(
 ): Promise<Response> {
   const cache = await caches.open(cacheName)
   const cached = await cache.match(request)
-  if (cached) return cached
+  if (cached) {
+    return cached
+  }
 
   // The prefetch may be downloading it already: wait for that download rather
   // than start a second one.
@@ -101,7 +107,9 @@ export async function cacheFirst(
   if (pending) {
     await pending
     const stored = await cache.match(request)
-    if (stored) return stored
+    if (stored) {
+      return stored
+    }
   }
 
   const response = fetch(request)
@@ -134,7 +142,9 @@ function download(url: string, work: Promise<unknown>): Promise<void> {
       () => undefined,
     )
     .finally(() => {
-      if (inFlight.get(url) === done) inFlight.delete(url)
+      if (inFlight.get(url) === done) {
+        inFlight.delete(url)
+      }
     })
   inFlight.set(url, done)
   return done
@@ -186,10 +196,14 @@ export function prefetchThumbnails(urls: readonly string[]): Promise<void> {
 async function prefetcher(): Promise<void> {
   const cache = await caches.open(THUMB_CACHE)
   for (let url = prefetchQueue.shift(); url !== undefined; url = prefetchQueue.shift()) {
-    if (inFlight.has(url)) continue
+    if (inFlight.has(url)) {
+      continue
+    }
     const cached = await cache.match(url)
     // The page may have asked for it while that looked.
-    if (cached || inFlight.has(url)) continue
+    if (cached || inFlight.has(url)) {
+      continue
+    }
     await download(
       url,
       fetch(url).then((res) => (res.ok ? store(cache, THUMB_CACHE, url, res) : null)),

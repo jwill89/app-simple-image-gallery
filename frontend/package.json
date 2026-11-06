@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "7.0.0",
+  "version": "7.0.1",
   "type": "module",
   "engines": {
     "node": ">=26"
@@ -18,10 +18,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "gen:types": "npx --yes openapi-typescript@^7 ../backend/openapi.json -o src/types/api.generated.ts",
+    "gen:check": "npm run gen:types && git diff --exit-code src/types/api.generated.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "lint:md": "cd .. && markdownlint-cli2"
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@simplewebauthn/browser": "^14.0.0",
@@ -32,23 +32,18 @@
     "vue-router": "^5.4.0"
   },
   "devDependencies": {
-    "@jwill89/eslint-config": "file:eslint-config",
+    "@jwill89/lint-web": "file:../shared/lint/web",
     "@types/node": "^26.6.6",
     "@vitejs/plugin-vue": "^6.0.10",
     "@vitest/coverage-v8": "^5.0.5",
     "@vue/test-utils": "^2.5.1",
     "@vue/tsconfig": "^0.9.1",
     "eslint": "^10.14.0",
-    "eslint-plugin-vuejs-accessibility": "^2.6.3",
-    "happy-dom": "^21.0.4",
     "jiti": "^2.7.0",
+    "jsdom": "^30.1.3",
     "knip": "^6.44.1",
-    "markdownlint-cli2": "^0.24.0",
-    "postcss-html": "^2.0.0",
     "prettier": "^3.9.10",
     "stylelint": "^17.16.0",
-    "stylelint-config-recommended-vue": "^2.0.0",
-    "stylelint-config-standard": "^40.0.0",
     "typescript": "~6.0.3",
     "vite": "^8.3.5",
     "vitest": "^5.0.5",

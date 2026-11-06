@@ -54,7 +54,9 @@ export function planUploadBatches(
     batch.push(index)
     bytes += file.size
   })
-  if (batch.length > 0) plan.batches.push(batch)
+  if (batch.length > 0) {
+    plan.batches.push(batch)
+  }
 
   return plan
 }

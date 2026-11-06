@@ -24,7 +24,9 @@ export interface PrefetchThumbnailsMessage {
 
 /** Whether a message posted to the worker is a prefetch with something in it. */
 export function isPrefetchThumbnailsMessage(data: unknown): data is PrefetchThumbnailsMessage {
-  if (typeof data !== 'object' || data === null) return false
+  if (typeof data !== 'object' || data === null) {
+    return false
+  }
   const { type, urls } = data as Partial<Record<keyof PrefetchThumbnailsMessage, unknown>>
   return (
     type === 'PREFETCH_THUMBNAILS' &&

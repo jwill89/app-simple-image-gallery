@@ -3,6 +3,7 @@ import { build, type Plugin, type ResolvedConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
+import { vitestDefaults } from '../shared/test/web/vitest.js'
 
 // Read the app version from package.json so the footer can display it without a
 // runtime request. createRequire avoids JSON import-assertion syntax churn.
@@ -66,11 +67,15 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
   },
-  test: {
-    environment: 'happy-dom',
-    setupFiles: ['./vitest.setup.ts'],
+  // The shared test settings (shared-tooling's test/web): jsdom, mocks and stubbed
+  // globals put back after each test, and v8 coverage over all of src.
+  // `npm run test:coverage` fails below the floor: a little under what the specs
+  // reached when it was set (2026-11-06: 20.5% of statements, 14.8% of branches,
+  // 18.3% of functions, 20.1% of lines). Raise it as specs land; never lower it.
+  test: vitestDefaults({
+    environment: 'jsdom',
     include: ['src/**/*.spec.ts'],
-    restoreMocks: true,
-    unstubGlobals: true,
-  },
+    setupFiles: ['./vitest.setup.ts'],
+    floor: { statements: 20, branches: 14.5, functions: 18, lines: 19.5 },
+  }),
 })

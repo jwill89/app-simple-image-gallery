@@ -90,25 +90,43 @@ const acceptString = ALL_EXTENSIONS.join(',')
  * case worth summarising.
  */
 const uploadSummary = computed(() => {
-  if (uploading.value || lastUploadResults.value.length === 0) return null
+  if (uploading.value || lastUploadResults.value.length === 0) {
+    return null
+  }
 
   const counts = { success: 0, duplicate: 0, error: 0, tagsFailed: 0, noPost: 0, fetching: 0 }
   for (const r of lastUploadResults.value) {
-    if (r.status === 'success') counts.success++
-    else if (r.status === 'duplicate') counts.duplicate++
-    else if (r.status === 'error') counts.error++
-    if (r.status === 'success' && r.tags_error) counts.tagsFailed++
-    if (r.status === 'success' && r.tags_status === 'not_found') counts.noPost++
+    if (r.status === 'success') {
+      counts.success++
+    } else if (r.status === 'duplicate') {
+      counts.duplicate++
+    } else if (r.status === 'error') {
+      counts.error++
+    }
+    if (r.status === 'success' && r.tags_error) {
+      counts.tagsFailed++
+    }
+    if (r.status === 'success' && r.tags_status === 'not_found') {
+      counts.noPost++
+    }
     if (r.status === 'success' && r.tags_status === 'queued' && fetchingTags.value) {
       counts.fetching++
     }
   }
-  if (counts.success + counts.duplicate + counts.error === 0) return null
+  if (counts.success + counts.duplicate + counts.error === 0) {
+    return null
+  }
 
   const parts: string[] = []
-  if (counts.success > 0) parts.push(`${counts.success} uploaded`)
-  if (counts.duplicate > 0) parts.push(`${counts.duplicate} skipped as duplicates`)
-  if (counts.error > 0) parts.push(`${counts.error} failed`)
+  if (counts.success > 0) {
+    parts.push(`${counts.success} uploaded`)
+  }
+  if (counts.duplicate > 0) {
+    parts.push(`${counts.duplicate} skipped as duplicates`)
+  }
+  if (counts.error > 0) {
+    parts.push(`${counts.error} failed`)
+  }
   let message = `${parts.join(', ')}.`
   // Uploaded, but without the tags asked for: the toasts that said so have gone.
   if (counts.tagsFailed > 0) {
@@ -137,9 +155,15 @@ const hasFiles = computed(() => selectedFiles.value.length > 0)
 const totalSize = computed(() => selectedFiles.value.reduce((sum, f) => sum + f.size, 0))
 
 function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  if (bytes < 1024) {
+    return `${bytes} B`
+  }
+  if (bytes < 1024 * 1024) {
+    return (bytes / 1024).toFixed(1) + ' KB'
+  }
+  if (bytes < 1024 * 1024 * 1024) {
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  }
   return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
 }
 
@@ -187,8 +211,12 @@ async function checkAnimatedGif(file: File): Promise<boolean> {
 
 function fileIcon(file: File): string {
   const ext = getFileExt(file.name)
-  if (VIDEO_EXTENSIONS.includes(ext)) return 'fa-solid fa-video'
-  if (ext === '.gif' && animatedGifs.value.has(fileKey(file))) return 'fa-solid fa-video'
+  if (VIDEO_EXTENSIONS.includes(ext)) {
+    return 'fa-solid fa-video'
+  }
+  if (ext === '.gif' && animatedGifs.value.has(fileKey(file))) {
+    return 'fa-solid fa-video'
+  }
   return 'fa-solid fa-image'
 }
 
@@ -255,7 +283,10 @@ function onFileInput(e: Event) {
 }
 
 function removeFile(index: number) {
-  animatedGifs.value.delete(fileKey(selectedFiles.value[index]))
+  const file = selectedFiles.value[index]
+  if (file) {
+    animatedGifs.value.delete(fileKey(file))
+  }
   selectedFiles.value = selectedFiles.value.filter((_, i) => i !== index)
   uploadResults.value = uploadResults.value.filter((_, i) => i !== index)
 }
@@ -274,7 +305,9 @@ function clearFiles() {
  * too large to send, fails with the reason instead of going missing.
  */
 async function uploadFiles() {
-  if (!hasFiles.value || uploading.value) return
+  if (!hasFiles.value || uploading.value) {
+    return
+  }
 
   uploading.value = true
   const run = ++uploadRun
@@ -283,7 +316,7 @@ async function uploadFiles() {
   const wantTags = fetchTags.value
   let queued: number[] = []
   const failWith = (index: number, message: string): UploadResult => ({
-    file_name: files[index].name,
+    file_name: files[index]?.name ?? '',
     status: 'error',
     message,
   })
@@ -299,7 +332,10 @@ async function uploadFiles() {
     for (const batch of plan.batches) {
       const formData = new FormData()
       for (const index of batch) {
-        formData.append('files[]', files[index])
+        const file = files[index]
+        if (file) {
+          formData.append('files[]', file)
+        }
       }
       if (wantTags) {
         formData.append('fetch_tags', '1')
@@ -307,13 +343,13 @@ async function uploadFiles() {
 
       try {
         const result = await api.upload<UploadResponse>(endpoints.media.upload, formData)
-        if (!result) throw new Error('No response from the upload request')
+        if (!result) {
+          throw new Error('No response from the upload request')
+        }
 
         batch.forEach((index, n) => {
           uploadResults.value[index] =
-            n < result.results.length
-              ? result.results[n]
-              : failWith(index, 'The server did not receive this file')
+            result.results[n] ?? failWith(index, 'The server did not receive this file')
         })
       } catch (e) {
         const message = getErrorMessage(e, 'The upload request failed. Please try again.')
@@ -344,12 +380,13 @@ async function uploadFiles() {
     // Keep only the failed files, with their results, for a retry; successes
     // and duplicates are done. Files added while uploading stay too.
     lastUploadResults.value = results
-    const keep = results.flatMap((r, index) => (r.status === 'error' ? [index] : []))
-    selectedFiles.value = [
-      ...keep.map((index) => files[index]),
-      ...selectedFiles.value.slice(files.length),
-    ]
-    uploadResults.value = keep.map((index) => results[index])
+    // Each file stays paired with its result, so the two lists stay in step.
+    const keep = results.flatMap((result, index) => {
+      const file = files[index]
+      return result.status === 'error' && file ? [{ file, result }] : []
+    })
+    selectedFiles.value = [...keep.map((k) => k.file), ...selectedFiles.value.slice(files.length)]
+    uploadResults.value = keep.map((k) => k.result)
 
     if (uploaded > 0) {
       let msg = `${uploaded} file(s) uploaded successfully.`
@@ -388,7 +425,9 @@ async function uploadFiles() {
     uploading.value = false
   }
 
-  if (queued.length > 0) await followTagImports(run, queued)
+  if (queued.length > 0) {
+    await followTagImports(run, queued)
+  }
 }
 
 /** A file's result once the queue has run its Danbooru lookup. */
@@ -452,7 +491,9 @@ async function followTagImports(run: number, ids: number[]) {
     }
   }
 
-  if (run === uploadRun) fetchingTags.value = false
+  if (run === uploadRun) {
+    fetchingTags.value = false
+  }
   reportTagImports(settled, waiting.size)
 }
 
@@ -472,7 +513,7 @@ function reportTagImports(settled: TagImportStatus[], stillWaiting: number) {
   if (failed.length > 0) {
     // Stays until dismissed: the files are in, so nothing else says their
     // tags are missing, and the reason (a Ray ID, a setting) is to act on.
-    const reason = failed[0].error ?? 'The Danbooru lookup failed.'
+    const reason = failed[0]?.error ?? 'The Danbooru lookup failed.'
     toastStore.warning(
       `Danbooru tags could not be fetched for ${failed.length} file(s). ${reason}`,
       0,
