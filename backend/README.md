@@ -51,6 +51,4 @@ php artisan gallery:regenerate thumbnails # or fingerprints, or metadata: rebuil
 php artisan gallery:dupes                 # scan for duplicates; --max-distance, --max-region-diff, --tune
 ```
 
-`routes/console.php` schedules the ingest every night at midnight, in `SCHEDULE_TIMEZONE`,
-and clears out expired login tokens daily; cron runs `php artisan schedule:run` every
-minute. Thumbnails and video metadata need `ffmpeg` and `ffprobe` on the path.
+`routes/console.php` schedules the ingest every night at midnight, in `SCHEDULE_TIMEZONE`; cron runs `php artisan schedule:run` every minute. Thumbnails and video metadata need `ffmpeg` and `ffprobe` on the path.

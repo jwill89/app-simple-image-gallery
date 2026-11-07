@@ -491,8 +491,7 @@ Phase 8's progress; the layout above is the result.
   --force`, `php artisan storage:link`, `php artisan optimize --except=views` (there are no Blade
   views to cache), `php artisan queue:restart`, `chown` the code, `vendor/` and `storage/` to
   `www-data` (never the data or backups), then the same health check on `/api/media/count`.
-- **Keep:** the code backup and rollback, the no-auto-restore rule for the database, and the
-  two-connection limit for `ufw limit ssh`.
+- **Keep:** the code backup and rollback, the no-auto-restore rule for the database, and the two-connection limit for `ufw limit ssh`. (History: the deploy has since moved to one held SSH connection for the whole run, plink `-share`, as AGENTS.md §3 says.)
 - **Dropped:** the `cache/api/*.cache` cleanup, with no `cache:clear` in its place (see Phase 7).
 
 ## Decisions and risks

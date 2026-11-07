@@ -9,8 +9,8 @@ searches, and admin-gated uploads.
 > - **[AGENTS.md](AGENTS.md)** — in-depth architecture, data model, and conventions.
 > - **API reference** — the live contract is the OpenAPI 3.1 spec at `/api/openapi.json`
 >   ([backend/openapi.json](backend/openapi.json) in the repo), browsable at **`/api/docs`** (Scalar).
-> - **[CONTRIBUTING.md](CONTRIBUTING.md)** — local setup, coding standards, and PR flow.
-> - **[CHANGELOG.md](CHANGELOG.md)** — release history (current version: **7.0.0**).
+> - **[CONTRIBUTING.md](CONTRIBUTING.md)** — how to report a bug and submit a change.
+> - **[CHANGELOG.md](CHANGELOG.md)** — release history.
 
 ---
 
@@ -37,8 +37,7 @@ searches, and admin-gated uploads.
 
 ## Tech stack
 
-- **Backend:** PHP 8.5, [Laravel 13](https://laravel.com/) (Eloquent, Sanctum, the database
-  queue and scheduler), SQLite (WAL).
+- **Backend:** PHP 8.5, [Laravel 13](https://laravel.com/) (Eloquent, the session guard, the database queue and scheduler), SQLite (WAL).
 - **Frontend:** Vue 3 + TypeScript, Pinia, Vue Router, Vite, Bulma.
 - **Media tooling:** `ffmpeg`/`ffprobe` (thumbnails, video metadata), PHP GD +
   `intervention/imagehash` (fingerprinting / duplicate detection).
@@ -138,7 +137,7 @@ searches, and admin-gated uploads.
   php artisan queue:work --tries=3 --max-time=3600
   ```
 
-- **Scheduler** — the nightly ingest and token pruning. Add a cron entry for the same user:
+- **Scheduler** — the nightly ingest. Add a cron entry for the same user:
 
   ```cron
   * * * * * cd /path/to/backend && php artisan schedule:run >> /dev/null 2>&1

@@ -4,6 +4,8 @@ Operational guide for AI coding agents (and humans) working in this repository.
 Read this before making changes. It describes the architecture, conventions,
 data model, commands, and the non-obvious gotchas that will bite you.
 
+The rules every project follows are in [shared/standards/README.md](shared/standards/README.md), the shared-tooling guide. This file holds only what is specific to this project; where it says nothing, the shared rules win. Where the code still does something they rule out, [§13](#13-where-this-project-departs-from-the-standards) says so.
+
 > **The backend is Laravel** (since 5.0.0, live from 2026-11-03). It replaced a Slim 4 app
 > without changing the API contract. How that was done, and every deliberate difference, is in
 > [docs/laravel-migration.md](docs/laravel-migration.md). The contract recorded from the Slim app
@@ -134,7 +136,7 @@ SaaS. Key features:
 ├── .editorconfig · .gitattributes  # From shared/repo (Sync-RepoFiles): LF, UTF-8, 2 spaces (4 for PHP,
 │                              #   PowerShell, the backend's JSON); this repo's lines sit below the marker
 ├── .markdownlint-cli2.jsonc   # markdownlint: the shared config, plus what it skips
-├── README.md · CONTRIBUTING.md · CHANGELOG.md · LICENSE
+├── README.md · CLAUDE.md · CONTRIBUTING.md · CHANGELOG.md · LICENSE
 ├── docs/laravel-migration.md  # How the backend moved from Slim to Laravel: phases, contract changes, deployment
 └── scripts/                   # Dev-only: deploy.ps1 (shared SharedDeploy module, PuTTY plink → droplet) + config template
 ```
@@ -175,11 +177,7 @@ php artisan migrate
 composer dev          # php artisan serve, on http://localhost:8000
 ```
 
-Never point `DB_DATABASE` at a database another app is using. Fill in the `GALLERY_*` and
-`DANBOORU_*` settings as `.env.example` describes. The Vite dev server proxies `/api` and the
-media files (`/media/full`, `/media/thumbs`) to `http://localhost` (`frontend/vite.config.ts`), so
-serve the backend there, or set `GALLERY_BACKEND_URL` to `php artisan serve`'s address
-(`http://127.0.0.1:8000`) before `npm run dev`. The SPA's own pages under `/media` stay with Vite.
+What to install first is in [README.md's Requirements](README.md#requirements). Fill in the `GALLERY_*` and `DANBOORU_*` settings as `.env.example` describes, and make yourself an admin with `php artisan gallery:user <name> --admin`. The Vite dev server proxies `/api` and the media files (`/media/full`, `/media/thumbs`) to `http://localhost` (`frontend/vite.config.ts`), so serve the backend there, or set `GALLERY_BACKEND_URL` to `php artisan serve`'s address (`http://127.0.0.1:8000`) before `npm run dev`. The SPA's own pages under `/media` stay with Vite. The dev server's origin, `http://localhost:5173`, must be in `GALLERY_ALLOWED_ORIGINS` for any write.
 
 The checks CI runs, from `backend/`:
 
@@ -196,11 +194,7 @@ composer docs:check      # regenerate openapi.json; fails if the committed one w
 
 ### Database
 
-**Laravel migrations (`backend/database/migrations/`) are the schema.** The baseline,
-`0001_01_01_000000_create_gallery_tables`, creates each gallery table only where it is missing:
-on a fresh database it builds the schema, and on the live one (built by the Slim app's Phinx
-migrations) it does nothing. Change the schema by **adding a migration**; never edit one that has
-run on the droplet.
+**Laravel migrations (`backend/database/migrations/`) are the schema.** The baseline, `0001_01_01_000000_create_gallery_tables`, creates each gallery table only where it is missing: on a fresh database it builds the schema, and on the live one (built by the Slim app's Phinx migrations) it does nothing. Change the schema by **adding a migration** (`php artisan make:migration <name>`).
 
 ### Frontend
 
@@ -211,6 +205,19 @@ npm run dev        # Vite dev server on :5173, proxies /api and the media files 
 npm run test:e2e   # the end-to-end suite: builds, then serves the SPA and the API on a throwaway database
 npm run build      # vue-tsc type-check + vite build → outputs to frontend/dist
 npm run preview
+```
+
+`npm install` needs `shared/` checked out: it installs `@jwill89/lint-web` from `file:../shared/lint/web`, and the backend's lint, Rector and PHPStan configs include shared-tooling's too. The checks CI runs, from `frontend/`:
+
+```bash
+npm run lint            # ESLint (type-checked, incl. template accessibility); `npm run lint:fix` fixes what it can
+npm run lint:css        # Stylelint: the shared rules + the palette rule; `npm run lint:css:fix`
+npm run knip            # no unused files, exports or dependencies
+npm run format:check    # Prettier; `npm run format` formats the frontend
+npm run gen:check       # regenerate src/types/api.generated.ts; fails if the committed one was stale
+npm run build           # vue-tsc type-check + vite build
+npm run test            # Vitest once; `npm run test:watch` watches
+npm run test:coverage   # Vitest, failing below the floor in vite.config.ts
 ```
 
 The production app is **the built `dist/`**, copied into `backend/public/` (its `index.html` into
@@ -277,12 +284,7 @@ it **pulls a copy of the live database** to the local one `backend/.env` names (
 skips it), keeping the three previous local copies as `<file>.bak-<time>`. They hold live
 accounts, so they stay on your machine (`database/gallery.db*` is gitignored).
 
-**Never change code in place on the live site.** Until 2026-11-03 the deploy deleted the code
-and unpacked the new code over the live folder, then ran Composer, the migration and
-`optimize`. For those 10–20 s every request failed: `bootstrap/cache` belonged to root, so
-Laravel couldn't boot, and its error page then died on `Target class [view] does not exist`.
-`public/media` was missing too, so thumbnail requests fell through to Laravel. A single deploy
-logged 75 fatal errors.
+Why the deploy builds beside the live code: until 2026-11-03 it deleted the code and unpacked the new code over the live folder, then ran Composer, the migration and `optimize`. For those 10–20 s every request failed: `bootstrap/cache` belonged to root, so Laravel couldn't boot, and its error page then died on `Target class [view] does not exist`. `public/media` was missing too, so thumbnail requests fell through to Laravel. A single deploy logged 75 fatal errors.
 
 It holds one SSH connection for the whole run (plink `-share`), to respect the droplet's
 `ufw limit ssh`, and opens a second only if that one drops.
@@ -387,10 +389,6 @@ The **authoritative contract** is the generated OpenAPI 3.1 spec (`backend/opena
 **`/api/docs`**. Every operation has a readable `operationId` (`listMedia`, `uploadMedia`, …).
 Below is the shape; 🔓 = public, 🔑 = any signed-in account, 🔒 = an admin account.
 
-REST-RPC conventions: reads → `200`, create → `201` (created resource), update → `200`
-(updated resource), delete → `204`, RPC action/batch → `200`. Non-CRUD state changes are
-`POST …/{verb}`.
-
 - **System / Auth:** `GET /version`, `GET /openapi.json`, `GET /docs` (🔓); `GET /auth/config`
   (🔓 sign-up open?, Turnstile site key), `GET /auth/session` (🔓 who this browser is signed in
   as, or `null`), `POST /auth/register`, `POST /auth/login` (🔓, with `turnstile_token` while
@@ -433,18 +431,12 @@ REST-RPC conventions: reads → `200`, create → `201` (created resource), upda
 
 ### Response conventions
 
-- Reads return the resource or collection (a Resource, unwrapped); creates `201` + resource;
-  updates `200` + resource; deletes `204`. An update changes only the fields it sends, by `PATCH`
-  or `PUT`.
+- Reads return the resource or collection (a Resource, unwrapped). An update changes only the fields it sends, by `PATCH` or `PUT` (§13).
 - **Path ids are bound to models** (`Route::pattern` + `Route::model` in `AppServiceProvider`, one
   line per parameter name): only digits match a route, and a missing record is a 404 with its
   resource's code (`MediaNotFound`, `TagNotFound`, `CategoryNotFound`, `MappingNotFound`), mapped
   from the model in `ApiExceptionRenderer`. A new `{…_id}` parameter needs its line there.
-- Every error under `/api` is `{ "error": "PascalCaseCode", "message": "human readable" }` with its
-  status. The app raises them as `throw new ApiException('CodeName', 4xx, 'message')`.
-  `ApiExceptionRenderer` gives the framework's failures the same shape: an unknown path is
-  `404 NotFound`, a wrong method `405 MethodNotAllowed` (with `Allow`), anything uncaught
-  `500 ServerError`. Only 5xx errors are logged.
+- Every error under `/api` is `{ "error": "PascalCaseCode", "message": "human readable" }` with its status (not yet RFC 9457, §13). The app raises them as `throw new ApiException('CodeName', 4xx, 'message')`. `ApiExceptionRenderer` gives the framework's failures the same shape: an unknown path is `404 NotFound`, a wrong method `405 MethodNotAllowed` (with `Allow`), anything uncaught `500 ServerError`.
 - A failed validation is the first broken field's `error` and `message` (each endpoint's codes,
   from its Form Request's `errorCodes()`), plus `errors`: every broken field's messages, by field.
   `getFieldError(e, 'tag_name')` reads them on the frontend.
@@ -453,9 +445,7 @@ REST-RPC conventions: reads → `200`, create → `201` (created resource), upda
   `DanbooruBlocked` (its firewall refused the server; the message says why, with Cloudflare's Ray ID).
   An upload with `fetch_tags` reports a failed lookup on the file as `tags_error`.
 - Cached GETs add `X-Cache: HIT|MISS`. Rate-limit info is in `X-RateLimit-Remaining` / `Retry-After`.
-- The public reads go through `cache.headers:no_cache;private;etag`: an `ETag`, and `304` for a
-  matching `If-None-Match`. A new public GET goes inside that group in `routes/api.php`; the docs,
-  the spec and `/media/random` stay outside it.
+- The public reads go through `cache.headers:no_cache;private;etag`: an `ETag`, and `304` for a matching `If-None-Match`. They are `private`, beyond the shared baseline's `no-cache`, because a signed-in browser's blocked tags change what the media listings hold (`App\Support\Viewer`). A new public GET goes inside that group in `routes/api.php`; the docs, the spec and `/media/random` stay outside it.
 - Every action and schema is annotated with `#[OAS\*]` (swagger-php spec attributes,
   `use OpenApi\Spec as OAS`); **regenerate `openapi.json` (`composer docs`) and the frontend
   types (`npm run gen:types`) after any contract change**. CI fails if they drift.
@@ -521,13 +511,7 @@ Keep these invariants when editing auth or routes:
   (`PreventRequestForgery`), and unless `Origin` (or, failing that, `Referer`) is in
   `GALLERY_ALLOWED_ORIGINS` (`VerifyOrigin`); a write with neither header is refused. The session
   cookie is `SameSite=Lax` besides.
-- **Sign-up and login** pass Cloudflare Turnstile first (`Services/Turnstile`, while
-  `CLOUDFLARE_TURNSTILE_SECRET` is set): a token passes once, for its own form (`action`), and
-  Cloudflare out of reach is `503 CaptchaUnavailable`, never a sign-in. Login is throttled to 10
-  attempts / 5 minutes per IP and sign-up to 5 accounts an hour, on top of the global limit. A
-  wrong username and a wrong password get the same answer, after the same hash check. Sign-up
-  never makes an admin; `gallery:user` or another admin does. A wrong *current* password (changing
-  it, deleting the account) is `403 IncorrectPassword`, since the app reads a 401 as signed out.
+- **Sign-up and login** pass Cloudflare Turnstile first (`Services/Turnstile`, while `CLOUDFLARE_TURNSTILE_SECRET` is set): a token passes once, for its own form (`action`), and Cloudflare out of reach is `503 CaptchaUnavailable`, never a sign-in. Login is throttled to 10 attempts / 5 minutes per IP and sign-up to 5 accounts an hour, on top of the global limit. Admins come from `gallery:user` or another admin. A wrong *current* password (changing it, deleting the account) is `403 IncorrectPassword`.
 - **Sessions, not tokens** (since 7.0.0): a browser signs in with Laravel's session cookie,
   encrypted and **HttpOnly**, so no script on the page (the FontAwesome kit, Turnstile, an
   injected one) can read or copy it. It lasts until the browser closes, and a day without a
@@ -544,15 +528,12 @@ Keep these invariants when editing auth or routes:
   minutes, answers once, and belongs to the account it was made for. A passkey belongs to
   `APP_URL`'s host and is checked against `GALLERY_ALLOWED_ORIGINS`. Signing in with one skips
   Turnstile but counts against the login limit; a refused one is `401 PasskeyNotAccepted`.
-- **Only `public/` is served.** `.env`, the code, the data folders, `backups/` and
-  `slim-rollback/` sit beside it, out of reach; an unknown path gets the SPA page, never a file.
-  Never point a vhost at the app folder itself.
+- **Only `public/` is served.** `.env`, the code, the data folders, `backups/` and `slim-rollback/` sit beside it, out of reach; an unknown path gets the SPA page, never a file (§13).
 
 ---
 
 ## 8. Frontend conventions
 
-- **Vue 3 `<script setup lang="ts">` + Composition API only.** No Options API, no class components.
 - **State**: Pinia stores (`stores/`). `gallery` holds `knownTags`, `categories`, `totalMedia`,
   `blurThumbnails` (persisted to `localStorage`), and `lastViewedItemIds` (used for prev/next
   navigation on the media detail page). `auth` holds the signed-in `user` (`isAdmin`), asked of
@@ -578,14 +559,7 @@ Keep these invariants when editing auth or routes:
   `useTagSearch` for a plain input), and a chip or a breadcrumb looks its tag up with
   `tagById`/`tagByName` after `loadTagsById`/`loadTagsByName`. The Tags page pages, searches and
   sorts on the server (`/tags/display`).
-- **Feedback has exactly two homes, and a message belongs to one of them.** A *toast* (`toast`
-  store → `ToastContainer`) reports the outcome of a finished action, globally and transiently. An
-  *alert* (`AppAlert`) states a condition in the place it applies to and stays there while you act
-  on it — a failure inside the dialog that caused it, a warning on one section of a page. If the
-  same wording would work in either place, it is a toast, so it is reported once; the bug this
-  replaced was a dialog showing a green banner while an identical toast slid in beside it. Bulma's
-  `.notification` is intentionally left unstyled so ad-hoc banners cannot creep back. Field
-  validation is neither: it sits beside its input on `.help.is-danger`.
+- **Feedback**: a *toast* is the `toast` store → `ToastContainer`, and an *alert* is `AppAlert` (a failure inside the dialog that caused it, a warning on one section of a page). The shared rule that wording fitting either is a toast, said once, came from here: a dialog showed a green banner while an identical toast slid in beside it. Bulma's `.notification` is intentionally left unstyled so ad-hoc banners cannot creep back. Field validation sits beside its input on `.help.is-danger`.
 - **Keep alerts and toasts looking unalike.** They must be tellable apart at a glance, since only
   one of them disappears by itself. A toast is an object *above* the page: neutral `--surface-1`,
   drop shadow, 3px severity stripe, close button. An alert is *in* the page: flat, no shadow, no
@@ -605,22 +579,7 @@ Keep these invariants when editing auth or routes:
   directly in components.
 - **Types are generated** from the OpenAPI spec into `types/api.generated.ts` (`npm run gen:types`);
   import domain types from `types/index.ts` (friendly `Required<>` aliases), never the generated file.
-- **Lint, format, TypeScript and test settings are shared** by shared-tooling's `lint/web`
-  package, `@jwill89/lint-web`, which the frontend installs from `file:../shared/lint/web` (copied,
-  not linked: `.npmrc` sets `install-links`). Run `git submodule update --init` after cloning.
-  `eslint.config.ts` spreads its default config (Vue + TS **strictTypeChecked**, template
-  accessibility from `eslint-plugin-vuejs-accessibility`, `curly`, Prettier) and its `vueConventions`
-  (the Vue style-guide rules that hold the conventions here: `<script setup lang="ts">` only, no
-  inline `style`, explicit button `type`, `useTemplateRef`) and `tsStylistic` (typescript-eslint's
-  stylistic set) sets. This project's own rules sit after them: the label rule's nesting option,
-  Router's global components, and a ban on calling `fetch` outside `useApi.ts`. `prettier.config.js`
-  re-exports the shared Prettier settings, and `tsconfig.{app,node}.json` extend the shared ones
-  (`noUncheckedIndexedAccess` among them: an index into an array or record may be `undefined`, so
-  check it, or use `!` in a test where the fixture guarantees it). A rule every project should get
-  changes in shared-tooling, then reaches here with `task shared:update -- vX.Y.Z`. A rule that
-  doesn't fit one line is turned off at that line with the reason beside it. Idioms: `void`
-  fire-and-forget promises (`void router.push(...)`); `catch (e)` + the `getError*` helpers in
-  `useApi.ts`; `_`-prefix unused vars.
+- **Lint, format, TypeScript and test settings** come from shared-tooling's `lint/web` package, `@jwill89/lint-web`, installed from `file:../shared/lint/web`. `eslint.config.ts` spreads its default, `vueConventions` and `tsStylistic` sets, then adds this project's own rules: the label rule's nesting option, Router's global components, and a ban on calling `fetch` outside `useApi.ts`. `prettier.config.js` re-exports the shared Prettier settings, and `tsconfig.{app,node}.json` extend the shared ones. A `catch (e)` reads the error with the `getError*` helpers in `useApi.ts`.
 - **Stylelint** (`stylelint.config.js`, `npm run lint:css`) runs the shared config
   (`stylelint-config-standard`, with Vue SFC support) over `style.css` and the SFC style blocks,
   and holds the palette rule (the shared `paletteRules`): no hex, and no `rgb()`/`hsl()` other than
@@ -666,9 +625,6 @@ Keep these invariants when editing auth or routes:
   match and the surface renders transparent, unbordered and `z-index: auto`. It looks exactly like
   a z-index bug. **Styles for portalled surfaces go in `style.css`** (see the "Portalled overlay
   surfaces" section there). Dialog is the exception: its parts do carry the scope id.
-- **`AppTooltip` needs a `TooltipProvider` ancestor** — one is mounted at the root in `App.vue`.
-  Without it the context injection throws during `setup` and takes down the whole surrounding
-  subtree, not just the tooltip.
 - **Shared UI**: `PageHeader` (title + breadcrumb + meta + actions — use it in every view so page
   titles stop drifting between sizes), `EmptyState`, `StatRow`, `TagCategoryLegend`.
 - **Thumbnails**: derive from `file_name` by stripping the extension →
@@ -709,12 +665,6 @@ Keep these invariants when editing auth or routes:
   they can't disagree. Also keep layout reads (`getBoundingClientRect`) inside the scroll handler's
   `requestAnimationFrame` — the cards use `content-visibility: auto`, and reading layout on every
   scroll event pins the main thread hard enough that the observer never fires.
-- **Never return 502 or 504 from the API.** The site is served through Cloudflare, which treats
-  gateway-class statuses as "the origin is broken" and replaces the response with its own HTML
-  error page. The JSON body — including `message` — is discarded, `parseApiError` then fails to
-  parse it and falls back to `Request failed (HTTP 502)`, so the real reason never reaches the
-  user. For upstream (Danbooru) failures use `429` for rate limits, `500` for credential/config
-  problems and `503` for unreachable/erroring dependencies; those pass through untouched.
 
 ---
 
@@ -736,8 +686,7 @@ Keep these invariants when editing auth or routes:
   group**, or it serves stale data for up to the TTL. Deploys don't clear the cache: entries
   expire within a minute anyway, and a clear would also drop the rate limiter's counts and the
   queue's unique locks.
-- **SQLite** runs with WAL, foreign keys on, `synchronous=NORMAL` and a 5 s busy timeout
-  (`config/database.php`). One queue worker keeps writers few.
+- **SQLite**'s connection settings are in `config/database.php`. One queue worker keeps writers few.
 - **Request cost** (measured on the droplet, 2026-11): a cached read takes about 10 ms, the
   1.5 MB tag list about 13 ms. Laravel's boot adds 3–5 ms over the Slim app it replaced, which
   is lost in a request's trip through Cloudflare.
@@ -752,10 +701,7 @@ Keep these invariants when editing auth or routes:
   `[proxy_fcgi:error] … AH01071: Got error 'PHP message: …'` (one request's messages on one
   line), and a copy goes to `/var/log/php8.5-fpm.log`. The way back is in
   `backups/fpm-switch/ROLLBACK.txt`.
-- **Xdebug is installed on the droplet but switched off** (`phpdismod -v 8.5 xdebug`,
-  2026-11-03). It had been loaded for every PHP request, and its cost was most of a cached read:
-  `/api/version` took 28 ms with it and 14 ms without. If you turn it on to debug something,
-  turn it off again (`phpdismod`, then restart `php8.5-fpm` and the queue worker).
+- **Xdebug is installed on the droplet but switched off** (`phpdismod -v 8.5 xdebug`, 2026-11-03). It had been loaded for every PHP request, and its cost was most of a cached read: `/api/version` took 28 ms with it and 14 ms without. After debugging with it, restart `php8.5-fpm` and the `gallery-queue` worker once it is off again.
 - **The duplicate scan is the heaviest operation** (`gallery:dupes`, or `POST /duplicates/scan`):
   LSH banding → Hamming filter → a comparison of each remaining pair's `@2x` thumbnails (not
   originals, to bound memory); it raises `memory_limit`/`max_execution_time` for the run.
@@ -782,10 +728,7 @@ Keep these invariants when editing auth or routes:
 
 ## 10. Known traps & drift risks (read before editing)
 
-- **The schema is the migrations.** Add a migration to change it; never edit one that has run on
-  the droplet. `SchemaTest` checks that a fresh `migrate` builds the production schema the Slim app
-  left (`tests/Fixtures/schema.sql`), so a migration that changes a gallery table also changes what
-  that test expects — deliberately, in the same change.
+- **The schema is the migrations.** `SchemaTest` checks that a fresh `migrate` builds the production schema the Slim app left (`tests/Fixtures/schema.sql`), so a migration that changes a gallery table also changes what that test expects — deliberately, in the same change.
 - **The contract recordings are frozen at API 4.** `tests/Feature/Contract/ContractTest.php`
   replays all 191 of them (`tests/Fixtures/contract/`, format in its README), with
   `/api/version` pinned to the app and API versions they were made at. The recorder went with
@@ -850,17 +793,7 @@ Keep these invariants when editing auth or routes:
   Backend feature tests run
   on a fresh in-memory SQLite database per test (`RefreshDatabase`), with Danbooru (`Http::fake`),
   ffmpeg (`Process::fake`) and the queue faked where they're touched.
-- **Deploys snapshot the database before migrating** — `scripts/deploy.ps1` writes
-  `db/.backups/gallery-<UTC timestamp>.db.gz` with shared-tooling's `Backup-RemoteDatabase`
-  (`sqlite3 .backup`, `PRAGMA integrity_check`, gzip, keeping five) and aborts before migrating if
-  the snapshot fails. Never copy the live database with `cp`: the connection runs in WAL mode, so
-  a plain copy misses whatever is still in the `-wal` sidecar. The snapshot is deliberately
-  **not** auto-restored by the failure trap — that trap fires on any non-zero exit, including
-  after a migration has already succeeded, and reverting data could discard media uploaded during
-  the deploy window; a failed migration prints the path and the restore command
-  (`rm -f <db>-wal <db>-shm && gunzip -c <snapshot> > <db>`, which keeps the file's owner)
-  instead. The daily copies are the backup timer's, in `db/backups/`, apart from `db/.backups/`.
-  Restore one the same way, with the site's writes stopped (`php artisan down`).
+- **Deploys snapshot the database before migrating** — `scripts/deploy.ps1` writes `db/.backups/gallery-<UTC timestamp>.db.gz` with shared-tooling's `Backup-RemoteDatabase` (`sqlite3 .backup`, `PRAGMA integrity_check`, gzip, keeping five) and aborts before migrating if the snapshot fails. The snapshot is deliberately **not** auto-restored by the failure trap — that trap fires on any non-zero exit, including after a migration has already succeeded, and reverting data could discard media uploaded during the deploy window; a failed migration prints the path and the restore command (`rm -f <db>-wal <db>-shm && gunzip -c <snapshot> > <db>`, which keeps the file's owner) instead. The daily copies are the backup timer's, in `db/backups/`, apart from `db/.backups/`. Restore one the same way, with the site's writes stopped (`php artisan down`).
 - **OpenAPI is swagger-php 7's spec attributes** (`use OpenApi\Spec as OAS;`). The document is built
   by `tests/Support/OpenApiDocument::builder()`, which both `composer docs` (`bin/openapi.php`) and
   `OpenApiSpecTest` use, so the two can't disagree about how it's built. That builder drops v7's
@@ -875,16 +808,8 @@ Keep these invariants when editing auth or routes:
   distances mean nothing. Hashing is pinned to GD because the hash otherwise depends on whether
   Imagick is loaded. A fingerprint that can't be recomputed is cleared rather than kept, so a
   failure drops that image from the scan instead of leaving a stale-format hash in it.
-- **`config.platform.php` in `backend/composer.json` mirrors the droplet's PHP** (8.5.12 as of
-  2026-11), so Composer resolves for what production runs, not your machine. Raise it only after
-  upgrading the droplet.
-- **Line endings are LF, enforced by `.gitattributes` (`* text=auto eol=lf`).** PHP CS Fixer and Prettier
-  fail or rewrite a CRLF file, so a Windows checkout without this produced lint errors in files
-  nobody had touched. `eol=lf` overrides `core.autocrlf`, so no per-developer git config is
-  required — do not "fix" a CRLF complaint by changing your local `core.autocrlf`. Converting a
-  file's line endings does *not* fix line endings already escaped inside a generated artifact:
-  `openapi.json` once carried `\r\n` inside descriptions taken from docblocks, and needed
-  `composer docs` to clear (the `OpenApiSpecTest` catches this).
+- **`config.platform.php` in `backend/composer.json` is the droplet's PHP**, 8.5.12 as of 2026-11.
+- **Converting a file's line endings does *not* fix line endings already escaped inside a generated artifact.** `openapi.json` once carried `\r\n` inside descriptions taken from docblocks, and needed `composer docs` to clear (the `OpenApiSpecTest` catches this).
 - **Do not upgrade to TypeScript 7 yet.** TS 7 is the native port and removed the `./lib/tsc`
   subpath from its package `exports`. `vue-tsc` resolves that path directly and exits with
   `ERR_PACKAGE_PATH_NOT_EXPORTED`, so the type-check (`npm run build`) cannot run at all — and
@@ -892,15 +817,8 @@ Keep these invariants when editing auth or routes:
   install the combination without complaint. Still true of 3.3.14 (2026-11): its only addition is
   following `typescript` when it is aliased to `@typescript/typescript6`. Stay on `~6.0.3` until
   vue-tsc ships TS 7 support.
-- **Version bumps are the release trigger.** CI tags and publishes `v<version>` from
-  `frontend/package.json` using the matching `## [<version>]` section of `CHANGELOG.md` as the
-  release body, so bump the version (`frontend/package.json` and `package-lock.json`, and
-  `config/gallery.php`'s `version`, which `GET /api/version` serves) and write its section in the
-  same commit. The **HTTP contract version is separate** — `App\OpenApi\OpenApiSpec::API_VERSION` —
-  and only moves when the API surface changes.
-- Release history lives in `CHANGELOG.md` (Keep a Changelog format). A historical
-  `IMPROVEMENTS.md` also exists (gitignored) — old internal review notes, not a current audit;
-  don't trust it as the state of the codebase.
+- **Version bumps are the release trigger.** CI tags and publishes `v<version>` from `frontend/package.json` using the matching `## [<version>]` section of `CHANGELOG.md` as the release body. A release bumps the version in `frontend/package.json` and `package-lock.json` (`npm version x.y.z --no-git-tag-version`) and in `config/gallery.php`'s `version`, which `GET /api/version` serves (the footer reads `package.json`), turns `## [Unreleased]` into its section with a compare link, and lands on `main`; then `task deploy` ships it. The **HTTP contract version is separate** — `App\OpenApi\OpenApiSpec::API_VERSION` — and only moves when the API surface changes; after moving it, run `composer docs`.
+- A historical `IMPROVEMENTS.md` also exists (gitignored) — old internal review notes, not a current audit; don't trust it as the state of the codebase.
 
 ---
 
@@ -957,22 +875,51 @@ Create a view in `views/`, add a lazy route with `meta.title` in `router/index.t
 
 - [ ] Writes are validated by a Form Request extending `ApiRequest`; failures are `ApiException`s
       with a PascalCase code and a human message.
-- [ ] The right status codes (`200`/`201`/`204`), and responses through Resources.
+- [ ] Responses go through Resources.
 - [ ] Endpoints/schemas are `#[OAS\*]`-annotated with an `operationId`; `composer docs` +
       `npm run gen:types` re-run and the regenerated `openapi.json` / `api.generated.ts`
       committed (CI enforces).
 - [ ] Writes go through the models so their events clear the cache (or `bump()` by hand, §9).
 - [ ] New state-changing routes are in the admin group, or the account group acting only on the
       account's own rows (or public, consciously).
-- [ ] Schema changes land in a **new migration**.
 - [ ] Settings are read with `config()`, never `env()` outside `config/`.
 - [ ] Slow or per-file work runs in a queued job.
 - [ ] A feature test covers it; the contract replay stays green, and a deliberate contract change
       is in `divergences.php`.
-- [ ] Frontend: typed (import from `types/`), `<script setup>`, API via `useApi` +
-      `api/endpoints.ts`, no direct `fetch`.
+- [ ] Frontend: types imported from `types/`, API calls via `useApi` + `api/endpoints.ts`, no direct `fetch`.
 - [ ] Bump `CACHE_VERSION` (`src/sw/cache.ts`) only if cached entries would be wrong for the
       new code (a bump empties the thumbnail cache too).
 - [ ] Keep the mirrored lists in sync: tag colors (`TagCategory::COLORS` ↔ `constants/categories.ts`),
       file types (`Media::IMAGE_EXTENSIONS`/`VIDEO_EXTENSIONS` ↔ `UploadView.vue`), and upload limits
       (`public/.user.ini` + `.htaccess` ↔ `constants/uploads.ts`).
+
+---
+
+## 13. Where this project departs from the standards
+
+The code still does these things that [shared/standards/](shared/standards/README.md) rules out. Each moves in a follow-up of its own; until then, the sections above describe the code as it is.
+
+- **Accessibility target.** WCAG 2.2 AAA is the target; this project meets AA and has not yet been checked against AAA.
+- **Error bodies.** Every `/api` error is `{ error, message }` with a PascalCase code, plus `errors` on a failed validation (`ApiException`, `ApiExceptionRenderer`). The standard is an RFC 9457 problem details body, `application/problem+json`.
+- **Validation status.** `ApiRequest` overrides Laravel's 422: a failed validation answers with its endpoint's own code and status, usually 400 (`InvalidInput`, `WeakPassword`), and a missing Turnstile token is `400 CaptchaRequired`. The standard answers a failed validation with 422, and a missing Turnstile token with 403, like a failed one.
+- **`PUT`.** `PUT /tags/{tag_id}` and `PUT /tag-categories/{category_id}` run the same action as `PATCH` and change only the fields sent. The standard makes `PUT` a full replacement and leaves partial changes to `PATCH`.
+- **JSON case.** JSON fields and query parameters are snake_case (`media_id`, `next_cursor`, `per_page`). The standard sends camelCase and maps it to the snake_case columns.
+- **Paths and paging.** The media listings put their filter and page in the path (`/media/page/{page}/{per_page}`, `/media/untagged/…`, `/media/with-tags/{tag_list}/…`), and the Tags page has an endpoint of its own, `/tags/display?page&per_page`. The standard keeps filters in the query string, pages a table with `?limit&offset` and `X-Total-Count`, and has no endpoint for one screen.
+- **Trailing slashes.** `public/.htaccess` (Laravel's stock rule) answers a path with a trailing slash with a 301 to the path without it. The standard accepts the slash and answers the same as without it.
+- **Security headers.** `SecurityHeaders` sends only `X-Frame-Options: SAMEORIGIN` and `X-Content-Type-Options: nosniff`: there is no Content-Security-Policy and no `Referrer-Policy`. The standard enforces a CSP on every page, built on `default-src 'self'` with `frame-ancestors 'none'` and a per-response nonce, and sends `Referrer-Policy: same-origin` on every response.
+- **Missing static files.** `.htaccess` sends every path that isn't a real file to Laravel, and the fallback route answers every path outside `/api` with the SPA page, `/assets/` included. The standard answers a missing file 404, since Cloudflare caches by extension and would keep that page as the file.
+- **Sessions.** Sessions are files in `storage/framework/sessions` (`SESSION_DRIVER=file`), each named by its id, and the remember token is stored as issued; the session cookie takes Laravel's default name (`config/session.php`), with no `__Host-` prefix. The standard keeps sessions in the app's SQLite database, stores only a SHA-256 hash of each session id and token, and prefixes the cookie `__Host-`.
+- **Passwords.** Passwords hash with Laravel's default, bcrypt. The standard is argon2id at 64 MiB, t=1, p=4, rehashed at sign-in when the parameters rise.
+- **Admins.** An admin may drop their own admin role or delete their own account, unless they are the last admin (`409 LastAdmin`). The standard refuses both.
+- **Rate limits.** Every limit counts by the full client address (`$request->ip()`). The standard counts an IPv6 client by its /64.
+- **The visitor's address.** The app restores it: `trustProxies` trusts Cloudflare's ranges (`App\Support\Cloudflare`) and reads `X-Forwarded-For`. The standard restores it once, in Apache, with `mod_remoteip`, and the app reads `REMOTE_ADDR`.
+- **Timestamps.** `file_time` and `dismissed_at` are Unix seconds in integer columns, and the account tables' times are Laravel's `Y-m-d H:i:s`, with no CHECK. The standard stores RFC 3339 UTC text (`2026-11-07T09:18:09Z`) in `DATETIME` columns with a CHECK, and sends it in that form.
+- **App version.** The version is written in two places, `frontend/package.json` and `config/gallery.php`, and a release bumps both. The standard reads one version from one place.
+- **Font Awesome.** The SPA shell loads the kit script from `kit.fontawesome.com` (`FONTAWESOME_KIT_ID`), and templates use its CSS classes. The standard installs Font Awesome Pro from the owner's kit package and renders icons through the SVG core and `<font-awesome-icon>`, with no icon CDN.
+- **Uploads.** An upload keeps its own file name (made safe, with `_1`, `_2` on a clash) and its original bytes. The standard stores an upload under a random name and re-encodes an image. Danbooru's lookup matches the original file's MD5, so what changes here is the owner's call in the follow-up.
+- **Setting names.** Several of the gallery's own settings lack its prefix: `DANBOORU_*`, `DUPLICATE_*`, `CLOUDFLARE_TURNSTILE_*`, `FONTAWESOME_KIT_ID` and `SCHEDULE_TIMEZONE`. The standard starts each with the project's prefix.
+- **Colour scheme.** Dark mode follows the device through a `prefers-color-scheme` query on `:root` in `style.css`, and the user can't choose. The standard sets the scheme as one class or attribute on `html`, from one module, and keeps the user's choice once they make one.
+- **Reduced motion.** `style.css` has one global `prefers-reduced-motion` rule that cuts every animation and transition with `!important`. The standard has each animation and transition honour it in its own rule.
+- **`color-named`.** `stylelint.config.js` turns `color-named` off, so `color-mix(…, black)` can name neutral black. The standard keeps it on and writes neutrals as `rgb(0 0 0 / a)`.
+- **PHP test zone.** The Pest suite runs in the default time zone. The standard runs a PHP suite under a far-off zone (`-d date.timezone=Pacific/Kiritimati`).
+- **Markdown wrap.** Older paragraphs in this file, `README.md`, `CONTRIBUTING.md`, `backend/README.md` and `docs/` are hard-wrapped near 100 columns, though MD013 is off and the standard writes a paragraph as one line. A paragraph is unwrapped when it is next rewritten.
