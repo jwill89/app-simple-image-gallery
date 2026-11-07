@@ -18,7 +18,7 @@ jobs:
   # The Laravel backend. The contract recorded from the Slim app it replaced
   # (tests/Fixtures/contract/) is replayed by its tests.
   backend:
-    uses: jwill89/shared-tooling/.github/workflows/php.yml@v2.1.6
+    uses: jwill89/shared-tooling/.github/workflows/php.yml@v2.1.7
     with:
       dir: backend
       php-version: '8.5'
@@ -34,7 +34,7 @@ jobs:
   # The frontend's generated API types come from backend/openapi.json (gen:check). Its
   # icons come from the Font Awesome kit, on the Pro registry.
   frontend:
-    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.1.6
+    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.1.7
     with:
       dir: frontend
       scripts: gen:check lint lint:css knip format:check build test:coverage
@@ -47,7 +47,7 @@ jobs:
   # Every main page must pass axe at WCAG 2.2 AA, and a new account must keep a favorite.
   e2e:
     needs: [backend, frontend]
-    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.1.6
+    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.1.7
     with:
       dir: frontend
       php-version: '8.5'
@@ -60,10 +60,10 @@ jobs:
       FONTAWESOME_TOKEN: ${{ secrets.FONTAWESOME_NPM_TOKEN }}
 
   scripts:
-    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.1.6
+    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.1.7
 
   docs:
-    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.1.6
+    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.1.7
 
   # On a push to the default branch, AFTER the gate passes, tag + release the
   # project version if it has no release yet. Tag = v<version> (frontend/
