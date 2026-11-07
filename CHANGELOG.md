@@ -20,8 +20,9 @@ tagging.
 
 - **A daily database backup.** Each deploy now installs and checks a systemd timer
   (shared-tooling's `Install-BackupTimer`) that copies the database every day with
-  `VACUUM INTO` to `db/backups/gallery-YYYY-MM-DD.db`, checks the copy's integrity, and
-  keeps 28 days. Until now the database was copied only when a deploy migrated it.
+  `VACUUM INTO` to `db/backups/gallery-YYYY-MM-DD.db.gz`, checks the copy's integrity,
+  compresses it, and keeps 28 days. Until now the database was copied only when a deploy
+  migrated it.
 - **The deploy pulls a copy of the live database** to the local one `backend/.env` names,
   keeping the three previous local copies; `-NoDbPull` skips it.
 - **End-to-end tests** (`npm run test:e2e`, `task test:e2e`, and a CI job on shared-tooling's
@@ -31,6 +32,12 @@ tagging.
 
 ### Changed
 
+- **Every database backup on the droplet is compressed** (shared-tooling 2.0.0). The deploy's
+  snapshot before migrating is now shared-tooling's `Backup-RemoteDatabase`:
+  `db/.backups/gallery-<UTC time>.db.gz`, integrity-checked before it is compressed, five kept.
+  The uncompressed snapshots and daily copies already there count among those kept: the next
+  deploy compresses the daily ones, and the old snapshots age out over five deploys. A failed
+  migration prints the restore command with `gunzip -c`. Stylelint moves to 18.
 - **The Vite dev server proxies only the media files** (`/media/full`, `/media/thumbs`), not
   all of `/media`, so reloading a gallery page such as `/media/1/40` gets the SPA instead of
   Laravel's shell. `GALLERY_BACKEND_URL` points the proxy at another backend, such as

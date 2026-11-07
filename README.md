@@ -188,7 +188,7 @@ the host it:
 1. builds the new code beside the live one (`composer install --no-dev` included), then swaps it
    in by renames, so the site never runs a half-replaced folder; the previous code goes to
    `.deploy-backup/`, put back if a later step fails (kept afterwards unless `-NoBackup`);
-2. snapshots the database with `VACUUM INTO` and runs the migrations;
+2. snapshots the database, compressed, and runs the migrations;
 3. links the media folder and caches the config, routes and events;
 4. restarts the queue worker.
 

@@ -261,7 +261,8 @@ host it:
    `public/media` link copied, all of it owned by `www-data`;
 2. swaps it in by renaming each top-level entry, moving the previous code to `.deploy-backup/`,
    which goes back in place automatically if a later step fails; then `package:discover`;
-3. snapshots the database (`VACUUM INTO`, see §10), then runs `php artisan migrate --force`;
+3. snapshots the database (shared-tooling's `Backup-RemoteDatabase`, see §10), then runs
+   `php artisan migrate --force`;
 4. runs `storage:link`, `optimize --except=views` and `queue:restart`.
 
 Then, from your machine through Cloudflare, it fetches `/api/media/count` and `/`. If either
@@ -270,8 +271,8 @@ fails, the previous code goes back from `.deploy-backup/` (the database stays as
 
 Once both pass, it checks the **daily backup** (shared-tooling's `Install-BackupTimer`): the
 `gallery-backup.timer` systemd unit runs as `www-data` at 10:00 UTC and copies the database with
-`VACUUM INTO` to `db/backups/gallery-YYYY-MM-DD.db`, integrity-checked, keeping 28 days. A new
-or changed timer runs once before it is kept, and a failed run puts the previous one back. Then
+`VACUUM INTO` to `db/backups/gallery-YYYY-MM-DD.db.gz`, integrity-checked and compressed,
+keeping 28 days. A new or changed timer runs once before it is kept, and a failed run puts the previous one back. Then
 it **pulls a copy of the live database** to the local one `backend/.env` names (`-NoDbPull`
 skips it), keeping the three previous local copies as `<file>.bak-<time>`. They hold live
 accounts, so they stay on your machine (`database/gallery.db*` is gitignored).
@@ -850,14 +851,16 @@ Keep these invariants when editing auth or routes:
   on a fresh in-memory SQLite database per test (`RefreshDatabase`), with Danbooru (`Http::fake`),
   ffmpeg (`Process::fake`) and the queue faked where they're touched.
 - **Deploys snapshot the database before migrating** — `scripts/deploy.ps1` writes
-  `db/.backups/gallery-<timestamp>.db` via SQLite `VACUUM INTO` (keeping five) and aborts before
-  migrating if the snapshot fails. Use `VACUUM INTO`, never `cp`: the connection runs in WAL mode,
-  so a plain copy misses whatever is still in the `-wal` sidecar. The snapshot is deliberately
+  `db/.backups/gallery-<UTC timestamp>.db.gz` with shared-tooling's `Backup-RemoteDatabase`
+  (`sqlite3 .backup`, `PRAGMA integrity_check`, gzip, keeping five) and aborts before migrating if
+  the snapshot fails. Never copy the live database with `cp`: the connection runs in WAL mode, so
+  a plain copy misses whatever is still in the `-wal` sidecar. The snapshot is deliberately
   **not** auto-restored by the failure trap — that trap fires on any non-zero exit, including
   after a migration has already succeeded, and reverting data could discard media uploaded during
-  the deploy window; a failed migration prints the path and the restore command instead.
-  The daily copies are the backup timer's, in `db/backups/`, kept out of `db/.backups/` so the
-  deploy's pruning (the newest five `gallery-*.db`) never reaches them. Restore one the same way.
+  the deploy window; a failed migration prints the path and the restore command
+  (`rm -f <db>-wal <db>-shm && gunzip -c <snapshot> > <db>`, which keeps the file's owner)
+  instead. The daily copies are the backup timer's, in `db/backups/`, apart from `db/.backups/`.
+  Restore one the same way, with the site's writes stopped (`php artisan down`).
 - **OpenAPI is swagger-php 7's spec attributes** (`use OpenApi\Spec as OAS;`). The document is built
   by `tests/Support/OpenApiDocument::builder()`, which both `composer docs` (`bin/openapi.php`) and
   `OpenApiSpecTest` use, so the two can't disagree about how it's built. That builder drops v7's

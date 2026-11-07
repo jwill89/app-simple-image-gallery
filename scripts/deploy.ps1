@@ -32,8 +32,9 @@
            - swap it in by renames, moving the previous code to .deploy-backup
              (kept afterwards unless -NoBackup), then package:discover; the site
              runs the old code or the new, never a half-replaced folder,
-           - snapshot the database next to it in .backups/ via SQLite VACUUM INTO,
-             keeping the five most recent                  (skip with -NoBackup),
+           - snapshot the database next to it in .backups/, compressed and
+             integrity-checked (shared-tooling's Backup-RemoteDatabase), keeping
+             the five most recent                          (skip with -NoBackup),
            - php artisan migrate --force                   (skip with -SkipMigrate),
            - storage:link (public/media), optimize, queue:restart. Neither storage/
              nor the .env file is touched.
@@ -48,7 +49,8 @@
          -NoBackup left nothing to go back to.
       6. Check the daily backup (shared-tooling's Install-BackupTimer): a systemd timer
          that runs as www-data at 10:00 UTC and copies the database with VACUUM INTO to
-         db/backups/gallery-YYYY-MM-DD.db, integrity-checked, keeping 28 days. Those sit
+         db/backups/gallery-YYYY-MM-DD.db.gz, integrity-checked and compressed, keeping
+         28 days. Those sit
          apart from step 4's snapshots in db/.backups/. If the timer is already as it
          should be, nothing changes; if it is new or changed, it runs once first, and a
          failed run puts the previous timer back.
@@ -229,11 +231,12 @@ chown -R www-data:www-data "$stage"
 if ($SkipMigrate) {
     $migrate = "echo '==> -SkipMigrate: skipping database migrations'"
 } else {
-    # Snapshot the database immediately before anything can modify it.
-    #
-    # `cp gallery.db` is NOT safe: the connection runs in WAL mode, so a plain copy
-    # misses whatever is still in the -wal file. `VACUUM INTO` is atomic and WAL-aware,
-    # and reachable from PDO, so this needs no sqlite3 binary.
+    # Snapshot the database immediately before anything can modify it, to shared-tooling's
+    # standard (Backup-RemoteDatabase): sqlite3 .backup, which is WAL-aware where a plain
+    # `cp gallery.db` would miss whatever is still in the -wal file, PRAGMA integrity_check,
+    # then gzip, to db/.backups/gallery-<UTC time>.db.gz. The newest five stay, the
+    # uncompressed gallery-<time>.db copies earlier deploys took among them, so those age
+    # out. A failed snapshot stops the step before the migration.
     #
     # The snapshot is deliberately NOT restored by the failure trap, which fires on
     # *any* non-zero exit, including after a successful migration: rolling the database
@@ -242,31 +245,21 @@ if ($SkipMigrate) {
     if ($NoBackup) {
         $snapshot = @'
 echo '==> -NoBackup: skipping database snapshot'
-DB_SNAPSHOT=""
+snapshot=""
 '@
     } else {
         $snapshot = @'
 DB=$(grep -E '^DB_DATABASE=' .env | head -n 1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//')
-DB_SNAPSHOT=""
-if [ -n "$DB" ] && [ -f "$DB" ]; then
-  DB_SNAPSHOT="$(dirname "$DB")/.backups/gallery-$(date +%Y%m%d-%H%M%S).db"
-  mkdir -p "$(dirname "$DB_SNAPSHOT")"
-  echo '==> snapshotting the database before migrating'
-  php -r '$pdo = new PDO("sqlite:" . $argv[1]); $pdo->exec("VACUUM INTO " . $pdo->quote($argv[2]));' "$DB" "$DB_SNAPSHOT" \
-    || { echo 'The database snapshot failed; stopping before the migration.' >&2; exit 4; }
-  echo "    snapshot: $DB_SNAPSHOT ($(du -h "$DB_SNAPSHOT" | cut -f1))"
-  # Keep the five most recent; these are full copies of the database.
-  ls -1t "$(dirname "$DB_SNAPSHOT")"/gallery-*.db 2>/dev/null | tail -n +6 | xargs -r rm -f
-fi
-'@
+echo '==> snapshotting the database before migrating'
+'@ + "`n" + (Backup-RemoteDatabase -DatabaseVariable 'DB' -SnapshotPrefix '.backups/gallery-' -SnapshotSuffix '.db' -Keep 5)
     }
     $migrate = $snapshot + "`n" + @'
 echo '==> php artisan migrate'
 if ! php artisan migrate --force --no-interaction; then
   echo 'The migrations failed.' >&2
-  if [ -n "$DB_SNAPSHOT" ]; then
-    echo '  Restore the database with:' >&2
-    echo "    cp -a $DB_SNAPSHOT $DB && rm -f $DB-wal $DB-shm && chown www-data:www-data $DB" >&2
+  if [ -n "$snapshot" ]; then
+    echo "  Restore the database from $snapshot with:" >&2
+    echo "    $snapshot_restore" >&2
   fi
   exit 5
 fi
@@ -315,8 +308,7 @@ grep -E '^DB_DATABASE=' "__ENV__" | head -n 1 | cut -d= -f2- | sed -e 's/^"//' -
 '@))[0]
     if (-not $database) { throw "The Gallery is deployed and live, but $appRoot/.env names no DB_DATABASE, so its daily backup was not checked." }
 
-    # The daily copies go in db/backups/, apart from the deploy's snapshots in db/.backups/,
-    # whose pruning (the newest five gallery-*.db) would otherwise remove them.
+    # The daily copies go in db/backups/, apart from the deploy's snapshots in db/.backups/.
     Write-Step 'Checking the daily backup...'
     try {
         Install-BackupTimer -Name 'gallery' -Database $database -Owner 'www-data' -Description 'Gallery daily database backup'
