@@ -159,7 +159,7 @@ async function remove() {
             <button type="button" class="button is-small" @click="finishRename">Save</button>
           </template>
           <template v-else>
-            <span class="icon passkey-icon"><i class="fa-solid fa-key" /></span>
+            <span class="icon passkey-icon"><font-awesome-icon icon="fa-solid fa-key" /></span>
             <span class="passkey-name">{{ passkey.name }}</span>
             <span class="passkey-meta">
               Added {{ when(passkey.created_at) }} · last used {{ when(passkey.last_used_at) }}
@@ -186,7 +186,7 @@ async function remove() {
       :disabled="loading || loadError !== ''"
       @click="addOpen = true"
     >
-      <span class="icon"><i class="fa-solid fa-plus" /></span>
+      <span class="icon"><font-awesome-icon icon="fa-solid fa-plus" /></span>
       <span>Add a passkey</span>
     </button>
 

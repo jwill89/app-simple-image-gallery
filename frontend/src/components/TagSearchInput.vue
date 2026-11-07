@@ -60,13 +60,13 @@ const hasSelectedTags = computed(() => props.modelValue.length > 0)
       <template #actions>
         <div v-if="!hasSelectedTags" class="control">
           <button type="button" class="button" aria-label="Search" disabled>
-            <span class="icon"><i class="fa-solid fa-magnifying-glass" /></span>
+            <span class="icon"><font-awesome-icon icon="fa-solid fa-magnifying-glass" /></span>
           </button>
         </div>
         <template v-else>
           <div class="control">
             <button type="button" class="button is-primary" @click="emit('search')">
-              <span class="icon"><i class="fa-solid fa-magnifying-glass" /></span>
+              <span class="icon"><font-awesome-icon icon="fa-solid fa-magnifying-glass" /></span>
               <span>Search</span>
             </button>
           </div>
@@ -77,7 +77,7 @@ const hasSelectedTags = computed(() => props.modelValue.length > 0)
               aria-label="Clear search"
               @click="emit('reset')"
             >
-              <span class="icon"><i class="fa-solid fa-xmark" /></span>
+              <span class="icon"><font-awesome-icon icon="fa-solid fa-xmark" /></span>
             </button>
           </div>
         </template>

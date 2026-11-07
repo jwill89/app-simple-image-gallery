@@ -1,16 +1,20 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import router from './router'
 import App from './App.vue'
 import { useToastStore } from './stores/toast'
+import './fontawesome' // the icon register (adds every icon the gallery uses to the library)
 
 import 'bulma/css/bulma.min.css'
+import '@fortawesome/fontawesome-svg-core/styles.css'
 import './style.css'
 
 const pinia = createPinia()
 const app = createApp(App)
 app.use(pinia)
 app.use(router)
+app.component('FontAwesomeIcon', FontAwesomeIcon)
 
 // Global error handler — logs and shows toast notification to user
 app.config.errorHandler = (err, _instance, info) => {

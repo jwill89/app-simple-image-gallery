@@ -34,14 +34,6 @@ export default [
     },
   },
   {
-    // Only the router's components are registered globally here.
-    name: 'gallery/vue',
-    files: ['**/*.vue'],
-    rules: {
-      'vue/no-undef-components': ['error', { ignorePatterns: ['^Router(Link|View)$'] }],
-    },
-  },
-  {
     // Every API call goes through composables/useApi.ts, so a failure always
     // arrives as a structured ApiError, the bearer token is always attached and
     // a 401 always clears it (AGENTS.md §8).

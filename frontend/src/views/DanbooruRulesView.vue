@@ -238,7 +238,7 @@ onMounted(loadRules)
         title="Could not load Danbooru import rules."
       >
         <button type="button" class="button" @click="loadRules">
-          <span class="icon"><i class="fa-solid fa-rotate-right" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-rotate-right" /></span>
           <span>Retry</span>
         </button>
       </EmptyState>
@@ -257,13 +257,13 @@ onMounted(loadRules)
         <div class="level mb-3">
           <div class="level-left">
             <h2 class="title is-5 mb-0">
-              <span class="icon"><i class="fa-solid fa-layer-group" /></span>
+              <span class="icon"><font-awesome-icon icon="fa-solid fa-layer-group" /></span>
               <span>Category Mappings</span>
             </h2>
           </div>
           <div v-if="authenticated" class="level-right">
             <button type="button" class="button is-primary is-small" @click="openCatModal">
-              <span class="icon"><i class="fa-solid fa-plus" /></span>
+              <span class="icon"><font-awesome-icon icon="fa-solid fa-plus" /></span>
               <span>Add Mapping</span>
             </button>
           </div>
@@ -287,7 +287,7 @@ onMounted(loadRules)
                 </td>
                 <td>{{ m.danbooru_category_name }}</td>
                 <td class="has-text-centered has-text-grey">
-                  <i class="fa-solid fa-arrow-right" />
+                  <font-awesome-icon icon="fa-solid fa-arrow-right" />
                 </td>
                 <td>
                   <span
@@ -314,7 +314,7 @@ onMounted(loadRules)
                       aria-label="Remove category mapping"
                       @click="openDeleteCatModal(m)"
                     >
-                      <span class="icon"><i class="fa-solid fa-trash" /></span>
+                      <span class="icon"><font-awesome-icon icon="fa-solid fa-trash" /></span>
                     </button>
                   </AppTooltip>
                 </td>
@@ -334,13 +334,13 @@ onMounted(loadRules)
         <div class="level mb-3">
           <div class="level-left">
             <h2 class="title is-5 mb-0">
-              <span class="icon"><i class="fa-solid fa-right-left" /></span>
+              <span class="icon"><font-awesome-icon icon="fa-solid fa-right-left" /></span>
               <span>Tag Name Mappings</span>
             </h2>
           </div>
           <div v-if="authenticated" class="level-right">
             <button type="button" class="button is-primary is-small" @click="openNewTagMapping">
-              <span class="icon"><i class="fa-solid fa-plus" /></span>
+              <span class="icon"><font-awesome-icon icon="fa-solid fa-plus" /></span>
               <span>Add Mapping</span>
             </button>
           </div>
@@ -362,7 +362,7 @@ onMounted(loadRules)
                   <code>{{ m.danbooru_tag }}</code>
                 </td>
                 <td class="has-text-centered has-text-grey">
-                  <i class="fa-solid fa-arrow-right" />
+                  <font-awesome-icon icon="fa-solid fa-arrow-right" />
                 </td>
                 <td>{{ m.gallery_tag }}</td>
                 <td v-if="authenticated" class="has-text-right">
@@ -374,7 +374,7 @@ onMounted(loadRules)
                         aria-label="Edit tag mapping"
                         @click="openEditTagMapping(m)"
                       >
-                        <span class="icon"><i class="fa-solid fa-pen" /></span>
+                        <span class="icon"><font-awesome-icon icon="fa-solid fa-pen" /></span>
                       </button>
                     </AppTooltip>
                     <AppTooltip label="Remove mapping">
@@ -384,7 +384,7 @@ onMounted(loadRules)
                         aria-label="Remove tag mapping"
                         @click="openDeleteTagModal(m)"
                       >
-                        <span class="icon"><i class="fa-solid fa-trash" /></span>
+                        <span class="icon"><font-awesome-icon icon="fa-solid fa-trash" /></span>
                       </button>
                     </AppTooltip>
                   </div>

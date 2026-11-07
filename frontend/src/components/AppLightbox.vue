@@ -41,10 +41,10 @@ const emit = defineEmits<{ 'update:open': [value: boolean] }>()
           <span v-if="caption" class="lb-caption">{{ caption }}</span>
           <a v-if="href" :href="href" target="_blank" rel="noopener" class="lb-link">
             Open original
-            <i class="fa-solid fa-up-right-from-square fa-xs" />
+            <font-awesome-icon icon="fa-solid fa-up-right-from-square" size="xs" />
           </a>
           <button type="button" class="lb-close" @click="emit('update:open', false)">
-            <i class="fa-solid fa-xmark" />
+            <font-awesome-icon icon="fa-solid fa-xmark" />
             <span>Close</span>
           </button>
         </div>

@@ -92,9 +92,9 @@ function toggleSort(key: typeof sortKey.value) {
 
 function sortIcon(key: string) {
   if (sortKey.value !== key) {
-    return 'fa-sort'
+    return 'fa-solid fa-sort'
   }
-  return sortAsc.value ? 'fa-sort-up' : 'fa-sort-down'
+  return sortAsc.value ? 'fa-solid fa-sort-up' : 'fa-solid fa-sort-down'
 }
 
 function ariaSort(key: string): 'ascending' | 'descending' | 'none' {
@@ -393,7 +393,7 @@ onMounted(() => {
       <LoadingSpinner v-if="loading" />
       <EmptyState v-else-if="loadFailed" icon="fa-solid fa-tags" title="Could not load tags.">
         <button type="button" class="button" @click="loadTags()">
-          <span class="icon"><i class="fa-solid fa-rotate-right" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-rotate-right" /></span>
           <span>Retry</span>
         </button>
       </EmptyState>
@@ -401,15 +401,15 @@ onMounted(() => {
         <PageHeader title="Tags" :meta="`${totalTags.toLocaleString()} tags`">
           <template v-if="authenticated" #actions>
             <button type="button" class="button is-primary" @click="openNewTagModal">
-              <span class="icon"><i class="fa-solid fa-plus" /></span>
+              <span class="icon"><font-awesome-icon icon="fa-solid fa-plus" /></span>
               <span>New Tag</span>
             </button>
             <router-link class="button" :to="{ name: 'tag-categories' }">
-              <span class="icon"><i class="fa-solid fa-palette" /></span>
+              <span class="icon"><font-awesome-icon icon="fa-solid fa-palette" /></span>
               <span>Categories</span>
             </router-link>
             <router-link class="button" :to="{ name: 'danbooru-rules' }">
-              <span class="icon"><i class="fa-solid fa-file-import" /></span>
+              <span class="icon"><font-awesome-icon icon="fa-solid fa-file-import" /></span>
               <span>Import Rules</span>
             </router-link>
           </template>
@@ -445,17 +445,17 @@ onMounted(() => {
               <tr>
                 <th :aria-sort="ariaSort('tag_name')">
                   <button type="button" class="sort-header" @click="toggleSort('tag_name')">
-                    Tag <i class="fas" :class="sortIcon('tag_name')" />
+                    Tag <font-awesome-icon :icon="sortIcon('tag_name')" />
                   </button>
                 </th>
                 <th :aria-sort="ariaSort('category_name')">
                   <button type="button" class="sort-header" @click="toggleSort('category_name')">
-                    Category <i class="fas" :class="sortIcon('category_name')" />
+                    Category <font-awesome-icon :icon="sortIcon('category_name')" />
                   </button>
                 </th>
                 <th :aria-sort="ariaSort('media_count')">
                   <button type="button" class="sort-header" @click="toggleSort('media_count')">
-                    Media <i class="fas" :class="sortIcon('media_count')" />
+                    Media <font-awesome-icon :icon="sortIcon('media_count')" />
                   </button>
                 </th>
                 <th>Implies</th>
@@ -593,7 +593,7 @@ onMounted(() => {
               @keyup.enter="submitForm"
             />
             <span class="icon is-left">
-              <i class="fa-solid fa-tag" />
+              <font-awesome-icon icon="fa-solid fa-tag" />
             </span>
           </div>
           <p v-if="formHelp" class="help" :class="formHelpClass">

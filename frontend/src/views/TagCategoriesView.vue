@@ -154,7 +154,7 @@ onMounted(loadCategories)
         title="Could not load categories."
       >
         <button type="button" class="button" @click="loadCategories">
-          <span class="icon"><i class="fa-solid fa-rotate-right" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-rotate-right" /></span>
           <span>Retry</span>
         </button>
       </EmptyState>
@@ -163,7 +163,7 @@ onMounted(loadCategories)
         <PageHeader title="Tag Categories">
           <template v-if="authenticated" #actions>
             <button type="button" class="button is-primary" @click="openNewModal">
-              <span class="icon"><i class="fa-solid fa-plus" /></span>
+              <span class="icon"><font-awesome-icon icon="fa-solid fa-plus" /></span>
               <span>New Category</span>
             </button>
           </template>
@@ -205,7 +205,7 @@ onMounted(loadCategories)
                         aria-label="Edit category"
                         @click="openEditModal(cat)"
                       >
-                        <span class="icon"><i class="fa-solid fa-pen" /></span>
+                        <span class="icon"><font-awesome-icon icon="fa-solid fa-pen" /></span>
                       </button>
                     </AppTooltip>
                     <AppTooltip label="Delete category">
@@ -215,7 +215,7 @@ onMounted(loadCategories)
                         aria-label="Delete category"
                         @click="openDeleteConfirm(cat)"
                       >
-                        <span class="icon"><i class="fa-solid fa-trash" /></span>
+                        <span class="icon"><font-awesome-icon icon="fa-solid fa-trash" /></span>
                       </button>
                     </AppTooltip>
                   </div>
@@ -327,7 +327,7 @@ onMounted(loadCategories)
           <strong>{{ deleteTarget?.category_name }}</strong> category?
         </p>
         <p class="has-text-danger mt-2">
-          <span class="icon"><i class="fa-solid fa-triangle-exclamation" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-triangle-exclamation" /></span>
           This will only work if no tags are assigned to this category.
         </p>
 

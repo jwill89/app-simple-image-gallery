@@ -570,7 +570,7 @@ function reportTagImports(settled: TagImportStatus[], stillWaiting: number) {
           />
           <div class="drop-zone-content">
             <span class="icon is-large has-text-grey">
-              <i class="fa-solid fa-cloud-arrow-up fa-3x" />
+              <font-awesome-icon icon="fa-solid fa-cloud-arrow-up" size="3x" />
             </span>
             <p class="is-size-5 has-text-grey mt-3">
               Drag &amp; drop files here, or click to browse
@@ -612,7 +612,7 @@ function reportTagImports(settled: TagImportStatus[], stillWaiting: number) {
                   :disabled="uploading"
                   @click="clearFiles"
                 >
-                  <span class="icon"><i class="fa-solid fa-xmark" /></span>
+                  <span class="icon"><font-awesome-icon icon="fa-solid fa-xmark" /></span>
                   <span>Clear All</span>
                 </button>
               </div>
@@ -627,7 +627,7 @@ function reportTagImports(settled: TagImportStatus[], stillWaiting: number) {
             >
               <div class="file-item-info">
                 <span class="icon has-text-grey-light mr-2">
-                  <i :class="fileIcon(file)" />
+                  <font-awesome-icon :icon="fileIcon(file)" />
                 </span>
                 <span class="file-item-name">{{ file.name }}</span>
                 <span class="has-text-grey-light ml-2">({{ formatSize(file.size) }})</span>
@@ -637,7 +637,7 @@ function reportTagImports(settled: TagImportStatus[], stillWaiting: number) {
                   v-if="uploadResults[index]?.status === 'success'"
                   class="has-text-success is-size-7"
                 >
-                  <span class="icon"><i class="fa-solid fa-circle-check" /></span>
+                  <span class="icon"><font-awesome-icon icon="fa-solid fa-circle-check" /></span>
                   <template v-if="uploadResults[index]?.tags_error">Tags not fetched</template>
                   <template v-else-if="uploadResults[index]?.tags_status === 'queued'">
                     Fetching tags
@@ -647,21 +647,21 @@ function reportTagImports(settled: TagImportStatus[], stillWaiting: number) {
                   v-else-if="uploadResults[index]?.status === 'duplicate'"
                   class="has-text-warning is-size-7"
                 >
-                  <span class="icon"><i class="fa-solid fa-clone" /></span>
+                  <span class="icon"><font-awesome-icon icon="fa-solid fa-clone" /></span>
                   Duplicate
                 </span>
                 <span
                   v-else-if="uploadResults[index]?.status === 'error'"
                   class="has-text-danger is-size-7"
                 >
-                  <span class="icon"><i class="fa-solid fa-circle-xmark" /></span>
+                  <span class="icon"><font-awesome-icon icon="fa-solid fa-circle-xmark" /></span>
                   {{ uploadResults[index]?.message }}
                 </span>
                 <span
                   v-else-if="uploadResults[index]?.status === 'pending'"
                   class="icon has-text-grey"
                 >
-                  <i class="fa-solid fa-spinner fa-spin" />
+                  <font-awesome-icon icon="fa-solid fa-spinner" spin />
                 </span>
                 <button
                   v-else
@@ -684,7 +684,7 @@ function reportTagImports(settled: TagImportStatus[], stillWaiting: number) {
               :disabled="uploading || !hasFiles"
               @click="uploadFiles"
             >
-              <span class="icon"><i class="fa-solid fa-upload" /></span>
+              <span class="icon"><font-awesome-icon icon="fa-solid fa-upload" /></span>
               <span>Upload {{ selectedFiles.length }} File(s)</span>
             </button>
           </div>

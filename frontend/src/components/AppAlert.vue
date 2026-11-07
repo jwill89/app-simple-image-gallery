@@ -40,7 +40,7 @@ const iconMap: Record<string, string> = {
 
 <template>
   <div class="alert" :data-severity="severity" role="alert">
-    <span class="alert-icon"><i :class="iconMap[severity]" /></span>
+    <span class="alert-icon"><font-awesome-icon :icon="iconMap[severity]" /></span>
     <div class="alert-content">
       <p v-if="title" class="alert-title">{{ title }}</p>
       <div class="alert-body"><slot /></div>

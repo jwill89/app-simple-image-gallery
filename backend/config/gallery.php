@@ -56,9 +56,6 @@ return [
         ? array_map(trim(...), explode(',', $origins))
         : ['http://localhost', 'http://localhost:5173', 'https://localhost'],
 
-    // FontAwesome kit id, injected into the SPA shell's <head>.
-    'fontawesome_kit_id' => $raw('FONTAWESOME_KIT_ID'),
-
     // Danbooru API credentials for tag imports; both are needed. The account's
     // numeric user ID goes in the User-Agent ("…; user #123"), which Danbooru
     // asks of API clients: its firewall blocks requests without one.

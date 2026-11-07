@@ -281,7 +281,6 @@
             "spa/escaped",
             "spa/tags",
             "spa/favorites",
-            "spa/fontawesome",
             "spa/index-missing"
         ]
     },
@@ -1814,13 +1813,6 @@
         },
         {
             "id": "spa/favorites",
-            "route": "GET /{spa}",
-            "statuses": [
-                200
-            ]
-        },
-        {
-            "id": "spa/fontawesome",
             "route": "GET /{spa}",
             "statuses": [
                 200

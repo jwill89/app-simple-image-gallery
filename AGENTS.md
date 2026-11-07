@@ -49,7 +49,7 @@ SaaS. Key features:
 | API docs | swagger-php 7 attributes → committed `backend/openapi.json`, served at `/api/openapi.json` and `/api/docs` (Scalar) |
 | Frontend | **Vue 3** (`<script setup>` + Composition API), TypeScript, [Pinia](https://pinia.vuejs.org/), Vue Router, `@simplewebauthn/browser` (passkeys) |
 | Build | **Vite** on Node **26+** (outputs to `frontend/dist`) |
-| Styling | **Bulma 1.x** + custom `style.css` (token layer), FontAwesome (kit script) |
+| Styling | **Bulma 1.x** + custom `style.css` (token layer), Font Awesome Pro from the kit package `@awesome.me/kit-4f2bd9b614` through `<font-awesome-icon>` |
 | Tests | **Pest 5** (`backend/tests/`, in-memory SQLite) + **Vitest** (`frontend/src/__tests__/`, jsdom) + **Playwright** with axe (`frontend/e2e/`, the built SPA and the API) |
 | Shared tooling | **[shared-tooling](https://github.com/jwill89/shared-tooling)**, the submodule at `shared/`: lint, test, CI and deploy settings every project uses |
 
@@ -320,7 +320,6 @@ GALLERY_DUPES_PATH         # duplicate-scan reports; default storage/app/dupes
 DANBOORU_LOGIN             # Danbooru API username
 DANBOORU_API_KEY           # Danbooru API key
 DANBOORU_USER_ID           # the account's numeric ID, sent in the User-Agent; Danbooru's firewall blocks clients without it
-FONTAWESOME_KIT_ID         # FA kit id (injected into <head> by the SPA shell)
 DUPLICATE_MAX_DISTANCE     # duplicate scan: largest Hamming distance reported, 0-16 (default 6)
 DUPLICATE_MAX_REGION_DIFF  # duplicate scan: largest worst-region difference, 0-255 or off (default 36)
 SCHEDULE_TIMEZONE          # the schedule's timezone (UTC on the droplet)
@@ -513,8 +512,8 @@ Keep these invariants when editing auth or routes:
   cookie is `SameSite=Lax` besides.
 - **Sign-up and login** pass Cloudflare Turnstile first (`Services/Turnstile`, while `CLOUDFLARE_TURNSTILE_SECRET` is set): a token passes once, for its own form (`action`), and Cloudflare out of reach is `503 CaptchaUnavailable`, never a sign-in. Login is throttled to 10 attempts / 5 minutes per IP and sign-up to 5 accounts an hour, on top of the global limit. Admins come from `gallery:user` or another admin. A wrong *current* password (changing it, deleting the account) is `403 IncorrectPassword`.
 - **Sessions, not tokens** (since 7.0.0): a browser signs in with Laravel's session cookie,
-  encrypted and **HttpOnly**, so no script on the page (the FontAwesome kit, Turnstile, an
-  injected one) can read or copy it. It lasts until the browser closes, and a day without a
+  encrypted and **HttpOnly**, so no script on the page (Turnstile, an injected one) can read
+  or copy it. It lasts until the browser closes, and a day without a
   request ends it; "keep me signed in" adds a 30-day remember cookie (`auth.guards.web.remember`).
   Signing in moves the session to a new id (`App\Support\Login`), so one planted beforehand
   signs no one in; signing out ends this browser's session only. A new password
@@ -854,6 +853,15 @@ read at ingest (and `gallery:regenerate` to backfill), then regenerate the spec 
 Add to `TagCategory::COLORS` (backend) **and** `VALID_COLORS` in `constants/categories.ts`
 (frontend) **and** define the CSS in `frontend/src/style.css`.
 
+### A new icon
+
+Import it from the kit in `frontend/src/fontawesome.ts` and add it to `library.add(...)`, then
+render it with `<font-awesome-icon icon="fa-solid fa-<name>" />` (or pass that string to `:icon`).
+The kit (`@awesome.me/kit-4f2bd9b614`, shared with Fantasy Dossier and Home Library) holds the
+classic solid and regular styles and brands, Pro icons included; a style it lacks is added to the
+kit first. `icons.spec.ts` fails on an icon the source names that isn't registered, and on an
+`<i class="fa-…">` element.
+
 ### A new background task
 
 A job class (`ShouldQueue`) dispatched where the work starts; if it runs on a timetable, one line
@@ -915,9 +923,8 @@ The code still does these things that [shared/standards/](shared/standards/READM
 - **The visitor's address.** The app restores it: `trustProxies` trusts Cloudflare's ranges (`App\Support\Cloudflare`) and reads `X-Forwarded-For`. The standard restores it once, in Apache, with `mod_remoteip`, and the app reads `REMOTE_ADDR`.
 - **Timestamps.** `file_time` and `dismissed_at` are Unix seconds in integer columns, and the account tables' times are Laravel's `Y-m-d H:i:s`, with no CHECK. The standard stores RFC 3339 UTC text (`2026-11-07T09:18:09Z`) in `DATETIME` columns with a CHECK, and sends it in that form.
 - **App version.** The version is written in two places, `frontend/package.json` and `config/gallery.php`, and a release bumps both. The standard reads one version from one place.
-- **Font Awesome.** The SPA shell loads the kit script from `kit.fontawesome.com` (`FONTAWESOME_KIT_ID`), and templates use its CSS classes. The standard installs Font Awesome Pro from the owner's kit package and renders icons through the SVG core and `<font-awesome-icon>`, with no icon CDN.
 - **Uploads.** An upload keeps its own file name (made safe, with `_1`, `_2` on a clash) and its original bytes. The standard stores an upload under a random name and re-encodes an image. Danbooru's lookup matches the original file's MD5, so what changes here is the owner's call in the follow-up.
-- **Setting names.** Several of the gallery's own settings lack its prefix: `DANBOORU_*`, `DUPLICATE_*`, `CLOUDFLARE_TURNSTILE_*`, `FONTAWESOME_KIT_ID` and `SCHEDULE_TIMEZONE`. The standard starts each with the project's prefix.
+- **Setting names.** Several of the gallery's own settings lack its prefix: `DANBOORU_*`, `DUPLICATE_*`, `CLOUDFLARE_TURNSTILE_*` and `SCHEDULE_TIMEZONE`. The standard starts each with the project's prefix.
 - **Colour scheme.** Dark mode follows the device through a `prefers-color-scheme` query on `:root` in `style.css`, and the user can't choose. The standard sets the scheme as one class or attribute on `html`, from one module, and keeps the user's choice once they make one.
 - **Reduced motion.** `style.css` has one global `prefers-reduced-motion` rule that cuts every animation and transition with `!important`. The standard has each animation and transition honour it in its own rule.
 - **`color-named`.** `stylelint.config.js` turns `color-named` off, so `color-mix(…, black)` can name neutral black. The standard keeps it on and writes neutrals as `rgb(0 0 0 / a)`.

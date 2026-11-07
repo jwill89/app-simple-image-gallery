@@ -32,6 +32,13 @@ tagging.
 
 ### Changed
 
+- **Icons come from the Font Awesome kit package, not its CDN.** The SPA shell no longer loads
+  the kit script from `kit.fontawesome.com` on every page view (`FONTAWESOME_KIT_ID` is gone).
+  The front end installs the kit `@awesome.me/kit-4f2bd9b614` (shared with Fantasy Dossier and
+  Home Library), registers the icons it uses in `src/fontawesome.ts`, and renders them as inline
+  SVG through `<font-awesome-icon>`, so only those icons ship and none is fetched at runtime.
+  `icons.spec.ts` fails on an unregistered icon or a leftover `<i class="fa-…">`. CI and
+  Dependabot read the Pro registry with the `FONTAWESOME_NPM_TOKEN` secret.
 - **Every database backup on the droplet is compressed** (shared-tooling 2.0.0). The deploy's
   snapshot before migrating is now shared-tooling's `Backup-RemoteDatabase`:
   `db/.backups/gallery-<UTC time>.db.gz`, integrity-checked before it is compressed, five kept.

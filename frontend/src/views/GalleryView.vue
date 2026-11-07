@@ -610,7 +610,7 @@ function onCardClick(id: number) {
         :hint="tags && !loadFailed ? 'Try removing a tag from the search.' : ''"
       >
         <button v-if="loadFailed" type="button" class="button" @click="loadPage">
-          <span class="icon"><i class="fa-solid fa-rotate-right" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-rotate-right" /></span>
           <span>Retry</span>
         </button>
       </EmptyState>
@@ -626,7 +626,7 @@ function onCardClick(id: number) {
             class="has-text-centered py-5"
           >
             <span class="icon is-large has-text-grey"
-              ><i class="fa-solid fa-spinner fa-spin fa-2x"
+              ><font-awesome-icon icon="fa-solid fa-spinner" spin size="2x"
             /></span>
           </div>
           <div ref="gridEl" class="media-grid">
@@ -645,7 +645,7 @@ function onCardClick(id: number) {
           class="has-text-centered py-5"
         >
           <span class="icon is-large has-text-grey"
-            ><i class="fa-solid fa-spinner fa-spin fa-2x"
+            ><font-awesome-icon icon="fa-solid fa-spinner" spin size="2x"
           /></span>
         </div>
 
@@ -659,7 +659,7 @@ function onCardClick(id: number) {
              collection, and a way back. -->
         <div v-if="isInfiniteScroll" class="scroll-status" role="status" aria-live="off">
           <span class="scroll-status-trail">
-            <i class="fa-solid fa-house" aria-hidden="true" />
+            <font-awesome-icon icon="fa-solid fa-house" />
             <span>{{ headerTitle }}</span>
           </span>
           <span class="scroll-status-pos">{{ statusPosition }}</span>
@@ -667,7 +667,7 @@ function onCardClick(id: number) {
             >{{ displayItems.length.toLocaleString() }} loaded</span
           >
           <button type="button" class="scroll-status-top" title="Back to top" @click="scrollToTop">
-            <i class="fa-solid fa-arrow-up" aria-hidden="true" />
+            <font-awesome-icon icon="fa-solid fa-arrow-up" />
             <span>Top</span>
           </button>
         </div>

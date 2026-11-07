@@ -18,7 +18,7 @@ jobs:
   # The Laravel backend. The contract recorded from the Slim app it replaced
   # (tests/Fixtures/contract/) is replayed by its tests.
   backend:
-    uses: jwill89/shared-tooling/.github/workflows/php.yml@v2.1.5
+    uses: jwill89/shared-tooling/.github/workflows/php.yml@v2.1.6
     with:
       dir: backend
       php-version: '8.5'
@@ -31,19 +31,23 @@ jobs:
       # document the attributes make, then the tests with their coverage floor.
       commands: audit lint rector:check analyse docs:check test:coverage
 
-  # The frontend's generated API types come from backend/openapi.json (gen:check).
+  # The frontend's generated API types come from backend/openapi.json (gen:check). Its
+  # icons come from the Font Awesome kit, on the Pro registry.
   frontend:
-    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.1.5
+    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.1.6
     with:
       dir: frontend
       scripts: gen:check lint lint:css knip format:check build test:coverage
+      fontawesome: true
+    secrets:
+      FONTAWESOME_TOKEN: ${{ secrets.FONTAWESOME_NPM_TOKEN }}
 
   # The end-to-end run (frontend/playwright.config.ts): the built SPA and the Laravel
   # API on a throwaway database holding the contract fixture, in the runner's Chrome.
   # Every main page must pass axe at WCAG 2.2 AA, and a new account must keep a favorite.
   e2e:
     needs: [backend, frontend]
-    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.1.5
+    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.1.6
     with:
       dir: frontend
       php-version: '8.5'
@@ -51,12 +55,15 @@ jobs:
       composer-dir: backend
       # The app reads .env and needs an APP_KEY; the run sets everything else it uses.
       setup: cd backend && cp .env.example .env && php artisan key:generate
+      fontawesome: true
+    secrets:
+      FONTAWESOME_TOKEN: ${{ secrets.FONTAWESOME_NPM_TOKEN }}
 
   scripts:
-    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.1.5
+    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.1.6
 
   docs:
-    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.1.5
+    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.1.6
 
   # On a push to the default branch, AFTER the gate passes, tag + release the
   # project version if it has no release yet. Tag = v<version> (frontend/

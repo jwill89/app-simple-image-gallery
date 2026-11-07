@@ -33,13 +33,13 @@ function retry() {
     <div class="container">
       <div class="has-text-centered py-6">
         <span class="icon is-large has-text-grey-light">
-          <i class="fa-solid fa-triangle-exclamation fa-3x" />
+          <font-awesome-icon icon="fa-solid fa-triangle-exclamation" size="3x" />
         </span>
         <p class="is-size-5 has-text-grey mt-4">
           {{ fallbackMessage }}
         </p>
         <button type="button" class="button mt-4" @click="retry">
-          <span class="icon"><i class="fa-solid fa-rotate-right" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-rotate-right" /></span>
           <span>Try Again</span>
         </button>
       </div>

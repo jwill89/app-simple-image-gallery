@@ -60,7 +60,7 @@ const Title = computed(() => (props.destructive ? AlertDialogTitle : DialogTitle
             aria-label="Close"
             @click="emit('update:open', false)"
           >
-            <i class="fa-solid fa-xmark" />
+            <font-awesome-icon icon="fa-solid fa-xmark" />
           </button>
         </header>
 

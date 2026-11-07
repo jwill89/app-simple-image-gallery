@@ -497,11 +497,11 @@ function onTouchEnd(e: TouchEvent) {
         title="Could not load media details."
       >
         <button type="button" class="button" @click="load">
-          <span class="icon"><i class="fa-solid fa-rotate-right" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-rotate-right" /></span>
           <span>Retry</span>
         </button>
         <button type="button" class="button is-ghost" @click="backToGallery">
-          <span class="icon"><i class="fa-solid fa-backward" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-backward" /></span>
           <span>Back to Gallery</span>
         </button>
       </EmptyState>
@@ -523,7 +523,7 @@ function onTouchEnd(e: TouchEvent) {
             >
               <div v-if="!mediaReady" class="media-placeholder">
                 <span class="icon is-large has-text-grey">
-                  <i class="fa-solid fa-spinner fa-spin fa-2x" />
+                  <font-awesome-icon icon="fa-solid fa-spinner" spin size="2x" />
                 </span>
               </div>
               <!-- Uploaded videos come without caption files, so there is no track to offer. -->
@@ -566,11 +566,11 @@ function onTouchEnd(e: TouchEvent) {
             <div class="media-toolbar">
               <div class="toolbar-nav">
                 <button v-if="isRandomView" type="button" class="button" @click="newRandom">
-                  <span class="icon"><i class="fa-solid fa-shuffle" /></span>
+                  <span class="icon"><font-awesome-icon icon="fa-solid fa-shuffle" /></span>
                   <span>New Random Media</span>
                 </button>
                 <button v-else type="button" class="button" @click="backToGallery">
-                  <span class="icon"><i class="fa-solid fa-backward" /></span>
+                  <span class="icon"><font-awesome-icon icon="fa-solid fa-backward" /></span>
                   <span>Back</span>
                 </button>
                 <div v-if="hasGalleryContext" class="field has-addons mb-0">
@@ -583,7 +583,9 @@ function onTouchEnd(e: TouchEvent) {
                         aria-label="Previous media"
                         @click="navigatePrev"
                       >
-                        <span class="icon"><i class="fa-solid fa-arrow-left" /></span>
+                        <span class="icon"
+                          ><font-awesome-icon icon="fa-solid fa-arrow-left"
+                        /></span>
                       </button>
                     </AppTooltip>
                   </div>
@@ -596,7 +598,9 @@ function onTouchEnd(e: TouchEvent) {
                         aria-label="Next media"
                         @click="navigateNext"
                       >
-                        <span class="icon"><i class="fa-solid fa-arrow-right" /></span>
+                        <span class="icon"
+                          ><font-awesome-icon icon="fa-solid fa-arrow-right"
+                        /></span>
                       </button>
                     </AppTooltip>
                   </div>
@@ -614,8 +618,8 @@ function onTouchEnd(e: TouchEvent) {
                   @click="void favorites.toggle(mediaId)"
                 >
                   <span class="icon">
-                    <i
-                      :class="
+                    <font-awesome-icon
+                      :icon="
                         favorites.isFavorite(mediaId) ? 'fa-solid fa-heart' : 'fa-regular fa-heart'
                       "
                     />
@@ -624,7 +628,7 @@ function onTouchEnd(e: TouchEvent) {
                 </button>
 
                 <AppMenu v-if="auth.isSignedIn" label="Add to a list">
-                  <template #trigger><i class="fa-solid fa-list-check" /></template>
+                  <template #trigger><font-awesome-icon icon="fa-solid fa-list-check" /></template>
                   <AppMenuItem
                     v-for="list in otherLists"
                     :key="list.list_id"
@@ -689,7 +693,9 @@ function onTouchEnd(e: TouchEvent) {
                       aria-label="Copy MD5 hash"
                       @click="copyHash"
                     >
-                      <span class="icon is-small"><i class="fa-regular fa-copy" /></span>
+                      <span class="icon is-small"
+                        ><font-awesome-icon icon="fa-regular fa-copy"
+                      /></span>
                     </button>
                   </AppTooltip>
                 </dd>
@@ -699,7 +705,7 @@ function onTouchEnd(e: TouchEvent) {
                 <dd>
                   <a :href="fullPath" target="_blank"
                     >Open full {{ isVideoItem ? 'video' : 'image' }}
-                    <i class="fa-solid fa-up-right-from-square fa-xs"
+                    <font-awesome-icon icon="fa-solid fa-up-right-from-square" size="xs"
                   /></a>
                 </dd>
               </div>
@@ -784,7 +790,7 @@ function onTouchEnd(e: TouchEvent) {
       >
         <p>This permanently removes the file and its tags.</p>
         <p class="has-text-danger mt-2">
-          <span class="icon"><i class="fa-solid fa-triangle-exclamation" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-triangle-exclamation" /></span>
           This action cannot be undone.
         </p>
 
@@ -796,7 +802,7 @@ function onTouchEnd(e: TouchEvent) {
             :disabled="deleting"
             @click="deleteMedia"
           >
-            <span class="icon"><i class="fa-solid fa-trash" /></span>
+            <span class="icon"><font-awesome-icon icon="fa-solid fa-trash" /></span>
             <span>Delete</span>
           </button>
           <button
@@ -879,7 +885,7 @@ function onTouchEnd(e: TouchEvent) {
             :disabled="danbooruFetching"
             @click="fetchDanbooruTags"
           >
-            <span class="icon"><i class="fa-solid fa-cloud-arrow-down" /></span>
+            <span class="icon"><font-awesome-icon icon="fa-solid fa-cloud-arrow-down" /></span>
             <span>Fetch Tags</span>
           </button>
           <button

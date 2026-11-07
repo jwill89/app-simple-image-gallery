@@ -8,7 +8,7 @@ defineProps<{
   <div class="loading-container">
     <div class="has-text-centered">
       <span class="icon is-large">
-        <i class="fas fa-spinner fa-pulse fa-3x" />
+        <font-awesome-icon icon="fa-solid fa-spinner" spin-pulse size="3x" />
       </span>
       <p v-if="message" class="mt-3">
         {{ message }}

@@ -2,7 +2,19 @@
 # minors and patches together, majors one by one (they can need code changes). The
 # shape every repo follows (shared-tooling's repo/dependabot.example.yml). It would have
 # raised November's Symfony advisories as a pull request before the audit failed CI.
+#
+# Dependabot can't read Actions secrets, so the Font Awesome registry's token is also a
+# Dependabot secret, FONTAWESOME_NPM_TOKEN (Settings, Secrets and variables, Dependabot).
 version: 2
+
+registries:
+  # frontend/.npmrc names this registry for its scopes; Dependabot adds the token. No
+  # `scope:`: with one, Dependabot writes its own .npmrc in place of the committed one,
+  # which loses install-links=true, and npm ci then fails on the shared packages.
+  fontawesome:
+    type: npm-registry
+    url: https://npm.fontawesome.com
+    token: ${{ secrets.FONTAWESOME_NPM_TOKEN }}
 
 updates:
   - package-ecosystem: composer
@@ -17,6 +29,8 @@ updates:
 
   - package-ecosystem: npm
     directory: /frontend
+    registries:
+      - fontawesome
     schedule:
       interval: weekly
       day: monday

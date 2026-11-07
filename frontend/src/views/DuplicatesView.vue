@@ -215,7 +215,7 @@ watch(authenticated, (isAdmin) => {
               :disabled="scanning"
               @click="runScan"
             >
-              <span class="icon"><i class="fa-solid fa-magnifying-glass" /></span>
+              <span class="icon"><font-awesome-icon icon="fa-solid fa-magnifying-glass" /></span>
               <span>Run New Scan</span>
             </button>
             <button
@@ -226,7 +226,7 @@ watch(authenticated, (isAdmin) => {
               :disabled="deleting"
               @click="showDeleteConfirm = true"
             >
-              <span class="icon"><i class="fa-solid fa-trash" /></span>
+              <span class="icon"><font-awesome-icon icon="fa-solid fa-trash" /></span>
               <span>Delete Selected ({{ selectionCount }})</span>
             </button>
           </template>
@@ -241,7 +241,7 @@ watch(authenticated, (isAdmin) => {
           title="Could not load the duplicates report."
         >
           <button type="button" class="button" @click="loadReport">
-            <span class="icon"><i class="fa-solid fa-rotate-right" /></span>
+            <span class="icon"><font-awesome-icon icon="fa-solid fa-rotate-right" /></span>
             <span>Retry</span>
           </button>
         </EmptyState>
@@ -267,7 +267,7 @@ watch(authenticated, (isAdmin) => {
           <!-- Selection Controls -->
           <div v-if="report.matches.length > 0" class="buttons mb-4">
             <button type="button" class="button is-small is-warning" @click="selectAll">
-              <span class="icon"><i class="fa-solid fa-check-double" /></span>
+              <span class="icon"><font-awesome-icon icon="fa-solid fa-check-double" /></span>
               <span>Select All Duplicates (Right Column)</span>
             </button>
             <button
@@ -276,7 +276,7 @@ watch(authenticated, (isAdmin) => {
               class="button is-small"
               @click="clearSelection"
             >
-              <span class="icon"><i class="fa-solid fa-xmark" /></span>
+              <span class="icon"><font-awesome-icon icon="fa-solid fa-xmark" /></span>
               <span>Clear Selection</span>
             </button>
           </div>
@@ -335,7 +335,7 @@ watch(authenticated, (isAdmin) => {
                       :aria-label="`Open media #${match.media_1.media_id} full size`"
                     >
                       <span class="icon has-text-info-dark"
-                        ><i class="fa-solid fa-up-right-from-square"
+                        ><font-awesome-icon icon="fa-solid fa-up-right-from-square"
                       /></span>
                     </a>
                   </footer>
@@ -385,7 +385,7 @@ watch(authenticated, (isAdmin) => {
                       :aria-label="`Open media #${match.media_2.media_id} full size`"
                     >
                       <span class="icon has-text-info-dark"
-                        ><i class="fa-solid fa-up-right-from-square"
+                        ><font-awesome-icon icon="fa-solid fa-up-right-from-square"
                       /></span>
                     </a>
                   </footer>
@@ -398,7 +398,9 @@ watch(authenticated, (isAdmin) => {
               <div class="level-left">
                 <div v-if="match.distance !== null" class="level-item">
                   <span class="tag is-medium is-dark">
-                    <span class="icon mr-1"><i class="fa-solid fa-arrows-left-right" /></span>
+                    <span class="icon mr-1"
+                      ><font-awesome-icon icon="fa-solid fa-arrows-left-right"
+                    /></span>
                     Distance: {{ match.distance }}
                   </span>
                 </div>
@@ -421,7 +423,7 @@ watch(authenticated, (isAdmin) => {
                     title="Mark as not a duplicate — hides this pair from future reports"
                     @click="dismissPair(match)"
                   >
-                    <span class="icon"><i class="fa-solid fa-eye-slash" /></span>
+                    <span class="icon"><font-awesome-icon icon="fa-solid fa-eye-slash" /></span>
                     <span>Not a Duplicate</span>
                   </button>
                 </div>
@@ -445,7 +447,7 @@ watch(authenticated, (isAdmin) => {
           the database.
         </p>
         <p class="has-text-danger mt-2">
-          <span class="icon"><i class="fa-solid fa-triangle-exclamation" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-triangle-exclamation" /></span>
           This action cannot be undone.
         </p>
 
@@ -457,7 +459,7 @@ watch(authenticated, (isAdmin) => {
             :disabled="deleting"
             @click="deleteSelected"
           >
-            <span class="icon"><i class="fa-solid fa-trash" /></span>
+            <span class="icon"><font-awesome-icon icon="fa-solid fa-trash" /></span>
             <span>Delete {{ selectionCount }}</span>
           </button>
           <button

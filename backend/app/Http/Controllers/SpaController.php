@@ -16,8 +16,7 @@ use Throwable;
  * The SPA shell, for every path outside /api that isn't a public file: the
  * built index.html (gallery.spa_index) with the page's link-preview tags, Open
  * Graph and Twitter card, so a link shared in a chat or on a social site shows
- * what it points at, and the FontAwesome kit. The SPA routes the path itself,
- * in the browser.
+ * what it points at. The SPA routes the path itself, in the browser.
  */
 final class SpaController extends Controller
 {
@@ -50,12 +49,6 @@ final class SpaController extends Controller
 
         $html = str_replace('</head>', "    {$tags}\n  </head>", File::get($index));
         $html = preg_replace('#<title>[^<]*</title>#', '<title>' . $e($title) . '</title>', $html) ?? $html;
-
-        $kit = config()->string('gallery.fontawesome_kit_id');
-        if ($kit !== '') {
-            $script = '<script src="https://kit.fontawesome.com/' . $e($kit) . '.js" crossorigin="anonymous"></script>';
-            $html = str_replace('</head>', "    {$script}\n  </head>", $html);
-        }
 
         return new Response($html, 200, ['Content-Type' => 'text/html; charset=UTF-8']);
     }

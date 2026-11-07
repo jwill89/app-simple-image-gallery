@@ -131,7 +131,7 @@ async function register() {
                   autofocus
                 />
                 <!-- eslint-enable vuejs-accessibility/no-autofocus -->
-                <span class="icon is-left"><i class="fa-solid fa-user" /></span>
+                <span class="icon is-left"><font-awesome-icon icon="fa-solid fa-user" /></span>
               </div>
               <p v-if="usernameHint || usernameError" class="help is-danger">
                 {{ usernameError || usernameHint }}
@@ -148,7 +148,7 @@ async function register() {
                   type="password"
                   autocomplete="new-password"
                 />
-                <span class="icon is-left"><i class="fa-solid fa-lock" /></span>
+                <span class="icon is-left"><font-awesome-icon icon="fa-solid fa-lock" /></span>
               </div>
               <p v-if="passwordHint || passwordError" class="help is-danger">
                 {{ passwordError || passwordHint }}
@@ -165,7 +165,7 @@ async function register() {
                   type="password"
                   autocomplete="new-password"
                 />
-                <span class="icon is-left"><i class="fa-solid fa-lock" /></span>
+                <span class="icon is-left"><font-awesome-icon icon="fa-solid fa-lock" /></span>
               </div>
               <p v-if="confirmHint" class="help is-danger">{{ confirmHint }}</p>
             </div>

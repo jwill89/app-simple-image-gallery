@@ -18,7 +18,7 @@ withDefaults(
 
 <template>
   <div class="empty">
-    <span class="empty-icon"><i :class="icon" /></span>
+    <span class="empty-icon"><font-awesome-icon :icon="icon" /></span>
     <p class="empty-title">{{ title }}</p>
     <p v-if="hint" class="empty-hint">{{ hint }}</p>
     <div v-if="$slots.default" class="empty-actions">

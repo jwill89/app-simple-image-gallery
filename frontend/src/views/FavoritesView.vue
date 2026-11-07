@@ -179,7 +179,7 @@ async function deleteList() {
       >
         <template v-if="favorites.isAccount" #actions>
           <button type="button" class="button is-small" @click="openCreate">
-            <span class="icon"><i class="fa-solid fa-plus" /></span>
+            <span class="icon"><font-awesome-icon icon="fa-solid fa-plus" /></span>
             <span>New list</span>
           </button>
           <button v-if="selected" type="button" class="button is-small" @click="openRename">
@@ -217,7 +217,7 @@ async function deleteList() {
       </div>
 
       <p v-if="!favorites.isAccount" class="favorites-note">
-        <span class="icon is-small"><i class="fa-solid fa-circle-info" /></span>
+        <span class="icon is-small"><font-awesome-icon icon="fa-solid fa-circle-info" /></span>
         <span>
           These favorites live in this browser only.
           <router-link :to="{ name: 'register' }">Create an account</router-link> or
@@ -249,7 +249,7 @@ async function deleteList() {
         title="Could not load favorites."
       >
         <button type="button" class="button" @click="load">
-          <span class="icon"><i class="fa-solid fa-rotate-right" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-rotate-right" /></span>
           <span>Retry</span>
         </button>
       </EmptyState>

@@ -46,7 +46,6 @@ final class Replay
         'GALLERY_ALLOWED_ORIGINS' => ['gallery.allowed_origins', 'https://gallery.test,http://localhost:5173'],
         'DANBOORU_LOGIN' => ['gallery.danbooru.login', 'contract'],
         'DANBOORU_API_KEY' => ['gallery.danbooru.api_key', 'contract-key'],
-        'FONTAWESOME_KIT_ID' => ['gallery.fontawesome_kit_id', ''],
         'DUPLICATE_MAX_DISTANCE' => ['gallery.duplicates.max_distance', ''],
         'DUPLICATE_MAX_REGION_DIFF' => ['gallery.duplicates.max_region_diff', ''],
     ];

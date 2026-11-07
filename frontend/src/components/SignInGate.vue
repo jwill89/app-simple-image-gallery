@@ -32,7 +32,7 @@ const signInLink = computed(() => ({ name: 'login', query: { redirect: route.ful
     :hint="admin ? 'It needs an admin account.' : ''"
   >
     <router-link :to="signInLink" class="button">
-      <span class="icon"><i class="fa-solid fa-right-to-bracket" /></span>
+      <span class="icon"><font-awesome-icon icon="fa-solid fa-right-to-bracket" /></span>
       <span>Sign in</span>
     </router-link>
   </EmptyState>

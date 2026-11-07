@@ -47,7 +47,7 @@ function runAction(id: number, action: ToastAction) {
       :duration="Infinity"
       @update:open="(open: boolean) => !open && toastStore.remove(toast.id)"
     >
-      <span class="toast-icon"><i :class="iconMap[toast.type]" /></span>
+      <span class="toast-icon"><font-awesome-icon :icon="iconMap[toast.type]" /></span>
 
       <ToastTitle v-if="toast.title" class="toast-title">{{ toast.title }}</ToastTitle>
       <ToastDescription class="toast-body">{{ toast.message }}</ToastDescription>
@@ -67,7 +67,7 @@ function runAction(id: number, action: ToastAction) {
         aria-label="Dismiss"
         @click="toastStore.remove(toast.id)"
       >
-        <i class="fa-solid fa-xmark" />
+        <font-awesome-icon icon="fa-solid fa-xmark" />
       </button>
     </ToastRoot>
 

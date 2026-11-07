@@ -165,7 +165,7 @@ onMounted(loadData)
         :title="loadFailed ? 'Could not load tag data.' : 'Tag not found.'"
       >
         <button v-if="loadFailed" type="button" class="button" @click="loadData">
-          <span class="icon"><i class="fa-solid fa-rotate-right" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-rotate-right" /></span>
           <span>Retry</span>
         </button>
       </EmptyState>
@@ -174,7 +174,7 @@ onMounted(loadData)
         <PageHeader :title="tagInfo.tag_name" :meta="tagInfo.category_name ?? ''">
           <template v-if="authenticated" #actions>
             <button type="button" class="button is-primary" @click="openModal">
-              <span class="icon"><i class="fa-solid fa-plus" /></span>
+              <span class="icon"><font-awesome-icon icon="fa-solid fa-plus" /></span>
               <span>Add Implication</span>
             </button>
           </template>
@@ -188,7 +188,7 @@ onMounted(loadData)
 
         <!-- This tag implies -->
         <h2 class="title is-5 mt-5">
-          <span class="icon"><i class="fa-solid fa-arrow-right" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-arrow-right" /></span>
           <span>This tag implies ({{ impliesOthers.length }})</span>
         </h2>
 
@@ -218,7 +218,7 @@ onMounted(loadData)
                       askRemoveImplication(impl.tag_id, impl.implied_tag_id, impl.implied_tag_name)
                     "
                   >
-                    <span class="icon"><i class="fa-solid fa-trash" /></span>
+                    <span class="icon"><font-awesome-icon icon="fa-solid fa-trash" /></span>
                   </button>
                 </AppTooltip>
               </td>
@@ -233,7 +233,7 @@ onMounted(loadData)
 
         <!-- Implied by others -->
         <h2 class="title is-5">
-          <span class="icon"><i class="fa-solid fa-arrow-left" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-arrow-left" /></span>
           <span>Implied by ({{ impliedByOthers.length }})</span>
         </h2>
 
@@ -259,7 +259,7 @@ onMounted(loadData)
                     aria-label="Remove implication"
                     @click="askRemoveImplication(impl.tag_id, impl.implied_tag_id, impl.tag_name)"
                   >
-                    <span class="icon"><i class="fa-solid fa-trash" /></span>
+                    <span class="icon"><font-awesome-icon icon="fa-solid fa-trash" /></span>
                   </button>
                 </AppTooltip>
               </td>

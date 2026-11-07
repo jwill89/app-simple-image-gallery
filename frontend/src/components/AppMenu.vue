@@ -30,7 +30,7 @@ withDefaults(
     <DropdownMenuTrigger as-child>
       <button type="button" class="menu-trigger" :aria-label="label" :title="label">
         <slot name="trigger">
-          <i class="fa-solid fa-ellipsis-vertical" />
+          <font-awesome-icon icon="fa-solid fa-ellipsis-vertical" />
         </slot>
       </button>
     </DropdownMenuTrigger>

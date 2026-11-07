@@ -95,9 +95,6 @@ searches, and admin-gated uploads.
    DANBOORU_LOGIN=your-danbooru-username
    DANBOORU_API_KEY=your-danbooru-api-key
    DANBOORU_USER_ID=123456
-
-   # Optional: FontAwesome kit ID (injected into <head>).
-   FONTAWESOME_KIT_ID=abcdef1234
    ```
 
    Real environment variables take precedence over `.env`.

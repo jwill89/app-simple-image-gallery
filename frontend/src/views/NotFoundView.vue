@@ -10,7 +10,7 @@ const router = useRouter()
       <h1 class="title is-1">404</h1>
       <p class="subtitle">Page not found</p>
       <button type="button" class="button is-primary" @click="router.push('/')">
-        <span class="icon"><i class="fa-solid fa-home" /></span>
+        <span class="icon"><font-awesome-icon icon="fa-solid fa-home" /></span>
         <span>Go Home</span>
       </button>
     </div>

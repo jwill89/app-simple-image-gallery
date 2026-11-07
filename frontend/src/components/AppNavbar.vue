@@ -313,7 +313,7 @@ router.afterEach((to) => {
           :class="{ 'is-selected': isMediaActive }"
           @click.prevent="navigateMedia"
         >
-          <span class="icon"><i class="fa-solid fa-images" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-images" /></span>
           <span>Media</span>
         </a>
 
@@ -328,7 +328,7 @@ router.afterEach((to) => {
           @keydown.enter="navigateRandom"
           @keydown.space.prevent="navigateRandom"
         >
-          <span class="icon"><i class="fa-solid fa-shuffle" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-shuffle" /></span>
           <span>Random</span>
         </a>
 
@@ -338,7 +338,7 @@ router.afterEach((to) => {
           :class="{ 'is-selected': isTagsActive }"
           @click.prevent="navigateTags"
         >
-          <span class="icon"><i class="fa-solid fa-tags" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-tags" /></span>
           <span>Tags</span>
         </a>
 
@@ -348,7 +348,7 @@ router.afterEach((to) => {
           :class="{ 'is-selected': isFavoritesActive }"
           @click.prevent="navigateFavorites"
         >
-          <span class="icon"><i class="fa-solid fa-heart" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-heart" /></span>
           <span>Favorites</span>
           <span v-if="favorites.count > 0" class="tag is-rounded is-small ml-1">{{
             favorites.count
@@ -376,7 +376,7 @@ router.afterEach((to) => {
                 :aria-pressed="isUntaggedActive"
                 @click="searchUntagged"
               >
-                <span class="icon"><i class="fa-solid fa-ban" /></span>
+                <span class="icon"><font-awesome-icon icon="fa-solid fa-ban" /></span>
               </ToolbarButton>
             </AppTooltip>
           </div>
@@ -391,7 +391,9 @@ router.afterEach((to) => {
                  in a hurry. -->
           <Toggle v-model="blurPressed" class="button nav-toggle" aria-label="Blur thumbnails">
             <span class="icon">
-              <i :class="store.blurThumbnails ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'" />
+              <font-awesome-icon
+                :icon="store.blurThumbnails ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"
+              />
             </span>
             <span class="nav-toggle-label">Blur</span>
           </Toggle>
@@ -413,7 +415,7 @@ router.afterEach((to) => {
 
       <div v-if="showSearches" class="navbar-item">
         <AppMenu label="Saved searches">
-          <template #trigger><i class="fa-solid fa-bookmark" /></template>
+          <template #trigger><font-awesome-icon icon="fa-solid fa-bookmark" /></template>
           <AppMenuItem
             v-for="search in account.searches"
             :key="search.search_id"
@@ -433,7 +435,7 @@ router.afterEach((to) => {
                the nav doesn't change shape when you sign in and Sign out isn't
                the loudest thing on screen. -->
         <AppMenu v-if="auth.isSignedIn" :label="`Signed in as ${auth.user?.username ?? ''}`">
-          <template #trigger><i class="fa-solid fa-user" /></template>
+          <template #trigger><font-awesome-icon icon="fa-solid fa-user" /></template>
           <AppMenuItem icon="fa-solid fa-user-gear" @select="navigateTo('account')">
             Account
           </AppMenuItem>
@@ -454,7 +456,7 @@ router.afterEach((to) => {
           :class="{ 'is-selected': isLoginActive }"
           @click="navigateLogin"
         >
-          <span class="icon"><i class="fa-solid fa-right-to-bracket" /></span>
+          <span class="icon"><font-awesome-icon icon="fa-solid fa-right-to-bracket" /></span>
           <span class="nav-login-label">Sign in</span>
         </ToolbarButton>
       </div>

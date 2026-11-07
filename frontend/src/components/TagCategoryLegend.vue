@@ -22,7 +22,7 @@ const store = useGalleryStore()
     <header class="legend-head">
       <h4 class="legend-title">Tag colours</h4>
       <button type="button" class="legend-close" aria-label="Hide tag help" @click="$emit('close')">
-        <i class="fa-solid fa-xmark" />
+        <font-awesome-icon icon="fa-solid fa-xmark" />
       </button>
     </header>
 

@@ -70,7 +70,7 @@ function submitJump() {
   >
     <PaginationList v-slot="{ items }" class="pager-list">
       <PaginationPrev class="pager-btn">
-        <span class="icon"><i class="fa-solid fa-chevron-left" /></span>
+        <span class="icon"><font-awesome-icon icon="fa-solid fa-chevron-left" /></span>
         <span class="pager-btn-label">Previous</span>
       </PaginationPrev>
 
@@ -108,7 +108,7 @@ function submitJump() {
 
       <PaginationNext class="pager-btn">
         <span class="pager-btn-label">Next</span>
-        <span class="icon"><i class="fa-solid fa-chevron-right" /></span>
+        <span class="icon"><font-awesome-icon icon="fa-solid fa-chevron-right" /></span>
       </PaginationNext>
     </PaginationList>
   </PaginationRoot>

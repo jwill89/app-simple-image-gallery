@@ -158,7 +158,7 @@ async function signIn() {
                   autofocus
                 />
                 <!-- eslint-enable vuejs-accessibility/no-autofocus -->
-                <span class="icon is-left"><i class="fa-solid fa-user" /></span>
+                <span class="icon is-left"><font-awesome-icon icon="fa-solid fa-user" /></span>
               </div>
             </div>
             <div class="field">
@@ -171,7 +171,7 @@ async function signIn() {
                   type="password"
                   autocomplete="current-password"
                 />
-                <span class="icon is-left"><i class="fa-solid fa-lock" /></span>
+                <span class="icon is-left"><font-awesome-icon icon="fa-solid fa-lock" /></span>
               </div>
             </div>
             <div class="field">
@@ -204,7 +204,7 @@ async function signIn() {
                 :class="{ 'is-loading': passkeyBusy }"
                 @click="signInWithPasskey"
               >
-                <span class="icon"><i class="fa-solid fa-key" /></span>
+                <span class="icon"><font-awesome-icon icon="fa-solid fa-key" /></span>
                 <span>Sign in with a passkey</span>
               </button>
             </template>

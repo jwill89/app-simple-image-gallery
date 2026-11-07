@@ -15,7 +15,7 @@ const emit = defineEmits<{ select: [] }>()
 
 <template>
   <DropdownMenuItem class="menu-item" :class="{ 'is-danger': danger }" @select="emit('select')">
-    <i v-if="icon" :class="icon" class="menu-item-icon" />
+    <font-awesome-icon v-if="icon" :icon="icon" class="menu-item-icon" />
     <span><slot /></span>
   </DropdownMenuItem>
 </template>

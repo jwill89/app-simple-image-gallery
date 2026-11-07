@@ -108,11 +108,11 @@ const crumbs = computed<Crumb[]>(() => {
         :class="{ 'is-active': idx === crumbs.length - 1 }"
       >
         <RouterLink v-if="crumb.to && idx < crumbs.length - 1" :to="crumb.to" :title="crumb.title">
-          <span class="icon is-small"><i :class="crumb.icon" /></span>
+          <span class="icon is-small"><font-awesome-icon :icon="crumb.icon" /></span>
           <span>{{ crumb.label }}</span>
         </RouterLink>
         <a v-else aria-current="page" :title="crumb.title">
-          <span class="icon is-small"><i :class="crumb.icon" /></span>
+          <span class="icon is-small"><font-awesome-icon :icon="crumb.icon" /></span>
           <span>{{ crumb.label }}</span>
         </a>
       </li>

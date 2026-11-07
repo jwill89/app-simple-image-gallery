@@ -69,7 +69,9 @@ function onCardKey(e: KeyboardEvent) {
         </div>
         <!-- Animated badge (videos and GIFs) -->
         <span v-if="isAnimated" class="gallery-card-badge">
-          <i :class="item.media_type === 'video' ? 'fa-solid fa-film' : 'fa-solid fa-play'" />
+          <font-awesome-icon
+            :icon="item.media_type === 'video' ? 'fa-solid fa-film' : 'fa-solid fa-play'"
+          />
         </span>
         <!-- Favorite heart -->
         <button
@@ -81,7 +83,7 @@ function onCardKey(e: KeyboardEvent) {
           :aria-pressed="isFav"
           @click="toggleFavorite"
         >
-          <i :class="isFav ? 'fa-solid fa-heart' : 'fa-regular fa-heart'" />
+          <font-awesome-icon :icon="isFav ? 'fa-solid fa-heart' : 'fa-regular fa-heart'" />
         </button>
       </div>
     </div>
