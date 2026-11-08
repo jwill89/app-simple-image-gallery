@@ -16,6 +16,8 @@ tagging.
 
 ## [Unreleased]
 
+## [7.1.0] - 2026-11-07
+
 ### Added
 
 - **A daily database backup.** Each deploy now installs and checks a systemd timer
@@ -51,6 +53,8 @@ tagging.
   `php artisan serve`.
 - **The first page appears without fading in.** Pages still fade from one to the next, but
   the first had faded in from nothing, its text too faint to read for a quarter-second.
+- **Dependencies, within their ranges**: Vite 8.3.6, Vue 3.5.45 and knip on the front end, PHP-CS-Fixer
+  on the backend, and every Composer requirement's floor raised to the version installed.
 
 ### Fixed
 
@@ -919,6 +923,7 @@ from the git history, not a formal release.
   with a dedicated tag page, sorting by tag name, a sticky footer with copyright/
   disclaimer, and a **cron** ingest script for importing media (including videos).
 
+[7.1.0]: https://github.com/jwill89/simple-image-gallery/compare/v7.0.1...v7.1.0
 [7.0.1]: https://github.com/jwill89/simple-image-gallery/compare/v7.0.0...v7.0.1
 [7.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v6.0.0...v7.0.0
 [6.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v5.0.0...v6.0.0

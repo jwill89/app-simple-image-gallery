@@ -255,7 +255,10 @@ php artisan gallery:dupes --tune --max-distance=8 --max-region-diff=off  # calib
 ```powershell
 task deploy                     # build the SPA → pack the code → upload → composer install → migrate → optimize
 task deploy -- -SkipBuild       # redeploy the existing frontend/dist (./scripts/deploy.ps1 -SkipBuild)
+task deploy -- -Preview         # try the working tree, untagged, stamped preview-<date-time>
 ```
+
+It ships only a release: a clean tree whose HEAD carries the tag CI made for `frontend/package.json`'s version (it fetches the tags first). Anything else goes out only with `-Preview`.
 
 `scripts/deploy.ps1` is built on shared-tooling's SharedDeploy module (`shared/deploy/pwsh`;
 PuTTY plink; host, user, key and app folder come from the untracked `scripts/deploy.config.ps1`).
@@ -816,7 +819,7 @@ Keep these invariants when editing auth or routes:
   install the combination without complaint. Still true of 3.3.14 (2026-11): its only addition is
   following `typescript` when it is aliased to `@typescript/typescript6`. Stay on `~6.0.3` until
   vue-tsc ships TS 7 support.
-- **Version bumps are the release trigger.** CI tags and publishes `v<version>` from `frontend/package.json` using the matching `## [<version>]` section of `CHANGELOG.md` as the release body. A release bumps the version in `frontend/package.json` and `package-lock.json` (`npm version x.y.z --no-git-tag-version`) and in `config/gallery.php`'s `version`, which `GET /api/version` serves (the footer reads `package.json`), turns `## [Unreleased]` into its section with a compare link, and lands on `main`; then `task deploy` ships it. The **HTTP contract version is separate** — `App\OpenApi\OpenApiSpec::API_VERSION` — and only moves when the API surface changes; after moving it, run `composer docs`.
+- **Version bumps are the release trigger.** CI tags and publishes `v<version>` from `frontend/package.json` using the matching `## [<version>]` section of `CHANGELOG.md` as the release body. A release bumps the version in `frontend/package.json` and `package-lock.json` (`npm version x.y.z --no-git-tag-version`) and in `config/gallery.php`'s `version`, which `GET /api/version` serves (the footer reads `package.json`), turns `## [Unreleased]` into its section with a compare link, and lands on `main`; once CI is green and has tagged it, `task deploy` ships that tag, and nothing untagged without `-Preview`. The **HTTP contract version is separate** — `App\OpenApi\OpenApiSpec::API_VERSION` — and only moves when the API surface changes; after moving it, run `composer docs`.
 - A historical `IMPROVEMENTS.md` also exists (gitignored) — old internal review notes, not a current audit; don't trust it as the state of the codebase.
 
 ---

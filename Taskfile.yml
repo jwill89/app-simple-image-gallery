@@ -108,15 +108,22 @@ tasks:
     cmds:
       - cd backend && composer audit
       - cd frontend && npm audit --audit-level=high --omit=dev
+      - task: shared:vuln
 
   check:
     desc: Lint, audit, test, and build, as CI does (CI also checks the generated files are current)
     cmds:
-      - task: lint
-      - task: vuln
-      - task: test
+      # The steps that don't depend on each other run at once, each line prefixed with
+      # its task (standards/testing.md); the ones that need them follow, in order.
+      - task --parallel --output prefixed lint vuln test
       - task: build
       - task: test:e2e
+
+  push:
+    desc: Take the in-range updates Dependabot would open, scan for advisories, run task check, then push (-- -Yes, -SkipUpdates, -SkipCheck)
+    interactive: true
+    cmds:
+      - task: shared:push
 
   deploy:
     desc: Build the SPA and deploy it with the Laravel code, then migrate (pass flags after --, e.g. -- -SkipMigrate)

@@ -94,6 +94,12 @@
 .PARAMETER NoDbPull
     Don't pull a copy of the live database to the local one.
 
+.PARAMETER Preview
+    Deploy the working tree as it is, uncommitted changes included, stamped
+    preview-<date-time>. Without it the deploy ships only a release: a clean tree at the tag
+    CI made for frontend/package.json's version (standards/deploy-and-ops.md), with the
+    tags fetched first.
+
 .EXAMPLE
     .\scripts\deploy.ps1                       # full build + deploy + composer + migrate
 .EXAMPLE
@@ -116,7 +122,8 @@ param(
     [switch]$SkipComposer,
     [switch]$SkipMigrate,
     [switch]$NoBackup,
-    [switch]$NoDbPull
+    [switch]$NoDbPull,
+    [switch]$Preview
 )
 
 $ErrorActionPreference = 'Stop'
@@ -157,7 +164,21 @@ $shipped = 'app', 'bootstrap', 'config', 'database', 'public', 'resources', 'rou
 $code = @($shipped) + 'vendor'
 $queueRestart = 'php artisan queue:restart >/dev/null 2>&1 || true'
 
-Write-Host "Deploying Gallery -> $($settings.VpsUser)@$($settings.VpsHost):$appRoot" -ForegroundColor Yellow
+# Only a release ships: a clean tree at the tag CI made for frontend/package.json's version
+# (standards/deploy-and-ops.md). -Preview ships the tree as it is, stamped preview-<date-time>.
+if ($Preview) {
+    $version = 'preview-' + (Get-Date -Format 'yyyyMMdd-HHmm')
+    Write-Warning "Preview: deploying the working tree untagged, as $version."
+} else {
+    Assert-CleanWorkingTree -Path $repoRoot
+    git -C $repoRoot fetch --tags --quiet
+    if ($LASTEXITCODE -ne 0) { Write-Warning 'Could not fetch tags; checking against the local ones.' }
+    $version = Get-ReleaseTag -Path $repoRoot
+    $expected = 'v' + (Get-Content -LiteralPath (Join-Path $frontendDir 'package.json') -Raw | ConvertFrom-Json).version
+    if ($version -ne $expected) { throw "HEAD is tagged $version, but frontend/package.json says $expected." }
+}
+
+Write-Host "Deploying Gallery $version -> $($settings.VpsUser)@$($settings.VpsHost):$appRoot" -ForegroundColor Yellow
 
 # 1. Build the frontend
 if ($SkipBuild) {

@@ -176,7 +176,11 @@ The app is deployed to the DigitalOcean droplet with [`scripts/deploy.ps1`](scri
 task deploy                                   # build the SPA, push the code, composer install, migrate
 task deploy -- -SkipBuild                     # redeploy the current dist without rebuilding
 task deploy -- -SkipComposer -SkipMigrate     # code-only push
+task deploy -- -Preview                       # try the working tree, untagged
 ```
+
+It ships only a release: a clean tree at the tag CI made for `frontend/package.json`'s version.
+Raise the version, push, and deploy once CI has tagged it; `-Preview` is for trying a build first.
 
 It ships the code only — never `.env`, `storage/`, `vendor/`, the database or the media. On
 the host it:
