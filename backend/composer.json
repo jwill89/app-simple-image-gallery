@@ -21,7 +21,7 @@
     "require-dev": {
         "driftingly/rector-laravel": "^2.7.3",
         "fakerphp/faker": "^1.24.1",
-        "friendsofphp/php-cs-fixer": "^3.95.29",
+        "friendsofphp/php-cs-fixer": "^3.95.30",
         "larastan/larastan": "^3.14",
         "laravel/pail": "^1.2.7",
         "mockery/mockery": "^1.6.15",
@@ -32,7 +32,7 @@
         "phpstan/phpstan-deprecation-rules": "^2.0.5",
         "phpstan/phpstan-strict-rules": "^2.1.1",
         "rector/rector": "^2.8.4",
-        "zircote/swagger-php": "^7.3"
+        "zircote/swagger-php": "^7.5"
     },
     "autoload": {
         "psr-4": {
