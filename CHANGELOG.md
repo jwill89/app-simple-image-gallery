@@ -16,6 +16,10 @@ tagging.
 
 ## [Unreleased]
 
+### Changed
+
+- `task deploy` ships the newest release CI tagged on main, built in a checkout of its own with clean installs from its lockfiles (shared-tooling 2.4.0). A commit after the release, such as a shared-tooling update, no longer stops it with "HEAD is not tagged", and nothing uncommitted reaches the site. The droplet records the release each deploy leaves running, and deploying one already running does nothing; `task deploy -- -Force` deploys it again. `-SkipBuild` now goes with `-Preview` alone.
+
 ## [7.1.0] - 2026-11-07
 
 ### Added

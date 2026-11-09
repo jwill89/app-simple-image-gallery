@@ -254,11 +254,11 @@ php artisan gallery:dupes --tune --max-distance=8 --max-region-diff=off  # calib
 
 ```powershell
 task deploy                     # build the SPA → pack the code → upload → composer install → migrate → optimize
-task deploy -- -SkipBuild       # redeploy the existing frontend/dist (./scripts/deploy.ps1 -SkipBuild)
+task deploy -- -Force           # the release again, though the droplet runs it
 task deploy -- -Preview         # try the working tree, untagged, stamped preview-<date-time>
 ```
 
-It ships only a release: a clean tree whose HEAD carries the tag CI made for `frontend/package.json`'s version (it fetches the tags first). Anything else goes out only with `-Preview`.
+It ships only a release: the newest tag CI made for `frontend/package.json`'s version (it fetches the tags first), built in a checkout of its own, so commits after it stay out; when the droplet already runs it, nothing is done. Anything else goes out only with `-Preview`.
 
 `scripts/deploy.ps1` is built on shared-tooling's SharedDeploy module (`shared/deploy/pwsh`;
 PuTTY plink; host, user, key and app folder come from the untracked `scripts/deploy.config.ps1`).

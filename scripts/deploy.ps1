@@ -15,8 +15,16 @@
     its .env names), as do backups/ and slim-rollback/. A deploy ships and
     replaces code only, and never touches those.
 
-    Steps:
-      1. Build the frontend (vue-tsc + vite) -> frontend/dist  (skip with -SkipBuild).
+    What ships is the newest release: the newest tag CI made on main for
+    frontend/package.json's version (the tags are fetched first), checked out into a
+    folder of its own, with npm ci from its lockfile, and built and packed from there.
+    Commits after it, a shared-tooling update or work not yet released, are not part of
+    it, and neither is anything uncommitted. -Preview ships the working tree instead. The
+    host records the release each deploy leaves running; when that is already this
+    release, nothing is done (-Force deploys it again).
+
+    Steps, on one SSH connection held for the whole run:
+      1. Build the frontend (vue-tsc + vite) -> frontend/dist.
       2. Stage and pack the payload, code only, as one archive:
            from backend/  -> app/, bootstrap/ (not its cache), config/, database/
                              (not a local gallery.db), public/, routes/, artisan,
@@ -24,7 +32,7 @@
            from frontend/ -> dist/* into public/, except index.html, which goes to
                              resources/spa/index.html, where the SPA shell reads it
          Never .env, storage/, vendor/ or bootstrap/cache/.
-      3. Open one SSH connection, held for the whole run, and upload the archive.
+      3. Upload the archive.
       4. On the host, in one remote run, once the archive's SHA-256 and file count check:
            - build the new code whole in .deploy-next: unpacked, vendor/ copied from
              the live code, composer install --no-dev     (skip with -SkipComposer),
@@ -46,7 +54,8 @@
          path and the exact restore command.
       5. Fetch the health URL and the site from here, through Cloudflare. If either
          fails, the previous code goes back (the database stays as it is), unless
-         -NoBackup left nothing to go back to.
+         -NoBackup left nothing to go back to. Once both pass, the host records the
+         release.
       6. Check the daily backup (shared-tooling's Install-BackupTimer): a systemd timer
          that runs as www-data at 10:00 UTC and copies the database with VACUUM INTO to
          db/backups/gallery-YYYY-MM-DD.db.gz, integrity-checked and compressed, keeping
@@ -84,7 +93,10 @@
 .PARAMETER PublicHost
     The site's public host name.
 .PARAMETER SkipBuild
-    Deploy the existing frontend/dist without rebuilding.
+    With -Preview, deploy the existing frontend/dist without rebuilding. A release is
+    always built from its tag.
+.PARAMETER Force
+    Deploy the release even when the host already runs it.
 .PARAMETER SkipComposer
     Don't run `composer install` on the host.
 .PARAMETER SkipMigrate
@@ -96,14 +108,13 @@
 
 .PARAMETER Preview
     Deploy the working tree as it is, uncommitted changes included, stamped
-    preview-<date-time>. Without it the deploy ships only a release: a clean tree at the tag
-    CI made for frontend/package.json's version (standards/deploy-and-ops.md), with the
-    tags fetched first.
+    preview-<date-time>. Without it the deploy ships only the newest release
+    (standards/deploy-and-ops.md).
 
 .EXAMPLE
     .\scripts\deploy.ps1                       # full build + deploy + composer + migrate
 .EXAMPLE
-    .\scripts\deploy.ps1 -SkipBuild            # redeploy current dist without rebuilding
+    .\scripts\deploy.ps1 -Force                # the release again, though the host runs it
 .EXAMPLE
     .\scripts\deploy.ps1 -SkipMigrate -SkipComposer   # code-only push
 #>
@@ -119,6 +130,7 @@ param(
     [string]$PublicHost = 'gallery.mathdad.me',
     [string]$HealthUrl,
     [switch]$SkipBuild,
+    [switch]$Force,
     [switch]$SkipComposer,
     [switch]$SkipMigrate,
     [switch]$NoBackup,
@@ -138,15 +150,15 @@ $appRoot = $settings.AppRoot
 if (-not $HealthUrl) { $HealthUrl = "https://$PublicHost/api/media/count" }
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
-$backendDir = Join-Path $repoRoot 'backend'
-$frontendDir = Join-Path $repoRoot 'frontend'
-$distDir = Join-Path $frontendDir 'dist' # vite outDir is frontend/dist
+# What the host records as running, for the next deploy to compare with.
+$record = 'gallery'
 
 # The local database the pull refreshes: the one backend/.env names, which the app reads.
-# backend/database/gallery.db is gitignored for it, and the deploy never packs it.
+# backend/database/gallery.db is gitignored for it, and the deploy never packs it. The
+# .env is this checkout's: a release's own checkout has none.
 $devDatabase = $null
 if (-not $NoDbPull) {
-    $envPath = Join-Path $backendDir '.env'
+    $envPath = Join-Path $repoRoot 'backend/.env'
     $line = if (Test-Path -LiteralPath $envPath) { Get-Content -LiteralPath $envPath | Where-Object { $_ -match '^DB_DATABASE=' } | Select-Object -First 1 }
     $value = if ($line) { ($line -replace '^DB_DATABASE=', '').Trim() -replace '^["'']|["'']$', '' }
     if ($value -and [IO.Path]::IsPathRooted($value)) {
@@ -164,60 +176,18 @@ $shipped = 'app', 'bootstrap', 'config', 'database', 'public', 'resources', 'rou
 $code = @($shipped) + 'vendor'
 $queueRestart = 'php artisan queue:restart >/dev/null 2>&1 || true'
 
-# Only a release ships: a clean tree at the tag CI made for frontend/package.json's version
+# Only a release ships: the newest tag CI made for frontend/package.json's version
 # (standards/deploy-and-ops.md). -Preview ships the tree as it is, stamped preview-<date-time>.
 if ($Preview) {
     $version = 'preview-' + (Get-Date -Format 'yyyyMMdd-HHmm')
     Write-Warning "Preview: deploying the working tree untagged, as $version."
 } else {
-    Assert-CleanWorkingTree -Path $repoRoot
-    git -C $repoRoot fetch --tags --quiet
-    if ($LASTEXITCODE -ne 0) { Write-Warning 'Could not fetch tags; checking against the local ones.' }
-    $version = Get-ReleaseTag -Path $repoRoot
-    $expected = 'v' + (Get-Content -LiteralPath (Join-Path $frontendDir 'package.json') -Raw | ConvertFrom-Json).version
-    if ($version -ne $expected) { throw "HEAD is tagged $version, but frontend/package.json says $expected." }
+    if ($SkipBuild) { throw 'A release is always built from its tag; -SkipBuild goes with -Preview only.' }
+    $release = Get-DeployRelease -Path $repoRoot
+    $version = $release.Tag
 }
 
 Write-Host "Deploying Gallery $version -> $($settings.VpsUser)@$($settings.VpsHost):$appRoot" -ForegroundColor Yellow
-
-# 1. Build the frontend
-if ($SkipBuild) {
-    Write-Step 'Skipping frontend build (-SkipBuild); using existing dist/'
-} else {
-    Invoke-NpmBuild -Path $frontendDir -Output (Join-Path $distDir 'index.html')
-}
-if (-not (Test-Path (Join-Path $distDir 'index.html'))) {
-    throw 'frontend/dist/index.html is missing - nothing to deploy. (Run without -SkipBuild.)'
-}
-
-# 2. Stage and pack the payload (code only; never data)
-Write-Step 'Packing the deploy...'
-$stage = Join-Path ([IO.Path]::GetTempPath()) ('gallery-deploy-{0}' -f [guid]::NewGuid())
-New-Item -ItemType Directory -Path $stage | Out-Null
-try {
-    foreach ($p in $shipped | Where-Object { $_ -ne 'resources' }) {
-        $source = Join-Path $backendDir $p
-        if (-not (Test-Path $source)) { throw "Expected path missing: backend/$p" }
-        Copy-Item -Path $source -Destination $stage -Recurse
-    }
-    # What a local run leaves behind: cached config and package lists (they name
-    # dev packages the host doesn't install), a local database, the media link.
-    Get-ChildItem (Join-Path $stage 'bootstrap/cache') -Filter '*.php' | Remove-Item -Force
-    Get-ChildItem (Join-Path $stage 'database') -Filter 'gallery.db*' | Remove-Item -Force
-    foreach ($link in @('public/media', 'public/storage')) {
-        $path = Join-Path $stage $link
-        if (Test-Path $path) { Remove-Item $path -Recurse -Force }
-    }
-    # The built SPA: assets into public/, its index.html where SpaController reads it.
-    Get-ChildItem $distDir | Where-Object { $_.Name -ne 'index.html' } | Copy-Item -Destination (Join-Path $stage 'public') -Recurse
-    New-Item -ItemType Directory -Path (Join-Path $stage 'resources/spa') | Out-Null
-    Copy-Item (Join-Path $distDir 'index.html') (Join-Path $stage 'resources/spa/index.html')
-
-    $archive = Compress-DeployArchive -Root $stage -Item $shipped
-} finally {
-    Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
-}
-Write-Ok ('{0} files, {1:N1} MB, one archive' -f $archive.FileCount, ((Get-Item $archive.Path).Length / 1MB))
 
 # 3. The host's steps. They run from AppRoot, with $stage (.deploy-next) and $backup
 # (.deploy-backup) set by the module.
@@ -301,8 +271,66 @@ php artisan queue:restart
 chown -R www-data:www-data bootstrap storage
 '@
 
+$tree = $null
+$archive = $null
 try {
     $connection = $settings | Open-DeployConnection
+    # A preview builds the working tree; a release, its tag checked out on its own.
+    $build = $repoRoot
+    if (-not $Preview) {
+        $live = Get-DeployedRelease -Name $record
+        if ($live -eq $version -and -not $Force) {
+            Write-Ok "$version is already running on the host; nothing to deploy. (A version pushed since goes out once CI tags it; -Force deploys this one again.)"
+            return
+        }
+        $after = if ($release.Since) { "; the $($release.Since) commit(s) on main after it are not part of it" } else { '' }
+        Write-Step "Releasing $version (the host runs $(if ($live) { $live } else { 'a release not recorded' }))$after"
+        $tree = New-ReleaseTree -Path $repoRoot -Tag $version -Npm 'frontend'
+        $build = $tree
+    }
+    $backendDir = Join-Path $build 'backend'
+    $frontendDir = Join-Path $build 'frontend'
+    $distDir = Join-Path $frontendDir 'dist' # vite outDir is frontend/dist
+
+    # 1. Build the frontend
+    if ($SkipBuild) {
+        Write-Step 'Skipping frontend build (-SkipBuild); using existing dist/'
+    } else {
+        Invoke-NpmBuild -Path $frontendDir -Output (Join-Path $distDir 'index.html')
+    }
+    if (-not (Test-Path (Join-Path $distDir 'index.html'))) {
+        throw 'frontend/dist/index.html is missing - nothing to deploy. (Run without -SkipBuild.)'
+    }
+
+    # 2. Stage and pack the payload (code only; never data)
+    Write-Step 'Packing the deploy...'
+    $stage = Join-Path ([IO.Path]::GetTempPath()) ('gallery-deploy-{0}' -f [guid]::NewGuid())
+    New-Item -ItemType Directory -Path $stage | Out-Null
+    try {
+        foreach ($p in $shipped | Where-Object { $_ -ne 'resources' }) {
+            $source = Join-Path $backendDir $p
+            if (-not (Test-Path $source)) { throw "Expected path missing: backend/$p" }
+            Copy-Item -Path $source -Destination $stage -Recurse
+        }
+        # What a local run leaves behind: cached config and package lists (they name
+        # dev packages the host doesn't install), a local database, the media link.
+        Get-ChildItem (Join-Path $stage 'bootstrap/cache') -Filter '*.php' | Remove-Item -Force
+        Get-ChildItem (Join-Path $stage 'database') -Filter 'gallery.db*' | Remove-Item -Force
+        foreach ($link in @('public/media', 'public/storage')) {
+            $path = Join-Path $stage $link
+            if (Test-Path $path) { Remove-Item $path -Recurse -Force }
+        }
+        # The built SPA: assets into public/, its index.html where SpaController reads it.
+        Get-ChildItem $distDir | Where-Object { $_.Name -ne 'index.html' } | Copy-Item -Destination (Join-Path $stage 'public') -Recurse
+        New-Item -ItemType Directory -Path (Join-Path $stage 'resources/spa') | Out-Null
+        Copy-Item (Join-Path $distDir 'index.html') (Join-Path $stage 'resources/spa/index.html')
+
+        $archive = Compress-DeployArchive -Root $stage -Item $shipped
+    } finally {
+        Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    Write-Ok ('{0} files, {1:N1} MB, one archive' -f $archive.FileCount, ((Get-Item $archive.Path).Length / 1MB))
+
     Write-Step 'Uploading...'
     $upload = Invoke-Upload -Path $archive.Path -Destination 'gallery-deploy.tgz' -Activity 'Uploading the Gallery' -FileCount $archive.FileCount
     if (-not $upload.Ok) { throw "Upload failed; the live site is untouched.`n$($upload.Err)" }
@@ -321,6 +349,8 @@ try {
             Restore-RemoteItemSet -Root $appRoot -Item $code -OnRestore $queueRestart
         }
     }
+    # Only a deploy that stayed is recorded; a preview's stamp makes the next release go out.
+    Set-DeployedRelease -Name $record -Release $version
 
     # From here the new code is live and stays; these keep the data safe. The live database
     # is the one the host's .env names.
@@ -340,7 +370,8 @@ grep -E '^DB_DATABASE=' "__ENV__" | head -n 1 | cut -d= -f2- | sed -e 's/^"//' -
     if ($devDatabase) { $null = Copy-LiveDatabase -Database $database -Destination $devDatabase }
 } finally {
     Close-DeployConnection
-    Remove-Item -LiteralPath $archive.Path -ErrorAction SilentlyContinue
+    if ($archive) { Remove-Item -LiteralPath $archive.Path -ErrorAction SilentlyContinue }
+    if ($tree) { Remove-ReleaseTree -Path $tree -Repository $repoRoot }
 }
 
 Write-Host "`n[OK] Gallery deployed to $($connection.Target):$appRoot" -ForegroundColor Green
