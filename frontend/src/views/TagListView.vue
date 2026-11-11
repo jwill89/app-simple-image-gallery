@@ -689,8 +689,7 @@ onMounted(() => {
       >
         <p class="mb-4">
           Are you sure you want to delete
-          <strong>{{ deleteTargetTag?.tag_name }}</strong
-          >? This will remove the tag from all items.
+          <strong>{{ deleteTargetTag?.tag_name }}</strong>? This will remove the tag from all items.
         </p>
         <div class="field">
           <label class="checkbox">

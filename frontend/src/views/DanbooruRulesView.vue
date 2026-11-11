@@ -560,9 +560,8 @@ onMounted(loadRules)
       >
         <p>
           Remove the mapping <strong>{{ deleteTagTarget?.danbooru_tag }}</strong> →
-          <strong>{{ deleteTagTarget?.gallery_tag }}</strong
-          >? Future imports of this Danbooru tag will fall back to the default underscore-to-space
-          conversion.
+          <strong>{{ deleteTagTarget?.gallery_tag }}</strong>? Future imports of this Danbooru tag
+          will fall back to the default underscore-to-space conversion.
         </p>
 
         <template #footer>
