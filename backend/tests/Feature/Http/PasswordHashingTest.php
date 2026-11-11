@@ -7,10 +7,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Tests\Support\TestBrowser;
 
-// Passwords are hashed with argon2id, and a hash made another way (bcrypt, from
-// before 7.2.0, or argon2id with weaker settings) is replaced at the sign-in
-// that proves the password. (config/hashing.php's own settings are in
-// SignInConfigTest; these tests run with the cheaper ones phpunit.xml gives.)
+// Passwords are hashed with argon2id, and a hash made another way (bcrypt, or
+// argon2id with weaker settings) is replaced at the sign-in that proves the
+// password. (config/hashing.php's own settings are in SignInConfigTest; these
+// tests run with the cheaper ones phpunit.xml gives.)
 
 beforeEach(function (): void {
     config(['gallery.allow_signup' => true]);
@@ -26,7 +26,7 @@ function hashInfo(string $hash): array
     return password_get_info($hash);
 }
 
-/** Replaces an account's stored hash behind the model's back, as an older release left it. */
+/** Replaces an account's stored hash behind the model's back, with one made some other way. */
 function storeHash(User $user, string $hash): void
 {
     DB::table('users')->where('id', $user->id)->update(['password' => $hash]);

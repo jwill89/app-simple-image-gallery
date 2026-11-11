@@ -1,5 +1,5 @@
 # The gallery's queue worker: ingested files, Danbooru imports and rebuilt thumbnails,
-# fingerprints and metadata. Every deploy (scripts/deploy.ps1) fills in __APP_ROOT__
+# fingerprints and metadata. Every deploy (scripts/deploy.ps1) fills in __WEB_ROOT__
 # from its settings and installs the unit where it differs, and restarts the worker on
 # the new code.
 
@@ -11,7 +11,7 @@ After=network.target
 # www-data owns the thumbnails and the media the worker writes, and what Apache serves.
 User=www-data
 Group=www-data
-WorkingDirectory=__APP_ROOT__
+WorkingDirectory=__WEB_ROOT__
 # --max-time ends the worker after an hour, so a slow leak can't build up. It exits
 # with status 0, which only Restart=always starts again.
 ExecStart=/usr/bin/php artisan queue:work --tries=3 --max-time=3600

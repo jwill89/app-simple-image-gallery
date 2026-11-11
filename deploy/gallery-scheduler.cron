@@ -1,8 +1,8 @@
 # Laravel's scheduler for the gallery, run every minute as www-data: it starts what
 # routes/console.php says is due, which is gallery:ingest at midnight in the timezone
 # SCHEDULE_TIMEZONE gives in the app's .env. Every deploy (scripts/deploy.ps1) fills in
-# __APP_ROOT__ from its settings and installs the file as /etc/cron.d/gallery-scheduler
+# __WEB_ROOT__ from its settings and installs the file as /etc/cron.d/gallery-scheduler
 # where it differs.
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-* * * * * www-data cd __APP_ROOT__ && /usr/bin/php artisan schedule:run >> /dev/null 2>&1
+* * * * * www-data cd __WEB_ROOT__ && /usr/bin/php artisan schedule:run >> /dev/null 2>&1

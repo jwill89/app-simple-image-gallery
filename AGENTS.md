@@ -271,7 +271,7 @@ task deploy -- -Preview         # try the working tree, untagged, stamped previe
 It ships only a release: the newest tag CI made for `frontend/package.json`'s version (it fetches the tags first), built in a checkout of its own, so commits after it stay out; when the droplet already runs it, nothing is done. Anything else goes out only with `-Preview`.
 
 `scripts/deploy.ps1` is built on shared-tooling's SharedDeploy module (`shared/deploy/pwsh`;
-PuTTY plink; host, user, key, app folder, the certificate folder and the vhosts' `ServerAdmin`
+PuTTY plink; host, user, key, web root, the certificate folder and the vhosts' `ServerAdmin`
 come from the untracked `scripts/deploy.config.ps1`). It ships **code and the server files in
 `deploy/`**, as one archive whose SHA-256 and file count the host checks before anything
 changes. It never ships `.env`, `storage/`, `vendor/`, the data or the backups. On the host it:
@@ -298,7 +298,7 @@ fails, the previous code and server files go back (the database stays as it is),
 **The server files** are `deploy/gallery-http.conf` and `gallery-https.conf` (the VirtualHosts on
 ports 80 and 443, installed as `sites-available/<PublicHost>.conf` and `…-le-ssl.conf`),
 `gallery-queue.service` and `gallery-scheduler.cron` (`/etc/cron.d/gallery-scheduler`). Their host
-values are `__SERVER_NAME__`, `__SERVER_ADMIN__`, `__APP_ROOT__` and `__CERT_NAME__`, filled from
+values are `__SERVER_NAME__`, `__SERVER_ADMIN__`, `__WEB_ROOT__` and `__CERT_NAME__`, filled from
 the deploy settings when the archive is packed (`Export-HostConfigFile`), so nothing about the
 host's layout is in the repo. `scripts/HostConfig.ps1` holds the shell that installs them, one
 file at a time under a dotted name renamed into place, only where `cmp` finds a difference,
@@ -569,7 +569,7 @@ Keep these invariants when editing auth or routes:
   password replaces a hash made with other settings (`AuthController::login`, then
   `User::rehashPassword()`, which keeps the remember token); the account's other browsers sign
   in again at their next request, as after any change to the hash. `hashing.argon.verify` is off
-  so that a bcrypt hash from before 7.2.0 still checks. A login with a name no account has checks
+  so that an account's bcrypt hash still checks. A login with a name no account has checks
   a stand-in hash made once, so it costs what a known name costs.
 - **Admins** can't remove their own admin role (`403 OwnAdminRole`) or delete their own account
   (`403 OwnAdminAccount`, from `DELETE /users/{id}` or `DELETE /account`): another admin does

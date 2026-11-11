@@ -173,7 +173,7 @@ from `frontend/src/api/endpoints.ts` — never the generated file directly.
 
 The app is deployed to the DigitalOcean droplet with [`scripts/deploy.ps1`](scripts/deploy.ps1)
 (PowerShell and PuTTY `plink`, on shared-tooling's SharedDeploy module, using the DigitalOcean
-`.ppk` key; host, user, key and app folder come from the untracked `scripts/deploy.config.ps1`).
+`.ppk` key; host, user, key and web root come from the untracked `scripts/deploy.config.ps1`).
 `task deploy` runs it, passing flags after `--`:
 
 ```powershell

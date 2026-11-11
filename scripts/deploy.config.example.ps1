@@ -4,8 +4,8 @@
 # when it isn't passed as a -param or set via the matching $env:DEPLOY_* variable.
 #
 # Resolution order per setting (first non-empty wins):
-#   1. the script -parameter (e.g. -VpsHost, -AppRoot)
-#   2. the environment variable (e.g. $env:DEPLOY_VPS_HOST, $env:DEPLOY_APP_ROOT)
+#   1. the script -parameter (e.g. -VpsHost, -WebRoot)
+#   2. the environment variable (e.g. $env:DEPLOY_VPS_HOST, $env:DEPLOY_WEB_ROOT)
 #   3. the $Deploy* value below (this file's copy)
 #
 # Keeping these here (not in the tracked deploy.ps1) means the repo never reveals
@@ -18,7 +18,7 @@ param()
 $DeployVpsHost = "<your-droplet-ip-or-hostname>"
 $DeployVpsUser = "<ssh-user>"                        # e.g. root or a deploy user
 $DeployKeyPath = "<path-to-your-deploy-key.ppk>"
-$DeployAppRoot = "<laravel-app-folder-on-host>"     # e.g. /var/www/gallery.example.com (its public/ is the DocumentRoot)
+$DeployWebRoot = "<laravel-app-folder-on-host>"     # e.g. /var/www/gallery.example.com (its public/ is the DocumentRoot)
 # The folder under /etc/letsencrypt/live whose certificate covers the site's name; the vhost uses it.
 $DeployCertName = "<certificate-folder-name>"       # e.g. example.com
 # The address Apache shows on its error pages (ServerAdmin in the vhost).

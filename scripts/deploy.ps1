@@ -9,7 +9,7 @@
     Built on the shared SharedDeploy module: one archive, one held SSH connection,
     one remote run.
 
-    The droplet runs the Laravel app from the gallery's domain folder (AppRoot),
+    The droplet runs the Laravel app from the gallery's domain folder (WebRoot),
     whose public/ is Apache's DocumentRoot. The database, media and duplicate
     reports sit beside the code in that folder (db/, media/, dupes/, at the paths
     its .env names), as does backups/. A deploy ships and replaces code only, and
@@ -76,7 +76,7 @@
     Steps 6 and 7 run only once the site checks pass, so a deploy that rolled back
     changes neither.
 
-    The first deploy to a new AppRoot needs its .env created there first, since the
+    The first deploy to a new WebRoot needs its .env created there first, since the
     archive never carries one (it holds the app key, the database path and the
     secrets); this script refuses to run without it.
 
@@ -97,8 +97,8 @@
     SSH user. Resolved from -VpsUser, then $env:DEPLOY_VPS_USER, then $DeployVpsUser.
 .PARAMETER KeyPath
     PuTTY .ppk private key. Resolved from -KeyPath, then $env:DEPLOY_KEY_PATH, then $DeployKeyPath.
-.PARAMETER AppRoot
-    The Laravel app's folder on the host (its public/ is the DocumentRoot). Resolved from -AppRoot, then $env:DEPLOY_APP_ROOT, then $DeployAppRoot.
+.PARAMETER WebRoot
+    The Laravel app's folder on the host (its public/ is the DocumentRoot). Resolved from -WebRoot, then $env:DEPLOY_WEB_ROOT, then $DeployWebRoot.
 .PARAMETER CertName
     The vhost's certificate: its folder's name under /etc/letsencrypt/live, one whose certificate covers PublicHost. Resolved from -CertName, then $env:DEPLOY_CERT_NAME, then $DeployCertName.
 .PARAMETER ServerAdmin
@@ -140,7 +140,7 @@ param(
     [string]$VpsHost,
     [string]$VpsUser,
     [string]$KeyPath,
-    [string]$AppRoot,
+    [string]$WebRoot,
     [string]$CertName,
     [string]$ServerAdmin,
     [string]$PublicHost = 'gallery.mathdad.me',
@@ -161,9 +161,9 @@ Import-Module (Join-Path $PSScriptRoot '..\shared\deploy\pwsh\SharedDeploy.psd1'
 trap { Close-DeployConnection; Write-Host "`nERROR: $($_.Exception.Message)" -ForegroundColor Red; exit 1 }
 
 $settings = Resolve-DeploySetting -ConfigPath (Join-Path $PSScriptRoot 'deploy.config.ps1') `
-    -Value @{ VpsHost = $VpsHost; VpsUser = $VpsUser; KeyPath = $KeyPath; AppRoot = $AppRoot; CertName = $CertName; ServerAdmin = $ServerAdmin } `
-    -Required VpsHost, VpsUser, KeyPath, AppRoot, CertName, ServerAdmin
-$appRoot = $settings.AppRoot
+    -Value @{ VpsHost = $VpsHost; VpsUser = $VpsUser; KeyPath = $KeyPath; WebRoot = $WebRoot; CertName = $CertName; ServerAdmin = $ServerAdmin } `
+    -Required VpsHost, VpsUser, KeyPath, WebRoot, CertName, ServerAdmin
+$webRoot = $settings.WebRoot
 if (-not $HealthUrl) { $HealthUrl = "https://$PublicHost/api/media/count" }
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
@@ -214,9 +214,9 @@ if ($Preview) {
     $version = $release.Tag
 }
 
-Write-Host "Deploying Gallery $version -> $($settings.VpsUser)@$($settings.VpsHost):$appRoot" -ForegroundColor Yellow
+Write-Host "Deploying Gallery $version -> $($settings.VpsUser)@$($settings.VpsHost):$webRoot" -ForegroundColor Yellow
 
-# 3. The host's steps. They run from AppRoot, with $stage (.deploy-next) and $backup
+# 3. The host's steps. They run from WebRoot, with $stage (.deploy-next) and $backup
 # (.deploy-backup) set by the module.
 
 if ($SkipComposer) {
@@ -372,7 +372,7 @@ try {
         # differ from the live ones (HostConfig.ps1).
         $hostFolder = Join-Path $stage 'host'
         New-Item -ItemType Directory -Path $hostFolder | Out-Null
-        $hostValues = @{ SERVER_NAME = $PublicHost; SERVER_ADMIN = $settings.ServerAdmin; APP_ROOT = $appRoot; CERT_NAME = $settings.CertName }
+        $hostValues = @{ SERVER_NAME = $PublicHost; SERVER_ADMIN = $settings.ServerAdmin; WEB_ROOT = $webRoot; CERT_NAME = $settings.CertName }
         foreach ($file in $hostFiles) {
             $null = Export-HostConfigFile -Template (Join-Path $build "deploy/$file") -Destination $hostFolder -Value $hostValues
         }
@@ -389,7 +389,7 @@ try {
 
     Write-Step 'Running the deploy on the host (code -> composer -> snapshot -> server files -> swap -> migrate -> optimize)...'
     Switch-RemoteItemSet -Archive 'gallery-deploy.tgz' -Sha256 $archive.Sha256 -ExpectedFileCount $archive.FileCount `
-        -Root $appRoot -Item $code -Prepare $prepare -AfterSwap $afterSwap -OnRestore $putBack -NoBackup:$NoBackup
+        -Root $webRoot -Item $code -Prepare $prepare -AfterSwap $afterSwap -OnRestore $putBack -NoBackup:$NoBackup
 
     Write-Step "Checking $PublicHost..."
     if ($NoBackup) {
@@ -398,7 +398,7 @@ try {
     } else {
         # The previous code and server files go back; the database stays as it is, as above.
         Invoke-SmokeCheck -Url $HealthUrl, "https://$PublicHost/" -Attempts 3 -DelaySeconds 2 -Rollback {
-            Restore-RemoteItemSet -Root $appRoot -Item $code -OnRestore $putBackLater
+            Restore-RemoteItemSet -Root $webRoot -Item $code -OnRestore $putBackLater
         }
     }
     # Only a deploy that stayed is recorded; a preview's stamp makes the next release go out.
@@ -406,10 +406,10 @@ try {
 
     # From here the new code is live and stays; these keep the data safe. The live database
     # is the one the host's .env names.
-    $database = @(Invoke-Remote (Format-RemoteScript -Value @{ ENV = "$appRoot/.env" } -Template @'
+    $database = @(Invoke-Remote (Format-RemoteScript -Value @{ ENV = "$webRoot/.env" } -Template @'
 grep -E '^DB_DATABASE=' "__ENV__" | head -n 1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//'
 '@))[0]
-    if (-not $database) { throw "The Gallery is deployed and live, but $appRoot/.env names no DB_DATABASE, so its daily backup was not checked." }
+    if (-not $database) { throw "The Gallery is deployed and live, but $webRoot/.env names no DB_DATABASE, so its daily backup was not checked." }
 
     # The daily copies go in db/backups/, apart from the deploy's snapshots in db/.backups/.
     Write-Step 'Checking the daily backup...'
@@ -426,8 +426,8 @@ grep -E '^DB_DATABASE=' "__ENV__" | head -n 1 | cut -d= -f2- | sed -e 's/^"//' -
     if ($tree) { Remove-ReleaseTree -Path $tree -Repository $repoRoot }
 }
 
-Write-Host "`n[OK] Gallery deployed to $($connection.Target):$appRoot" -ForegroundColor Green
+Write-Host "`n[OK] Gallery deployed to $($connection.Target):$webRoot" -ForegroundColor Green
 if (-not $NoBackup) {
-    Write-Host "     Previous code kept at $appRoot/.deploy-backup" -ForegroundColor DarkGray
+    Write-Host "     Previous code kept at $webRoot/.deploy-backup" -ForegroundColor DarkGray
 }
 Write-Host '     SPA assets are content-hashed and the service worker auto-updates; no manual cache bust needed.' -ForegroundColor DarkGray

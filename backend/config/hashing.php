@@ -22,8 +22,8 @@ return [
         'memory' => (int) env('ARGON_MEMORY', 65536),
         'time' => (int) env('ARGON_TIME', 1),
         'threads' => (int) env('ARGON_THREADS', 4),
-        // Off on purpose: a hash made by an older release is bcrypt, and checking it must
-        // still work for the sign-in that rehashes it. With this on, the check throws.
+        // Off on purpose: an account's stored hash may still be bcrypt, and checking it
+        // must work for the sign-in that replaces it. With this on, the check throws.
         'verify' => false,
     ],
 

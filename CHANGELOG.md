@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.3.0] - 2026-11-11
+
+### Changed
+
+- The deploy setting for the Laravel app's folder on the droplet is `WebRoot` (`$DeployWebRoot`, `DEPLOY_WEB_ROOT`, `-WebRoot`) instead of `AppRoot`.
+- Needs a one-time step at deploy (docs/ops.md, Upgrading to 7.3.0).
+
 ## [7.2.0] - 2026-11-11
 
 ### Added
@@ -339,6 +346,7 @@ A complete rewrite as a Vue 3 single-page app on a PHP API, replacing the origin
 
 Before 2.0.0 the gallery was a jQuery and server-rendered PHP app, never versioned. It browsed images and videos, had a first tagging system with a tag page and sorting by tag name, and imported media with a cron script.
 
+[7.3.0]: https://github.com/jwill89/simple-image-gallery/compare/v7.2.0...v7.3.0
 [7.2.0]: https://github.com/jwill89/simple-image-gallery/compare/v7.1.0...v7.2.0
 [7.1.0]: https://github.com/jwill89/simple-image-gallery/compare/v7.0.1...v7.1.0
 [7.0.1]: https://github.com/jwill89/simple-image-gallery/compare/v7.0.0...v7.0.1

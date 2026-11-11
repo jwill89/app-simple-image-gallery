@@ -5,7 +5,7 @@
 /IMPROVEMENTS.md
 
 # Deploy tooling: track the script + config template (no secrets in them); keep
-# the local deploy.config.ps1 (host/user/key/app folder) out of git.
+# the local deploy.config.ps1 (host/user/key/web root) out of git.
 /scripts/*
 !/scripts/deploy.ps1
 !/scripts/HostConfig.ps1

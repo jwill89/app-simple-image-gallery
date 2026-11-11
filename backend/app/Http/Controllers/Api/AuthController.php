@@ -195,8 +195,8 @@ final class AuthController extends Controller
 
             throw new ApiException('InvalidCredentials', 401, 'The username or password is incorrect.');
         }
-        // A hash made with other settings (bcrypt, before 7.2.0, or weaker argon2id
-        // ones) is replaced by one made with today's. This runs before the sign-in,
+        // A hash made with other settings (bcrypt, or argon2id with weaker ones) is
+        // replaced by one made with the current settings. This runs before the sign-in,
         // so the new session holds the new hash and stays signed in.
         if (Hash::needsRehash($user->password)) {
             $user->rehashPassword($password);

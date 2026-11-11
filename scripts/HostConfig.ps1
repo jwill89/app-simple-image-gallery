@@ -7,7 +7,7 @@ The gallery's server files in deploy/, filled in for the host, and the shell tha
 .DESCRIPTION
 Dot-sourced by deploy.ps1. The Apache vhosts, the queue worker's unit and the scheduler's cron
 file are templates in deploy/, with the host's own values (server name, administrator's
-address, app folder, certificate) as __PLACEHOLDERS__; Export-HostConfigFile fills them from the
+address, web root, certificate) as __PLACEHOLDERS__; Export-HostConfigFile fills them from the
 deploy settings, and Get-HostConfigShell returns the shell that runs on the host as parts of
 Switch-RemoteItemSet's run:
 
@@ -48,7 +48,7 @@ function Export-HostConfigFile {
     The value of each placeholder, by name without the underscores.
 
     .EXAMPLE
-    Export-HostConfigFile -Template deploy/gallery-queue.service -Destination $folder -Value @{ APP_ROOT = '/var/www/example' }
+    Export-HostConfigFile -Template deploy/gallery-queue.service -Destination $folder -Value @{ WEB_ROOT = '/var/www/example' }
     #>
     [CmdletBinding()]
     [OutputType([string])]
