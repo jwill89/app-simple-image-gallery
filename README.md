@@ -142,7 +142,7 @@ searches, and admin-gated uploads.
   ```
 
   The repository's own deploy installs both from `deploy/` (`gallery-queue.service` and
-  `gallery-scheduler.cron`), as it does the Apache VirtualHosts.
+  `gallery-scheduler.cron`), as it does the Apache vhost.
 
 ## Development
 

@@ -40,29 +40,32 @@
            - snapshot the database next to it in .backups/, compressed and
              integrity-checked (Backup-RemoteDatabase), keeping
              the five most recent                          (skip with -NoBackup),
-           - put the server files in deploy/ (the two Apache vhosts, the queue worker's
-             unit and the scheduler's cron file, filled in with this machine's settings)
-             where they differ from the live ones, the previous copies kept in
-             .deploy-host; Apache's configtest must take the vhosts, or the deploy
-             stops here with the live code untouched (HostConfig.ps1),
+           - install the vhost (deploy/apache-vhost.conf, filled in with this machine's
+             settings) as /etc/apache2/sites-available/<PublicHost>.conf, retire any other
+             enabled site serving the name (certbot's -le-ssl file), and let Apache's
+             configtest and a trial on a copy of its config say it takes the change, or the
+             deploy stops here with the live code untouched (Switch-RemoteItemSet -Vhost),
            - swap the code in by renames, moving the previous code to .deploy-backup
              (kept afterwards unless -NoBackup); the site runs the old code or the
              new, never a half-replaced folder,
+           - put the queue worker's unit and the scheduler's cron file (deploy/, filled in
+             the same way) where they differ from the live ones, the previous copies kept
+             in .deploy-host (HostConfig.ps1),
            - php artisan migrate --force                   (skip with -SkipMigrate); it
-             comes first because the new code needs its tables to serve a request,
+             comes right after because the new code needs its tables to serve a request,
            - package:discover, storage:link (public/media), optimize, queue:restart.
              Neither storage/ nor the .env file is touched,
-           - reload Apache if a vhost changed, and restart the queue worker if its unit
-             changed; it must stay active.
+           - restart the queue worker if its unit changed (it must stay active), and
+             reload Apache if the vhost changed.
          If a step fails before the swap, the live code was never touched; after it,
-         the previous CODE and server files are moved back automatically. The database
+         the previous CODE, vhost and server files are moved back automatically. The database
          is NOT rolled back automatically: the failure trap fires on any non-zero exit,
          including after a migration has already succeeded, so reverting data could
          discard media uploaded during the deploy. A failed migration prints the snapshot
          path and the exact restore command.
       5. Fetch the health URL and the site from here, through Cloudflare. If either
-         fails, the previous code and server files go back (the database stays as it
-         is), unless -NoBackup left nothing to go back to. Once both pass, the host
+         fails, the previous code, vhost and server files go back (the database stays as
+         it is), unless -NoBackup left nothing to go back to. Once both pass, the host
          records the release.
       6. Check the daily backup (Install-BackupTimer): a systemd timer that runs as
          www-data at 10:00 UTC and copies the database with VACUUM INTO to
@@ -106,7 +109,7 @@
 .PARAMETER HealthUrl
     URL fetched after the deploy. Default: https://<PublicHost>/api/media/count.
 .PARAMETER PublicHost
-    The site's public host name, which the vhosts serve and name their files after.
+    The site's public host name, which the vhost serves and takes its file name from.
 .PARAMETER SkipBuild
     With -Preview, deploy the existing frontend/dist without rebuilding. A release is
     always built from its tag.
@@ -193,13 +196,13 @@ $shipped = 'app', 'bootstrap', 'config', 'database', 'public', 'resources', 'rou
 $code = @($shipped) + 'vendor'
 $queueRestart = 'php artisan queue:restart >/dev/null 2>&1 || true'
 
-# The server files in deploy/, as the host has them, and the shell that installs them
-# (HostConfig.ps1). The vhosts are named for the site, as Apache's tools name them.
-$hostFiles = 'gallery-http.conf', 'gallery-https.conf', 'gallery-queue.service', 'gallery-scheduler.cron'
-$hostShell = Get-HostConfigShell -VhostHttp "/etc/apache2/sites-available/$PublicHost.conf" `
-    -VhostHttps "/etc/apache2/sites-available/$PublicHost-le-ssl.conf" `
-    -Unit '/etc/systemd/system/gallery-queue.service' -Cron '/etc/cron.d/gallery-scheduler'
-# What puts the previous server files back after the swap, in the same run or a later one.
+# The server files in deploy/, as the host has them (HostConfig.ps1). The module ships the
+# vhost, one file named for the site, and retires the sites it replaces; the shell here
+# installs the queue worker's unit and the scheduler's cron file.
+$vhostFile = 'apache-vhost.conf'
+$hostFiles = $vhostFile, 'gallery-queue.service', 'gallery-scheduler.cron'
+$hostShell = Get-HostConfigShell -Unit '/etc/systemd/system/gallery-queue.service' -Cron '/etc/cron.d/gallery-scheduler'
+# What puts the previous unit and cron file back after the swap, in the same run or a later one.
 $putBack = $hostShell.PutBack + "`n" + $queueRestart
 $putBackLater = $hostShell.Functions + "`n" + $putBack
 
@@ -271,10 +274,11 @@ fi
 '@
 }
 
-# The pre-swap step ends with the database snapshot and the server files: a snapshot or
-# a vhost that fails stops the deploy with the live code untouched.
-$prepare = Format-RemoteScript -Value @{ COMPOSER = $composer; FUNCTIONS = $hostShell.Functions; SNAPSHOT = $snapshot; INSTALL = $hostShell.Install } -Template @'
+# The pre-swap step ends with the database snapshot: one that fails stops the deploy with
+# the live code untouched. The vhost goes in after it, from the module, still before the swap.
+$prepare = Format-RemoteScript -Value @{ COMPOSER = $composer; FUNCTIONS = $hostShell.Functions; BEGIN = $hostShell.Begin; SNAPSHOT = $snapshot } -Template @'
 __FUNCTIONS__
+__BEGIN__
 if [ ! -f .env ]; then echo "$root/.env is missing. Create it before the first deploy (docs/laravel-migration.md, Deployment)." >&2; exit 2; fi
 export COMPOSER_ALLOW_SUPERUSER=1
 mkdir -p "$stage/bootstrap/cache"
@@ -289,12 +293,13 @@ __COMPOSER__
 # Owned by www-data before it goes live, so Laravel can write bootstrap/cache.
 chown -R www-data:www-data "$stage"
 __SNAPSHOT__
-__INSTALL__
 '@
 
-# The migration runs first after the swap. (The package manifest it needs is built as the
-# app boots; package:discover, after it, only makes the file that boot would.)
-$afterSwap = Format-RemoteScript -Value @{ MIGRATE = $migrate; FINISH = $hostShell.Finish } -Template @'
+# The unit and the cron file go in first after the swap, then the migration. (The package
+# manifest it needs is built as the app boots; package:discover, after it, only makes the
+# file that boot would.)
+$afterSwap = Format-RemoteScript -Value @{ INSTALL = $hostShell.Install; MIGRATE = $migrate; FINISH = $hostShell.Finish } -Template @'
+__INSTALL__
 __MIGRATE__
 php artisan package:discover --ansi
 echo '==> storage:link, optimize, queue:restart'
@@ -387,18 +392,19 @@ try {
     $upload = Invoke-Upload -Path $archive.Path -Destination 'gallery-deploy.tgz' -Activity 'Uploading the Gallery' -FileCount $archive.FileCount
     if (-not $upload.Ok) { throw "Upload failed; the live site is untouched.`n$($upload.Err)" }
 
-    Write-Step 'Running the deploy on the host (code -> composer -> snapshot -> server files -> swap -> migrate -> optimize)...'
+    Write-Step 'Running the deploy on the host (code -> composer -> snapshot -> vhost -> swap -> unit and cron -> migrate -> optimize)...'
     Switch-RemoteItemSet -Archive 'gallery-deploy.tgz' -Sha256 $archive.Sha256 -ExpectedFileCount $archive.FileCount `
-        -Root $webRoot -Item $code -Prepare $prepare -AfterSwap $afterSwap -OnRestore $putBack -NoBackup:$NoBackup
+        -Root $webRoot -Item $code -Prepare $prepare -AfterSwap $afterSwap -OnRestore $putBack `
+        -Vhost "host/$vhostFile" -ServerName $PublicHost -NoBackup:$NoBackup
 
     Write-Step "Checking $PublicHost..."
     if ($NoBackup) {
         # Nothing was kept to go back to.
         Invoke-SmokeCheck -Url $HealthUrl, "https://$PublicHost/" -Attempts 3 -DelaySeconds 2 -NoRollback
     } else {
-        # The previous code and server files go back; the database stays as it is, as above.
+        # The previous code, vhost and server files go back; the database stays as it is, as above.
         Invoke-SmokeCheck -Url $HealthUrl, "https://$PublicHost/" -Attempts 3 -DelaySeconds 2 -Rollback {
-            Restore-RemoteItemSet -Root $webRoot -Item $code -OnRestore $putBackLater
+            Restore-RemoteItemSet -Root $webRoot -Item $code -ServerName $PublicHost -OnRestore $putBackLater
         }
     }
     # Only a deploy that stayed is recorded; a preview's stamp makes the next release go out.

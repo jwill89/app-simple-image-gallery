@@ -141,7 +141,7 @@ SaaS. Key features:
 │                              #   PowerShell, the backend's JSON); this repo's lines sit below the marker
 ├── .markdownlint-cli2.jsonc   # markdownlint: the shared config, plus what it skips
 ├── README.md · CLAUDE.md · CONTRIBUTING.md · CHANGELOG.md · LICENSE
-├── deploy/                    # The server files every deploy installs where they differ: the two Apache vhosts,
+├── deploy/                    # The server files every deploy installs where they differ: the Apache vhost (one file),
 │                              #   the queue worker's unit and the scheduler's cron file, with __PLACEHOLDERS__ for host values
 ├── docs/ops.md                # Steps on the host beyond the deploy: "Upgrading to x.y.z", and how the server files ship
 ├── docs/laravel-migration.md  # How the backend moved from Slim to Laravel: phases, contract changes, deployment
@@ -271,7 +271,7 @@ task deploy -- -Preview         # try the working tree, untagged, stamped previe
 It ships only a release: the newest tag CI made for `frontend/package.json`'s version (it fetches the tags first), built in a checkout of its own, so commits after it stay out; when the droplet already runs it, nothing is done. Anything else goes out only with `-Preview`.
 
 `scripts/deploy.ps1` is built on shared-tooling's SharedDeploy module (`shared/deploy/pwsh`;
-PuTTY plink; host, user, key, web root, the certificate folder and the vhosts' `ServerAdmin`
+PuTTY plink; host, user, key, web root, the certificate folder and the vhost's `ServerAdmin`
 come from the untracked `scripts/deploy.config.ps1`). It ships **code and the server files in
 `deploy/`**, as one archive whose SHA-256 and file count the host checks before anything
 changes. It never ships `.env`, `storage/`, `vendor/`, the data or the backups. On the host it:
@@ -279,34 +279,38 @@ changes. It never ships `.env`, `storage/`, `vendor/`, the data or the backups. 
 1. builds the new code whole in `.deploy-next/`: unpacked (read-only to everyone but its owner),
    `vendor/` copied from the live code, `composer install --no-dev --no-scripts`, the
    `public/media` link copied, all of it owned by `www-data`;
-2. snapshots the database (shared-tooling's `Backup-RemoteDatabase`, see §10) and puts the server
-   files where they differ from the live ones (below); a vhost Apache's `configtest` refuses
-   stops the deploy here, with the live code untouched;
+2. snapshots the database (shared-tooling's `Backup-RemoteDatabase`, see §10) and installs the
+   vhost (below); a vhost Apache refuses, on a copy of its config or at `configtest`, stops the
+   deploy here, with the live code untouched;
 3. swaps the code in by renaming each top-level entry, moving the previous code to
-   `.deploy-backup/`, which goes back in place automatically, with the previous server files,
-   if a later step fails;
-4. runs `php artisan migrate --force` first, since the new code needs its tables before it can
-   serve a request (the sessions table, for one), then `package:discover`, `storage:link`,
+   `.deploy-backup/`, which goes back in place automatically, with the previous vhost and server
+   files, if a later step fails;
+4. puts the queue unit and the cron file in where they differ (below), runs
+   `php artisan migrate --force`, since the new code needs its tables before it can serve a
+   request (the sessions table, for one), then `package:discover`, `storage:link`,
    `optimize --except=views` and `queue:restart`;
-5. reloads Apache if a vhost changed, and restarts the queue worker if its unit changed (it must
-   be active two seconds later).
+5. restarts the queue worker if its unit changed (it must be active two seconds later), and
+   reloads Apache if the vhost changed.
 
 Then, from your machine through Cloudflare, it fetches `/api/media/count` and `/`. If either
-fails, the previous code and server files go back (the database stays as it is), unless
+fails, the previous code, vhost and server files go back (the database stays as it is), unless
 `-NoBackup` left nothing to go back to.
 
-**The server files** are `deploy/gallery-http.conf` and `gallery-https.conf` (the VirtualHosts on
-ports 80 and 443, installed as `sites-available/<PublicHost>.conf` and `…-le-ssl.conf`),
-`gallery-queue.service` and `gallery-scheduler.cron` (`/etc/cron.d/gallery-scheduler`). Their host
-values are `__SERVER_NAME__`, `__SERVER_ADMIN__`, `__WEB_ROOT__` and `__CERT_NAME__`, filled from
-the deploy settings when the archive is packed (`Export-HostConfigFile`), so nothing about the
-host's layout is in the repo. `scripts/HostConfig.ps1` holds the shell that installs them, one
+**The server files** are `deploy/apache-vhost.conf`, `gallery-queue.service` and
+`gallery-scheduler.cron` (`/etc/cron.d/gallery-scheduler`). Their host values are
+`__SERVER_NAME__`, `__SERVER_ADMIN__`, `__WEB_ROOT__` and `__CERT_NAME__`, filled from the deploy
+settings when the archive is packed (`Export-HostConfigFile`), so nothing about the host's layout
+is in the repo. The vhost is **one file for the site, `sites-available/<PublicHost>.conf`**,
+holding the port-80 redirect and the https site. SharedDeploy ships it (`Switch-RemoteItemSet
+-Vhost -ServerName`, `Restore-RemoteItemSet -ServerName`): it disables every other enabled site
+serving the name, such as certbot's `-le-ssl` file, tries the change on a copy of Apache's
+config, and puts everything back on a rollback. `scripts/HostConfig.ps1` holds the shell for the
+unit and the cron file, which SharedDeploy has no function for (`Install-ServiceBinary` installs
+a unit for a service that is a binary, and the gallery's worker runs the swapped-in code): one
 file at a time under a dotted name renamed into place, only where `cmp` finds a difference,
-keeping the previous copy in `.deploy-host/`. Nobody edits them on the host: a change goes into
-the template and ships with the next deploy (`docs/ops.md`). SharedDeploy's
-`Install-ServiceBinary` does the same for a service that is a binary, and the gallery's worker
-runs the swapped-in code, so the steps are written in `HostConfig.ps1`. Where the unit differs
-from the shared hardening block, §13 says so.
+keeping the previous copy in `.deploy-host/`. Nobody edits any of them on the host: a change goes
+into the template and ships with the next deploy (`docs/ops.md`). Where the unit differs from
+the shared hardening block, §13 says so.
 
 Once both pass, it checks the **daily backup** (shared-tooling's `Install-BackupTimer`): the
 `gallery-backup.timer` systemd unit runs as `www-data` at 10:00 UTC and copies the database with
@@ -327,9 +331,9 @@ Everything for the gallery lives in **`/var/www/gallery.mathdad.me/`**, as every
 | Path | Holds |
 | --- | --- |
 | `app/`, `bootstrap/`, `config/`, `database/`, `resources/`, `routes/`, `vendor/`, … | The code, replaced by each deploy |
-| `public/` | Apache's DocumentRoot, the only part served (both gallery vhosts) |
+| `public/` | Apache's DocumentRoot, the only part served |
 | `.env`, `storage/` | Settings and Laravel's runtime files, kept across deploys |
-| `.deploy-host/` | The server files the last deploy replaced (`*.old`, or `*.new` for one that was not there), for a rollback |
+| `.deploy-host/` | The queue unit and cron file the last deploy replaced (`*.old`, or `*.new` for one that was not there), for a rollback |
 | `db/`, `media/`, `dupes/` | The data: `gallery.db` (+ `.backups/`, the deploy's snapshots, and `backups/`, the daily copies), the media and the ingest folder, scan reports |
 | `backups/` | The pre-cutover backup, `ROLLBACK.txt`, the vhost files for a rollback; root-only |
 | `slim-rollback/` | The Slim app as it last ran, until Phase 8 deletes it |
@@ -839,9 +843,10 @@ Keep these invariants when editing auth or routes:
   Secure, has `Path=/` and no `Domain`, so `config/session.php` adds it only then; `http://localhost`
   development gets `gallery-session`. The OpenAPI document names the https one.
 - **Never edit a vhost, the queue unit or the cron file on the droplet.** The next deploy installs
-  `deploy/`'s over it, and (if it differs) says so. Change the template instead. A new server
-  file is a template in `deploy/`, a name in `$hostFiles` (`scripts/deploy.ps1`), and a line in
-  `scripts/HostConfig.ps1`'s shell; `docs/ops.md` says how they ship.
+  `deploy/`'s over it, and (if it differs) says so. Change the template instead. If certbot
+  ever writes a `-le-ssl` site beside the vhost, the next deploy disables it. A new server file
+  other than the vhost is a template in `deploy/`, a name in `$hostFiles` (`scripts/deploy.ps1`),
+  and a line in `scripts/HostConfig.ps1`'s shell; `docs/ops.md` says how they ship.
 - **CI runs lint, static analysis, tests and build**, on shared-tooling's reusable workflows at
   the release `shared/` holds (`.github/workflows/ci.yml`; the docs job fails if the two differ).
   The backend job (`php.yml`) runs `composer audit` + `composer lint` (PHP CS Fixer) +

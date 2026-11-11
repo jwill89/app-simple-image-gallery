@@ -18,7 +18,7 @@ jobs:
   # The Laravel backend. Its tests replay the recorded API contract
   # (tests/Fixtures/contract/).
   backend:
-    uses: jwill89/shared-tooling/.github/workflows/php.yml@v2.7.1
+    uses: jwill89/shared-tooling/.github/workflows/php.yml@v2.8.0
     with:
       dir: backend
       php-version: '8.5'
@@ -34,7 +34,7 @@ jobs:
   # The frontend's generated API types come from backend/openapi.json (gen:check). Its
   # icons come from the Font Awesome kit, on the Pro registry.
   frontend:
-    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.7.1
+    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.8.0
     with:
       dir: frontend
       scripts: gen:check lint lint:css knip format:check build test:coverage
@@ -47,7 +47,7 @@ jobs:
   # Every main page must pass axe at WCAG 2.2 AA, and a new account must keep a favorite.
   e2e:
     needs: [backend, frontend]
-    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.7.1
+    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.8.0
     with:
       dir: frontend
       php-version: '8.5'
@@ -60,15 +60,15 @@ jobs:
       FONTAWESOME_TOKEN: ${{ secrets.FONTAWESOME_NPM_TOKEN }}
 
   scripts:
-    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.7.1
+    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.8.0
 
   docs:
-    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.7.1
+    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.8.0
 
   # OSV-Scanner over every lockfile. An osv-scanner.toml beside a lockfile passes over the
   # advisories that reach only lint, test or build tooling.
   osv:
-    uses: jwill89/shared-tooling/.github/workflows/osv.yml@v2.7.1
+    uses: jwill89/shared-tooling/.github/workflows/osv.yml@v2.8.0
     permissions:
       contents: read
       actions: read

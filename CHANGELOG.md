@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - The deploy setting for the Laravel app's folder on the droplet is `WebRoot` (`$DeployWebRoot`, `DEPLOY_WEB_ROOT`, `-WebRoot`) instead of `AppRoot`.
+- The site's Apache configuration is one vhost file, `<site>.conf`, holding the port-80 redirect and the https site. A deploy installs it, disables certbot's separate `-le-ssl` site, and puts both back if the deploy fails.
 - Needs a one-time step at deploy (docs/ops.md, Upgrading to 7.3.0).
 
 ## [7.2.0] - 2026-11-11
