@@ -13,11 +13,16 @@ use App\Models\SavedSearch;
 use App\Models\Tag;
 use App\Models\TagCategory;
 use App\Models\User;
+use App\Support\ClientAddress;
+use App\Support\HashedSessionHandler;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Session\DatabaseSessionHandler;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Passkeys\Passkey;
 use Laravel\Passkeys\Passkeys;
@@ -37,6 +42,20 @@ class AppServiceProvider extends ServiceProvider
         // config/gallery.php, so they can't refer to it.
         config(['cors.allowed_origins' => config()->array('gallery.allowed_origins')]);
         config(['filesystems.links' => [public_path('media') => config()->string('gallery.media_path')]]);
+
+        // The "database" session driver, with each session stored under the hash of
+        // its id (HashedSessionHandler) in place of Laravel's own handler. The
+        // session manager wraps the handler in the store, encrypted if configured.
+        Session::extend('database', static function (Application $app): HashedSessionHandler {
+            $connection = config('session.connection');
+
+            return new HashedSessionHandler(new DatabaseSessionHandler(
+                $app->make('db')->connection(is_string($connection) ? $connection : null),
+                config()->string('session.table'),
+                config()->integer('session.lifetime'),
+                $app,
+            ));
+        });
 
         // Resources are the response body itself, as the contract has them, not
         // wrapped in { data: … }.
@@ -63,10 +82,11 @@ class AppServiceProvider extends ServiceProvider
             Route::model($parameter, $model);
         }
 
-        // Every /api route: 120 requests a minute per IP. A 429 says when to retry,
-        // in the body and in Retry-After.
+        // Every /api route: 120 requests a minute per visitor (an IPv4 address, or an
+        // IPv6 /64: ClientAddress). A 429 says when to retry, in the body and in
+        // Retry-After.
         RateLimiter::for('api', static fn(Request $request): Limit => Limit::perMinute(120)
-            ->by((string) $request->ip())
+            ->by(ClientAddress::key($request))
             ->response(static fn(Request $request, array $headers) => ApiException::response(
                 'RateLimitExceeded',
                 429,

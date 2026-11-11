@@ -266,13 +266,19 @@ async function deleteAccount() {
 
         <div class="box">
           <h3 class="title is-5">Delete account</h3>
-          <p class="section-note">
-            Deletes your account with its lists, blocked tags, saved searches and passkeys. The
-            media stays in the gallery.
+          <p v-if="auth.isAdmin" class="section-note">
+            An admin can't delete their own account. Ask another admin to remove your admin role on
+            the Users page, and the account can be deleted from here.
           </p>
-          <button type="button" class="button is-danger is-outlined" @click="deleteOpen = true">
-            Delete my account
-          </button>
+          <template v-else>
+            <p class="section-note">
+              Deletes your account with its lists, blocked tags, saved searches and passkeys. The
+              media stays in the gallery.
+            </p>
+            <button type="button" class="button is-danger is-outlined" @click="deleteOpen = true">
+              Delete my account
+            </button>
+          </template>
         </div>
 
         <AppDialog v-model:open="deleteOpen" title="Delete your account?" destructive>

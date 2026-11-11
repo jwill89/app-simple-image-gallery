@@ -8,6 +8,7 @@
 # the local deploy.config.ps1 (host/user/key/app folder) out of git.
 /scripts/*
 !/scripts/deploy.ps1
+!/scripts/HostConfig.ps1
 !/scripts/deploy.config.example.ps1
 
 # ── Backend (Laravel) ─────────────────────────────────────────────────────────

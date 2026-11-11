@@ -18,7 +18,8 @@ use OpenApi\Spec as OAS;
 /**
  * Accounts, for admins: who has one, who is an admin, a new password for
  * someone who lost theirs, and removing an account. There is always at least
- * one admin: the last one can't be demoted or deleted.
+ * one admin: the last one can't be demoted or deleted. No admin can demote or
+ * delete themselves; another admin does that if it is wanted.
  */
 final class UserController extends Controller
 {
@@ -62,14 +63,20 @@ final class UserController extends Controller
         responses: [
             new OAS\Response(response: 200, description: 'The account', content: new OAS\MediaType\Json(ref: '#/components/schemas/User')),
             new OAS\Response(response: 400, description: 'WeakPassword', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'Forbidden (not an admin), OwnAdminRole (an admin can\'t remove their own admin role)', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
             new OAS\Response(response: 404, description: 'UserNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
             new OAS\Response(response: 409, description: 'LastAdmin', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ],
     )]
     public function update(UserUpdateRequest $request, User $user): UserResource
     {
-        if ($request->has('is_admin') && !$request->boolean('is_admin') && $user->isLastAdmin()) {
-            throw new ApiException('LastAdmin', 409, 'The last admin can\'t stop being one. Make another admin first.');
+        if ($request->has('is_admin') && !$request->boolean('is_admin')) {
+            if ($user->isLastAdmin()) {
+                throw new ApiException('LastAdmin', 409, 'The last admin can\'t stop being one. Make another admin first.');
+            }
+            if ($user->is($request->user())) {
+                throw new ApiException('OwnAdminRole', 403, 'You can\'t remove your own admin role. Ask another admin to do it.');
+            }
         }
 
         if ($request->has('is_admin')) {
@@ -97,6 +104,7 @@ final class UserController extends Controller
         parameters: [new OAS\Parameter(name: 'user_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Deleted'),
+            new OAS\Response(response: 403, description: 'Forbidden (not an admin), OwnAdminAccount (an admin can\'t delete their own account)', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
             new OAS\Response(response: 404, description: 'UserNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
             new OAS\Response(response: 409, description: 'LastAdmin', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ],
@@ -105,6 +113,9 @@ final class UserController extends Controller
     {
         if ($user->isLastAdmin()) {
             throw new ApiException('LastAdmin', 409, 'The last admin account can\'t be deleted. Make another admin first.');
+        }
+        if ($user->is($request->user())) {
+            throw new ApiException('OwnAdminAccount', 403, 'You can\'t delete your own account while you are an admin. Ask another admin to remove your admin role first.');
         }
 
         // Its sessions end with it: they name an account that no longer exists.

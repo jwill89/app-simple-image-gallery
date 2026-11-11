@@ -83,6 +83,12 @@ final class TestBrowser
         return isset($this->cookies[$name]);
     }
 
+    /** A cookie's value as the server wrote it, decrypted: for the session cookie, the session id. */
+    public function cookie(string $name): ?string
+    {
+        return $this->cookies[$name] ?? null;
+    }
+
     /** The browser closes and opens again: the cookies that lasted until then are gone. */
     public function restart(): void
     {

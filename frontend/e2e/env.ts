@@ -32,7 +32,7 @@ export const backendEnv: Record<string, string> = {
   // sign-ups from earlier runs can't trip the limit of five an hour.
   CACHE_STORE: 'array',
   QUEUE_CONNECTION: 'sync',
-  SESSION_DRIVER: 'file',
+  SESSION_DRIVER: 'database',
   GALLERY_ALLOW_SIGNUP: 'true',
   GALLERY_ALLOWED_ORIGINS: SITE_URL,
   GALLERY_URL: SITE_URL,

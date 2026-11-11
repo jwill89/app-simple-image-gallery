@@ -78,12 +78,16 @@ SaaS. Key features:
 │   │   ├── Jobs/                      # ProcessNewMedia, ImportDanbooruTags, RebuildFromFile
 │   │   ├── Console/Commands/          # gallery:ingest, gallery:import-tags, gallery:regenerate, gallery:dupes
 │   │   ├── Support/                   # ResponseCache + CacheGroup (cached reads), Login (signing a session in and out),
-│   │   │                              #   Viewer (who reads a public listing), Cloudflare (its address ranges)
+│   │   │                              #   HashedSessionHandler (sessions stored under the hash of their id),
+│   │   │                              #   ClientAddress (what a limit counts a visitor by), Viewer (who reads a
+│   │   │                              #   public listing), Cloudflare (its address ranges)
 │   │   ├── Exceptions/                # ApiException + ApiExceptionRenderer: { error, message } for all of /api
 │   │   ├── OpenApi/                   # Global OAS metadata (holds API_VERSION) + doc-only response schemas
 │   │   └── Providers/AppServiceProvider.php  # rate limiters, CORS origins, the media link, unwrapped resources
 │   ├── bootstrap/app.php        # Middleware stack and exception rendering
 │   ├── config/gallery.php       # Every gallery setting, read from .env (code never calls env())
+│   ├── config/hashing.php       # Passwords: argon2id at 64 MiB, one pass, four lanes
+│   ├── config/session.php       # Sessions: the database driver, the __Host- cookie name
 │   ├── database/migrations/     # The schema; the baseline is the Slim app's, created only where missing
 │   ├── routes/
 │   │   ├── api.php              # Every /api route: public, then any account's, then the admin's
@@ -92,7 +96,7 @@ SaaS. Key features:
 │   ├── public/                  # Apache's DocumentRoot: index.php, .htaccess, .user.ini (upload limits), the built SPA
 │   │                            #   (the deploy copies frontend/dist here), media → the media folder
 │   ├── resources/spa/index.html # The built SPA's index.html, which the shell serves (deploy copies it; gitignored)
-│   ├── storage/                 # Logs, the file cache (responses, rate limits, locks), sessions; contents gitignored
+│   ├── storage/                 # Logs and the file cache (responses, rate limits, locks); contents gitignored
 │   ├── tests/
 │   │   ├── Feature/             # HTTP, console, jobs, models, services; Contract/ replays the recordings
 │   │   ├── Unit/                # The OpenAPI document, the fingerprinter, the region difference
@@ -125,7 +129,7 @@ SaaS. Key features:
 │   │   ├── constants/         # categories.ts (color → CSS class helpers), uploads.ts (upload batching),
 │   │   │                      #   thumbnails.ts (thumbnail URLs + the prefetch message, shared with the worker)
 │   │   ├── sw/                # The service worker: sw.ts (events) + cache.ts (caching, prefetch); built to /sw.js
-│   │   ├── __tests__/         # Vitest specs (*.spec.ts): useApi, categories, stores, uploads, UploadView, swCache
+│   │   ├── __tests__/         # Vitest specs (*.spec.ts): useApi, categories, stores, uploads, UploadView, AdminSelf, swCache
 │   │   └── style.css          # Custom styles + extended Bulma color palette
 │   └── dist/                  # Vite build output (gitignored); the deploy copies it into backend/public
 │
@@ -137,8 +141,12 @@ SaaS. Key features:
 │                              #   PowerShell, the backend's JSON); this repo's lines sit below the marker
 ├── .markdownlint-cli2.jsonc   # markdownlint: the shared config, plus what it skips
 ├── README.md · CLAUDE.md · CONTRIBUTING.md · CHANGELOG.md · LICENSE
+├── deploy/                    # The server files every deploy installs where they differ: the two Apache vhosts,
+│                              #   the queue worker's unit and the scheduler's cron file, with __PLACEHOLDERS__ for host values
+├── docs/ops.md                # Steps on the host beyond the deploy: "Upgrading to x.y.z", and how the server files ship
 ├── docs/laravel-migration.md  # How the backend moved from Slim to Laravel: phases, contract changes, deployment
-└── scripts/                   # Dev-only: deploy.ps1 (shared SharedDeploy module, PuTTY plink → droplet) + config template
+└── scripts/                   # Dev-only: deploy.ps1 (shared SharedDeploy module, PuTTY plink → droplet), HostConfig.ps1
+                               #   (fills deploy/'s templates and installs them on the host) + config template
 ```
 
 ### Layering convention (backend)
@@ -238,15 +246,17 @@ php artisan gallery:dupes                    # scan for duplicates → dupes/dup
 php artisan gallery:dupes --tune --max-distance=8 --max-region-diff=off  # calibrate (see §9)
 ```
 
-- **The queue** is the `database` driver. On the droplet the systemd unit `gallery-queue` runs
-  `php artisan queue:work --tries=3 --max-time=3600` as `www-data` and restarts by itself; every
-  deploy sends `queue:restart` so it picks up new code. Jobs: `ProcessNewMedia` (one ingested file,
-  unique per name), `ImportDanbooruTags` (rate-limited to 30 a minute, retried for a day),
-  `RebuildFromFile`.
+- **The queue** is the `database` driver. On the droplet the systemd unit `gallery-queue`
+  (`deploy/gallery-queue.service`) runs `php artisan queue:work --tries=3 --max-time=3600` as
+  `www-data` and restarts by itself (`Restart=always`: the worker leaves with status 0 after an
+  hour, which `on-failure` would not start again); every deploy sends `queue:restart` so it picks
+  up new code. Jobs: `ProcessNewMedia` (one ingested file, unique per name), `ImportDanbooruTags`
+  (rate-limited to 30 a minute, retried for a day), `RebuildFromFile`.
 - **The schedule** (`routes/console.php`) runs `gallery:ingest` at midnight, in
-  `SCHEDULE_TIMEZONE` (UTC on the droplet). `/etc/cron.d/gallery-scheduler` runs
-  `php artisan schedule:run` every minute as `www-data`. Expired sessions need no schedule: the
-  file driver sweeps them as requests arrive (`session.lottery`).
+  `SCHEDULE_TIMEZONE` (UTC on the droplet). `/etc/cron.d/gallery-scheduler`
+  (`deploy/gallery-scheduler.cron`) runs `php artisan schedule:run` every minute as `www-data`.
+  Expired sessions need no schedule: the database handler sweeps them as requests arrive
+  (`session.lottery`).
 - `gallery:ingest` refuses to remove anything when none of the gallery's files are in
   `media/full`, which is what a wrong `GALLERY_MEDIA_PATH` looks like.
 
@@ -261,23 +271,42 @@ task deploy -- -Preview         # try the working tree, untagged, stamped previe
 It ships only a release: the newest tag CI made for `frontend/package.json`'s version (it fetches the tags first), built in a checkout of its own, so commits after it stay out; when the droplet already runs it, nothing is done. Anything else goes out only with `-Preview`.
 
 `scripts/deploy.ps1` is built on shared-tooling's SharedDeploy module (`shared/deploy/pwsh`;
-PuTTY plink; host, user, key and app folder come from the untracked `scripts/deploy.config.ps1`).
-It ships **code only**, as one archive whose SHA-256 and file count the host checks before
-anything changes. It never ships `.env`, `storage/`, `vendor/`, the data or the backups. On the
-host it:
+PuTTY plink; host, user, key, app folder, the certificate folder and the vhosts' `ServerAdmin`
+come from the untracked `scripts/deploy.config.ps1`). It ships **code and the server files in
+`deploy/`**, as one archive whose SHA-256 and file count the host checks before anything
+changes. It never ships `.env`, `storage/`, `vendor/`, the data or the backups. On the host it:
 
 1. builds the new code whole in `.deploy-next/`: unpacked (read-only to everyone but its owner),
    `vendor/` copied from the live code, `composer install --no-dev --no-scripts`, the
    `public/media` link copied, all of it owned by `www-data`;
-2. swaps it in by renaming each top-level entry, moving the previous code to `.deploy-backup/`,
-   which goes back in place automatically if a later step fails; then `package:discover`;
-3. snapshots the database (shared-tooling's `Backup-RemoteDatabase`, see §10), then runs
-   `php artisan migrate --force`;
-4. runs `storage:link`, `optimize --except=views` and `queue:restart`.
+2. snapshots the database (shared-tooling's `Backup-RemoteDatabase`, see §10) and puts the server
+   files where they differ from the live ones (below); a vhost Apache's `configtest` refuses
+   stops the deploy here, with the live code untouched;
+3. swaps the code in by renaming each top-level entry, moving the previous code to
+   `.deploy-backup/`, which goes back in place automatically, with the previous server files,
+   if a later step fails;
+4. runs `php artisan migrate --force` first, since the new code needs its tables before it can
+   serve a request (the sessions table, for one), then `package:discover`, `storage:link`,
+   `optimize --except=views` and `queue:restart`;
+5. reloads Apache if a vhost changed, and restarts the queue worker if its unit changed (it must
+   be active two seconds later).
 
 Then, from your machine through Cloudflare, it fetches `/api/media/count` and `/`. If either
-fails, the previous code goes back from `.deploy-backup/` (the database stays as it is), unless
+fails, the previous code and server files go back (the database stays as it is), unless
 `-NoBackup` left nothing to go back to.
+
+**The server files** are `deploy/gallery-http.conf` and `gallery-https.conf` (the VirtualHosts on
+ports 80 and 443, installed as `sites-available/<PublicHost>.conf` and `…-le-ssl.conf`),
+`gallery-queue.service` and `gallery-scheduler.cron` (`/etc/cron.d/gallery-scheduler`). Their host
+values are `__SERVER_NAME__`, `__SERVER_ADMIN__`, `__APP_ROOT__` and `__CERT_NAME__`, filled from
+the deploy settings when the archive is packed (`Export-HostConfigFile`), so nothing about the
+host's layout is in the repo. `scripts/HostConfig.ps1` holds the shell that installs them, one
+file at a time under a dotted name renamed into place, only where `cmp` finds a difference,
+keeping the previous copy in `.deploy-host/`. Nobody edits them on the host: a change goes into
+the template and ships with the next deploy (`docs/ops.md`). SharedDeploy's
+`Install-ServiceBinary` does the same for a service that is a binary, and the gallery's worker
+runs the swapped-in code, so the steps are written in `HostConfig.ps1`. Where the unit differs
+from the shared hardening block, §13 says so.
 
 Once both pass, it checks the **daily backup** (shared-tooling's `Install-BackupTimer`): the
 `gallery-backup.timer` systemd unit runs as `www-data` at 10:00 UTC and copies the database with
@@ -300,6 +329,7 @@ Everything for the gallery lives in **`/var/www/gallery.mathdad.me/`**, as every
 | `app/`, `bootstrap/`, `config/`, `database/`, `resources/`, `routes/`, `vendor/`, … | The code, replaced by each deploy |
 | `public/` | Apache's DocumentRoot, the only part served (both gallery vhosts) |
 | `.env`, `storage/` | Settings and Laravel's runtime files, kept across deploys |
+| `.deploy-host/` | The server files the last deploy replaced (`*.old`, or `*.new` for one that was not there), for a rollback |
 | `db/`, `media/`, `dupes/` | The data: `gallery.db` (+ `.backups/`, the deploy's snapshots, and `backups/`, the daily copies), the media and the ingest folder, scan reports |
 | `backups/` | The pre-cutover backup, `ROLLBACK.txt`, the vhost files for a rollback; root-only |
 | `slim-rollback/` | The Slim app as it last ran, until Phase 8 deletes it |
@@ -308,9 +338,13 @@ Everything for the gallery lives in **`/var/www/gallery.mathdad.me/`**, as every
 
 Laravel's own keys (`APP_KEY`, `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, `LOG_*`,
 `QUEUE_CONNECTION=database`, `CACHE_STORE=file`, `DB_DATABASE`, and the session's:
-`SESSION_DRIVER=file`, `SESSION_LIFETIME=1440`, `SESSION_EXPIRE_ON_CLOSE=true`) plus the
+`SESSION_DRIVER=database`, `SESSION_LIFETIME=1440`, `SESSION_EXPIRE_ON_CLOSE=true`) plus the
 gallery's, which `config/gallery.php` reads. `APP_URL`'s host is the site passkeys belong to
-(`config/passkeys.php`), and an https `APP_URL` makes the session cookie Secure.
+(`config/passkeys.php`), and an https `APP_URL` makes the session cookie Secure and names it
+`__Host-gallery-session` (`config/session.php`: the prefix goes on only for a Secure cookie with
+`Path=/` and no `Domain`, the three things a browser requires of it). Password hashing
+(`config/hashing.php`) reads its cost from `ARGON_MEMORY`, `ARGON_TIME` and `ARGON_THREADS` only so
+that `phpunit.xml` can lower it; production sets none.
 
 ```text
 GALLERY_ALLOW_SIGNUP       # anyone may make an account unless "false" (admins come from gallery:user)
@@ -348,7 +382,8 @@ danbooru_category_map(danbooru_category_id PK, danbooru_category_name, gallery_c
 danbooru_tag_map(id PK, danbooru_tag UNIQUE, gallery_tag)
 dismissed_duplicates(media_id_1, media_id_2, dismissed_at)  # PK(id1,id2), stored with id1<id2
 
-users(id, username UNIQUE NOCASE, password[hashed], remember_token, is_admin)   # accounts
+users(id, username UNIQUE NOCASE, password[argon2id], remember_token, is_admin)   # accounts
+sessions(id[SHA-256 of the session id], user_id, ip_address, user_agent, payload, last_activity)  # one per browser
 favorite_lists(list_id, user_id FK, name NOCASE, is_default)      # UNIQUE(user_id, name); one default each
 favorite_list_items(list_id FK, media_id FK, added_at)            # PK(list_id, media_id)
 blocked_tags(user_id FK, tag_id FK, created_at)                   # PK(user_id, tag_id)
@@ -359,9 +394,8 @@ migrations                                      # Laravel's migration log
 ```
 
 The live database also still holds the Slim app's `auth_tokens`, `rate_limits` and
-`phinx_migrations` until Phase 8 drops them. Rate limits now live in the cache, and sessions in
-files (`storage/framework/sessions`), not tables. Sanctum's `personal_access_tokens` went with
-the bearer tokens in 7.0.0.
+`phinx_migrations` until Phase 8 drops them. Rate limits now live in the cache, not a table.
+Sanctum's `personal_access_tokens` went with the bearer tokens in 7.0.0.
 
 Key indexes (in the baseline migration): `media(hash)`, `media(file_time, media_id)`,
 `media(media_type)`, `media_tags(tag_id, media_id)` (reverse index for tag search),
@@ -396,7 +430,8 @@ Below is the shape; 🔓 = public, 🔑 = any signed-in account, 🔒 = an admin
   as, or `null`), `POST /auth/register`, `POST /auth/login` (🔓, with `turnstile_token` while
   Turnstile is on; each answers `{ user }` and sets the session cookie), `POST /auth/passkey/options`
   and `POST /auth/passkey` (🔓 sign in with a passkey); `DELETE /auth/session` (🔑 log out).
-- **Account (`/account`, 🔑):** `PATCH /password`, `DELETE` (with `{ password }`), `GET
+- **Account (`/account`, 🔑):** `PATCH /password`, `DELETE` (with `{ password }`; an admin gets
+  `403 OwnAdminAccount`, §7), `GET
   /blocked-tags`, `PUT|DELETE /blocked-tags/{tag_id}`; `GET /passkeys`, `POST /passkeys/options`
   (with `{ password }`), `POST /passkeys`, `PATCH|DELETE /passkeys/{passkey_id}`.
 - **Lists (`/lists`, 🔑):** `GET`, `POST`, `PATCH|DELETE /{list_id}`, `GET /{list_id}/ids`,
@@ -405,7 +440,8 @@ Below is the shape; 🔓 = public, 🔑 = any signed-in account, 🔒 = an admin
   is a 404.
 - **Saved searches (`/saved-searches`, 🔑):** `GET`, `POST`, `PATCH|DELETE /{search_id}`.
 - **Users (`/users`, 🔒):** `GET`, `PATCH /{user_id}` (`is_admin`, `password`), `DELETE /{user_id}`.
-  There is always one admin left (`409 LastAdmin`).
+  There is always one admin left (`409 LastAdmin`), and an admin can't remove their own role
+  (`403 OwnAdminRole`) or delete their own account (`403 OwnAdminAccount`): another admin does.
 - **Media (`/media`):** path-based listings (cached) — `GET /media/page/{page}[/{per_page}]`,
   `GET /media/untagged/{page}[/{per_page}]`, `GET /media/with-tags/{tag_list}/{page}[/{per_page}]`
   (`tag_list` comma-sep, leading `-` excludes), each with the `next_cursor` to go on from;
@@ -471,9 +507,10 @@ Below is the shape; 🔓 = public, 🔑 = any signed-in account, 🔒 = an admin
 5. **`PreventRequestForgery`**, origin-only (`preventRequestForgery(originOnly: true)`): a write
    the browser doesn't mark `Sec-Fetch-Site: same-origin` is `403 ForbiddenOrigin`, so no CSRF
    token is needed. Laravel skips it in tests; `ApiMiddlewareTest` switches it back on.
-6. **`throttle:api`**: 120 requests a minute per IP, then `429 RateLimitExceeded` with
+6. **`throttle:api`**: 120 requests a minute per visitor, then `429 RateLimitExceeded` with
    `retry_after`. It runs before authentication (a priority list in `bootstrap/app.php`), so every
-   request counts, signed in or not.
+   request counts, signed in or not. A visitor is an IPv4 address, or an IPv6 client's /64
+   (`App\Support\ClientAddress`, which the login and sign-up limits use too).
 7. **`auth`** (the session guard) on the account and admin groups in `routes/api.php`: a request
    not signed in is `401 Unauthorized` as `{ error, message }`; there is no login page to redirect
    to.
@@ -513,18 +550,31 @@ Keep these invariants when editing auth or routes:
   (`PreventRequestForgery`), and unless `Origin` (or, failing that, `Referer`) is in
   `GALLERY_ALLOWED_ORIGINS` (`VerifyOrigin`); a write with neither header is refused. The session
   cookie is `SameSite=Lax` besides.
-- **Sign-up and login** pass Cloudflare Turnstile first (`Services/Turnstile`, while `CLOUDFLARE_TURNSTILE_SECRET` is set): a token passes once, for its own form (`action`), and Cloudflare out of reach is `503 CaptchaUnavailable`, never a sign-in. Login is throttled to 10 attempts / 5 minutes per IP and sign-up to 5 accounts an hour, on top of the global limit. Admins come from `gallery:user` or another admin. A wrong *current* password (changing it, deleting the account) is `403 IncorrectPassword`.
+- **Sign-up and login** pass Cloudflare Turnstile first (`Services/Turnstile`, while `CLOUDFLARE_TURNSTILE_SECRET` is set): a token passes once, for its own form (`action`), and Cloudflare out of reach is `503 CaptchaUnavailable`, never a sign-in. Login is throttled to 10 attempts / 5 minutes per visitor (an IPv4 address or an IPv6 /64) and sign-up to 5 accounts an hour, on top of the global limit. Admins come from `gallery:user` or another admin. A wrong *current* password (changing it, deleting the account) is `403 IncorrectPassword`.
 - **Sessions, not tokens** (since 7.0.0): a browser signs in with Laravel's session cookie,
   encrypted and **HttpOnly**, so no script on the page (Turnstile, an injected one) can read
-  or copy it. It lasts until the browser closes, and a day without a
+  or copy it. Over https it is named `__Host-gallery-session`, so the browser takes it only from
+  a secure page for this host alone. It lasts until the browser closes, and a day without a
   request ends it; "keep me signed in" adds a 30-day remember cookie (`auth.guards.web.remember`).
   Signing in moves the session to a new id (`App\Support\Login`), so one planted beforehand
   signs no one in; signing out ends this browser's session only. A new password
   (`User::setNewPassword()`: the account itself, an admin, or `gallery:user --password`) replaces
   the remember token and ends every other session at its next request (`AuthenticateSession`);
-  the browser that changed its own password signs in again. Sessions are files, not database
-  rows, since every API request writes its session. There are no bearer tokens: a script can't
-  sign in.
+  the browser that changed its own password signs in again. Sessions are rows of the `sessions`
+  table, stored under the SHA-256 of the session id (`HashedSessionHandler`, registered over
+  Laravel's `database` driver in `AppServiceProvider`), so a copy of the database holds no session
+  id; every API request writes its row. There are no bearer tokens: a script can't sign in.
+- **Passwords** are argon2id at 64 MiB, one pass, four lanes (`config/hashing.php`; PHP's argon2
+  from libsodium has one lane, and the stored hash then says `p=1`). The sign-in that proves a
+  password replaces a hash made with other settings (`AuthController::login`, then
+  `User::rehashPassword()`, which keeps the remember token); the account's other browsers sign
+  in again at their next request, as after any change to the hash. `hashing.argon.verify` is off
+  so that a bcrypt hash from before 7.2.0 still checks. A login with a name no account has checks
+  a stand-in hash made once, so it costs what a known name costs.
+- **Admins** can't remove their own admin role (`403 OwnAdminRole`) or delete their own account
+  (`403 OwnAdminAccount`, from `DELETE /users/{id}` or `DELETE /account`): another admin does
+  either. The last admin is `409 LastAdmin` first. `gallery:user --no-admin`, run on the host,
+  can still demote the account it names, short of the last admin.
 - **Passkeys** (`PasskeyController`, on `laravel/passkeys`' actions; the package's own routes are
   off): adding one needs the account's password; each challenge waits in the session for five
   minutes, answers once, and belongs to the account it was made for. A passkey belongs to
@@ -689,6 +739,9 @@ Keep these invariants when editing auth or routes:
   expire within a minute anyway, and a clear would also drop the rate limiter's counts and the
   queue's unique locks.
 - **SQLite**'s connection settings are in `config/database.php`. One queue worker keeps writers few.
+  Every API request writes its session row, so a write transaction held open for seconds (a job, a
+  command) holds API requests behind it, and one held past `busy_timeout` (5 s) fails them: keep
+  write transactions short, and don't wrap a long job's work in one.
 - **Request cost** (measured on the droplet, 2026-11): a cached read takes about 10 ms, the
   1.5 MB tag list about 13 ms. Laravel's boot adds 3–5 ms over the Slim app it replaced, which
   is lost in a request's trip through Cloudflare.
@@ -770,7 +823,25 @@ Keep these invariants when editing auth or routes:
   two strangers. A test's requests share one app, whose session store would merge one request's
   sign-in into the next, so `Tests\TestCase::call()` empties it first, as a real server starts
   each request afresh. Passkey tests answer with `Tests\Support\FakeAuthenticator` (a real P-256
-  key and signatures); PHP on Windows needs `tests/Fixtures/openssl.cnf` to make that key.
+  key and signatures); PHP on Windows needs `tests/Fixtures/openssl.cnf` to make that key. The
+  suite runs on array sessions and cheap argon2id (`phpunit.xml`); `SessionsTest` switches to the
+  database driver, and `SignInConfigTest` reads the two config files with their real defaults.
+- **The new code needs its tables the moment it serves a request**, and sessions are rows now: until
+  the `sessions` table exists, every `/api` request fails. That is why the deploy takes the database
+  snapshot before the swap and runs the migration first after it. A migration the running code
+  depends on must stay additive, since the old code is still serving when the next one is
+  prepared, and it is what the rollback puts back.
+- **`hashing.argon.verify` stays off while any account may still hold a bcrypt hash.** With it on,
+  checking one throws instead of failing, and nobody with an old hash could sign in. Whether any
+  is left: `select count(*) from users where password like '$2y$%'`. It is the account's own
+  password sign-in that replaces the hash (a remember cookie or a passkey does not).
+- **The `__Host-` prefix is for https only.** A browser drops a cookie with that prefix unless it is
+  Secure, has `Path=/` and no `Domain`, so `config/session.php` adds it only then; `http://localhost`
+  development gets `gallery-session`. The OpenAPI document names the https one.
+- **Never edit a vhost, the queue unit or the cron file on the droplet.** The next deploy installs
+  `deploy/`'s over it, and (if it differs) says so. Change the template instead. A new server
+  file is a template in `deploy/`, a name in `$hostFiles` (`scripts/deploy.ps1`), and a line in
+  `scripts/HostConfig.ps1`'s shell; `docs/ops.md` says how they ship.
 - **CI runs lint, static analysis, tests and build**, on shared-tooling's reusable workflows at
   the release `shared/` holds (`.github/workflows/ci.yml`; the docs job fails if the two differ).
   The backend job (`php.yml`) runs `composer audit` + `composer lint` (PHP CS Fixer) +
@@ -795,7 +866,7 @@ Keep these invariants when editing auth or routes:
   Backend feature tests run
   on a fresh in-memory SQLite database per test (`RefreshDatabase`), with Danbooru (`Http::fake`),
   ffmpeg (`Process::fake`) and the queue faked where they're touched.
-- **Deploys snapshot the database before migrating** — `scripts/deploy.ps1` writes `db/.backups/gallery-<UTC timestamp>.db.gz` with shared-tooling's `Backup-RemoteDatabase` (`sqlite3 .backup`, `PRAGMA integrity_check`, gzip, keeping five) and aborts before migrating if the snapshot fails. The snapshot is deliberately **not** auto-restored by the failure trap — that trap fires on any non-zero exit, including after a migration has already succeeded, and reverting data could discard media uploaded during the deploy window; a failed migration prints the path and the restore command (`rm -f <db>-wal <db>-shm && gunzip -c <snapshot> > <db>`, which keeps the file's owner) instead. The daily copies are the backup timer's, in `db/backups/`, apart from `db/.backups/`. Restore one the same way, with the site's writes stopped (`php artisan down`).
+- **Deploys snapshot the database before migrating** — `scripts/deploy.ps1` writes `db/.backups/gallery-<UTC timestamp>.db.gz` with shared-tooling's `Backup-RemoteDatabase` (`sqlite3 .backup`, `PRAGMA integrity_check`, gzip, keeping five) before it swaps the code in, and aborts there if the snapshot fails. The snapshot is deliberately **not** auto-restored by the failure trap — that trap fires on any non-zero exit, including after a migration has already succeeded, and reverting data could discard media uploaded during the deploy window; a failed migration prints the path and the restore command (`rm -f <db>-wal <db>-shm && gunzip -c <snapshot> > <db>`, which keeps the file's owner) instead. The daily copies are the backup timer's, in `db/backups/`, apart from `db/.backups/`. Restore one the same way, with the site's writes stopped (`php artisan down`).
 - **OpenAPI is swagger-php 7's spec attributes** (`use OpenApi\Spec as OAS;`). The document is built
   by `tests/Support/OpenApiDocument::builder()`, which both `composer docs` (`bin/openapi.php`) and
   `OpenApiSpecTest` use, so the two can't disagree about how it's built. That builder drops v7's
@@ -894,6 +965,9 @@ Create a view in `views/`, add a lazy route with `meta.title` in `router/index.t
 - [ ] New state-changing routes are in the admin group, or the account group acting only on the
       account's own rows (or public, consciously).
 - [ ] Settings are read with `config()`, never `env()` outside `config/`.
+- [ ] A rate limit counts a visitor by `ClientAddress::key()`, never by `$request->ip()`.
+- [ ] A change to a vhost, the queue unit or the cron file is made in `deploy/` and ships with
+      the next deploy, never on the droplet.
 - [ ] Slow or per-file work runs in a queued job.
 - [ ] A feature test covers it; the contract replay stays green, and a deliberate contract change
       is in `divergences.php`.
@@ -919,15 +993,12 @@ The code still does these things that [shared/standards/](shared/standards/READM
 - **Trailing slashes.** `public/.htaccess` (Laravel's stock rule) answers a path with a trailing slash with a 301 to the path without it. The standard accepts the slash and answers the same as without it.
 - **Security headers.** `SecurityHeaders` sends only `X-Frame-Options: SAMEORIGIN` and `X-Content-Type-Options: nosniff`: there is no Content-Security-Policy and no `Referrer-Policy`. The standard enforces a CSP on every page, built on `default-src 'self'` with `frame-ancestors 'none'` and a per-response nonce, and sends `Referrer-Policy: same-origin` on every response.
 - **Missing static files.** `.htaccess` sends every path that isn't a real file to Laravel, and the fallback route answers every path outside `/api` with the SPA page, `/assets/` included. The standard answers a missing file 404, since Cloudflare caches by extension and would keep that page as the file.
-- **Sessions.** Sessions are files in `storage/framework/sessions` (`SESSION_DRIVER=file`), each named by its id, and the remember token is stored as issued; the session cookie takes Laravel's default name (`config/session.php`), with no `__Host-` prefix. The standard keeps sessions in the app's SQLite database, stores only a SHA-256 hash of each session id and token, and prefixes the cookie `__Host-`.
-- **Passwords.** Passwords hash with Laravel's default, bcrypt. The standard is argon2id at 64 MiB, t=1, p=4, rehashed at sign-in when the parameters rise.
-- **Admins.** An admin may drop their own admin role or delete their own account, unless they are the last admin (`409 LastAdmin`). The standard refuses both.
-- **Rate limits.** Every limit counts by the full client address (`$request->ip()`). The standard counts an IPv6 client by its /64.
+- **The remember token.** An account's remember token ("keep me signed in") is stored as issued, one for the account and the same in each browser it keeps signed in, since Laravel's cookie needs the plain token to issue another browser's. The standard stores only a SHA-256 hash of every token it issues.
 - **The visitor's address.** The app restores it: `trustProxies` trusts Cloudflare's ranges (`App\Support\Cloudflare`) and reads `X-Forwarded-For`. The standard restores it once, in Apache, with `mod_remoteip`, and the app reads `REMOTE_ADDR`.
 - **Timestamps.** `file_time` and `dismissed_at` are Unix seconds in integer columns, and the account tables' times are Laravel's `Y-m-d H:i:s`, with no CHECK. The standard stores RFC 3339 UTC text (`2026-11-07T09:18:09Z`) in `DATETIME` columns with a CHECK, and sends it in that form.
 - **App version.** The version is written in two places, `frontend/package.json` and `config/gallery.php`, and a release bumps both. The standard reads one version from one place.
 - **Uploads.** An upload keeps its own file name (made safe, with `_1`, `_2` on a clash) and its original bytes. The standard stores an upload under a random name and re-encodes an image. Danbooru's lookup matches the original file's MD5, so what changes here is the owner's call in the follow-up.
-- **Units, vhost and cron file.** The deploy installs only the daily backup timer. The Apache vhosts, the `gallery-queue` unit and `/etc/cron.d/gallery-scheduler` live on the droplet and are changed there by hand; the repo holds no template for them. The standard keeps each as a repo template with placeholders for host values, shipped and checked by every deploy, and edited only in the repo.
+- **The queue unit.** `deploy/gallery-queue.service` is the unit as it ran before it was tracked: it has none of the shared hardening block (`NoNewPrivileges`, `ProtectSystem=strict` with the folders the worker writes, `PrivateTmp`, the kernel and namespace protections, `SystemCallFilter=@system-service`, …) and no `MemoryMax=`. The worker writes the app's `storage/`, the media, the data and the reports, and runs `ffmpeg`, so the block needs trying on the droplet before it ships. It also restarts with `Restart=always`, not `on-failure`, because `--max-time` ends the worker with status 0 every hour.
 - **Setting names.** Several of the gallery's own settings lack its prefix: `DANBOORU_*`, `DUPLICATE_*`, `CLOUDFLARE_TURNSTILE_*` and `SCHEDULE_TIMEZONE`. The standard starts each with the project's prefix.
 - **Colour scheme.** Dark mode follows the device through a `prefers-color-scheme` query on `:root` in `style.css`, and the user can't choose. The standard sets the scheme as one class or attribute on `html`, from one module, and keeps the user's choice once they make one.
 - **Reduced motion.** `style.css` has one global `prefers-reduced-motion` rule that cuts every animation and transition with `!important`. The standard has each animation and transition honour it in its own rule.

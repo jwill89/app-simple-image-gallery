@@ -3,7 +3,7 @@
     "info": {
         "title": "Gallery API",
         "description": "Internal HTTP API for the self-hosted media gallery — a **hybrid REST-RPC**\ninterface served under the `/api` base path. All responses are JSON.\n\n**Conventions**\n- Reads return `200` with the resource or collection.\n- Creates return `201` with the created resource.\n- Updates (`PUT`/`PATCH`) return `200` with the updated resource.\n- Deletes return `204` with no body.\n- Non-CRUD actions (login, migrate, scan, bulk operations) are `POST`\n  verbs that return `200` with a small result object.\n- Errors return `{ \"error\": \"<MachineCode>\", \"message\": \"<human text>\" }`\n  with a `4xx`/`5xx` status. `error` is a stable PascalCase code safe to\n  branch on; `message` is for display and may change.\n\n**Auth** — a session cookie, set by `POST /auth/login`, `POST /auth/register`\nor `POST /auth/passkey`, which the browser sends with every request. It is\nHttpOnly, so the page's scripts never see it; `GET /auth/session` says who\nit signs in. Writes are refused (`403 ForbiddenOrigin`) unless the browser\nmarks them same-origin (`Sec-Fetch-Site`) and they come from an allowed\norigin. Reads are public; a write needs a signed-in account (or an admin),\nexcept a small public allowlist (media tagging and the batched\n`POST /media/by-ids` read).",
-        "version": "7.0.0"
+        "version": "7.1.0"
     },
     "servers": [
         {
@@ -82,7 +82,7 @@
                     "Account"
                 ],
                 "summary": "Delete your account",
-                "description": "DELETE /account — Delete the account, with its lists, blocked tags and\nsaved searches. Body: { password }. The last admin can't.",
+                "description": "DELETE /account — Delete the account, with its lists, blocked tags and\nsaved searches. Body: { password }. An admin can't (another admin removes\nthe role first), and the last admin least of all.",
                 "operationId": "deleteAccount",
                 "requestBody": {
                     "content": {
@@ -117,7 +117,7 @@
                         }
                     },
                     "403": {
-                        "description": "IncorrectPassword",
+                        "description": "IncorrectPassword, OwnAdminAccount (an admin can't delete their own account)",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4065,6 +4065,16 @@
                             }
                         }
                     },
+                    "403": {
+                        "description": "Forbidden (not an admin), OwnAdminRole (an admin can't remove their own admin role)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
                     "404": {
                         "description": "UserNotFound",
                         "content": {
@@ -4112,6 +4122,16 @@
                 "responses": {
                     "204": {
                         "description": "Deleted"
+                    },
+                    "403": {
+                        "description": "Forbidden (not an admin), OwnAdminAccount (an admin can't delete their own account)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
                     },
                     "404": {
                         "description": "UserNotFound",
@@ -4846,8 +4866,8 @@
         "securitySchemes": {
             "sessionCookie": {
                 "type": "apiKey",
-                "description": "The session cookie a sign-in sets: until the browser closes, or 30 days with \"keep me signed in\".",
-                "name": "gallery-session",
+                "description": "The session cookie a sign-in sets: until the browser closes, or 30 days with \"keep me signed in\". Over plain http (local development) it is named gallery-session.",
+                "name": "__Host-gallery-session",
                 "in": "cookie"
             }
         }

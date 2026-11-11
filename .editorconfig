@@ -43,3 +43,7 @@ trim_trailing_whitespace = false
 # and Apache's .htaccess are written at four, as Composer and the generators write them.
 [{backend/**.json,backend/public/.htaccess}]
 indent_size = 4
+
+# The Apache VirtualHosts, as Apache's own files are written.
+[deploy/*.conf]
+indent_size = 4

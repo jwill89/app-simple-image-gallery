@@ -65,7 +65,8 @@ searches, and admin-gated uploads.
    `.env.example`):
 
    ```dotenv
-   # The address people use. Over https, the session cookie is Secure; passkeys belong to its host.
+   # The address people use. Over https, the session cookie is Secure and named __Host-gallery-session;
+   # passkeys belong to its host.
    APP_URL=https://gallery.example.com
 
    # The SQLite database: an absolute path.
@@ -139,6 +140,9 @@ searches, and admin-gated uploads.
   ```cron
   * * * * * cd /path/to/backend && php artisan schedule:run >> /dev/null 2>&1
   ```
+
+  The repository's own deploy installs both from `deploy/` (`gallery-queue.service` and
+  `gallery-scheduler.cron`), as it does the Apache VirtualHosts.
 
 ## Development
 
@@ -233,21 +237,24 @@ Do **not** edit a migration that has already run in production — add a new one
 
 - Make the admin account with `php artisan gallery:user <name> --admin`, which asks for the
   password rather than taking it on the command line. Sign-up never makes an admin, and there is
-  always one admin left.
+  always one admin left. An admin can't remove their own admin role or delete their own account;
+  another admin does either from the Users page.
 - Set the Turnstile keys on a public site, and close sign-up (`GALLERY_ALLOW_SIGNUP=false`) if
   you don't want new accounts.
 - Keep `GALLERY_ALLOWED_ORIGINS` tight — it backs CORS, the CSRF origin check and the origins
   passkeys answer from. State-changing requests with no `Origin`/`Referer` are rejected, and so
   is any the browser doesn't mark same-origin.
-- Set `APP_URL` to the address people use, over https: it makes the session cookie Secure, and
-  passkeys belong to its host.
+- Set `APP_URL` to the address people use, over https: it makes the session cookie Secure and
+  names it `__Host-gallery-session`, and passkeys belong to its host.
 - A browser signs in with an HttpOnly session cookie, which the page's scripts can't read. It
   lasts until the browser closes, or 30 days with "keep me signed in"; a new password signs the
-  account out everywhere else.
-- Login is rate-limited (10 attempts / 5 minutes per IP, passkey sign-ins included), and sign-up
-  (5 accounts an hour per IP), on top of the global request limiter (120 a minute per IP). Behind
-  Cloudflare, the IP is the visitor's: only Cloudflare's own addresses are trusted to say who it
-  is.
+  account out everywhere else. Sessions are rows of the database, stored under a hash of their id.
+- Passwords are hashed with argon2id (64 MiB). An account's older hash is replaced the next time
+  it signs in with its password.
+- Login is rate-limited (10 attempts / 5 minutes per visitor, passkey sign-ins included), and
+  sign-up (5 accounts an hour per visitor), on top of the global request limiter (120 a minute per
+  visitor). A visitor is an IPv4 address, or an IPv6 client's /64. Behind Cloudflare, the address
+  is the visitor's: only Cloudflare's own addresses are trusted to say who it is.
 - Serve only `backend/public/`; the `.env`, the code and the data sit outside it.
 - `backend/.env` and the database are gitignored and must never be committed.
 

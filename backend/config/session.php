@@ -2,6 +2,11 @@
 
 use Illuminate\Support\Str;
 
+// The cookie is Secure whenever the app is served over https, unless SESSION_SECURE_COOKIE says otherwise.
+$secure = filter_var(env('SESSION_SECURE_COOKIE', str_starts_with((string) env('APP_URL', ''), 'https://')), FILTER_VALIDATE_BOOLEAN);
+$path = (string) env('SESSION_PATH', '/');
+$domain = env('SESSION_DOMAIN');
+
 return [
 
     /*
@@ -18,10 +23,11 @@ return [
     |
     */
 
-    // Files, in storage/framework/sessions: the API reads and writes the
-    // session on every request, which would make every read a write to the
-    // SQLite database.
-    'driver' => env('SESSION_DRIVER', 'file'),
+    // Rows in the sessions table of the gallery's SQLite database, whose ids
+    // are stored as SHA-256 hashes (App\Support\HashedSessionHandler). The API
+    // reads and writes the session on every request, so every request writes a
+    // row; WAL mode and the busy timeout (config/database.php) keep that cheap.
+    'driver' => env('SESSION_DRIVER', 'database'),
 
     /*
     |--------------------------------------------------------------------------
@@ -60,9 +66,7 @@ return [
     | Session File Location
     |--------------------------------------------------------------------------
     |
-    | When utilizing the "file" session driver, the session files are placed
-    | on disk. The default storage location is defined here; however, you
-    | are free to provide another location where they should be stored.
+    | Only for the "file" driver, which the gallery no longer uses.
     |
     */
 
@@ -133,9 +137,15 @@ return [
     |
     */
 
+    // __Host- wherever the browser allows it, which is a Secure cookie for this
+    // host alone (Path=/, no Domain): the browser then refuses the cookie from
+    // anything else, so a page on a sibling subdomain can't set or replace it.
+    // Over plain http (local development) it would drop a cookie with that
+    // prefix, so there the name goes without.
     'cookie' => env(
         'SESSION_COOKIE',
-        Str::slug((string) env('APP_NAME', 'laravel')) . '-session',
+        ($secure && $path === '/' && $domain === null ? '__Host-' : '')
+        . Str::slug((string) env('APP_NAME', 'laravel')) . '-session',
     ),
 
     /*
@@ -149,7 +159,7 @@ return [
     |
     */
 
-    'path' => env('SESSION_PATH', '/'),
+    'path' => $path,
 
     /*
     |--------------------------------------------------------------------------
@@ -162,7 +172,7 @@ return [
     |
     */
 
-    'domain' => env('SESSION_DOMAIN'),
+    'domain' => $domain,
 
     /*
     |--------------------------------------------------------------------------
@@ -175,8 +185,7 @@ return [
     |
     */
 
-    // On, unless set, whenever the app is served over HTTPS.
-    'secure' => env('SESSION_SECURE_COOKIE', str_starts_with((string) env('APP_URL', ''), 'https://')),
+    'secure' => $secure,
 
     /*
     |--------------------------------------------------------------------------

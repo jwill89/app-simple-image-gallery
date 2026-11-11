@@ -66,7 +66,8 @@ final class AccountController extends Controller
 
     /**
      * DELETE /account — Delete the account, with its lists, blocked tags and
-     * saved searches. Body: { password }. The last admin can't.
+     * saved searches. Body: { password }. An admin can't (another admin removes
+     * the role first), and the last admin least of all.
      */
     #[OAS\Operation\Delete(
         path: '/account',
@@ -81,7 +82,7 @@ final class AccountController extends Controller
         responses: [
             new OAS\Response(response: 204, description: 'Deleted'),
             new OAS\Response(response: 400, description: 'MissingCredentials', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 403, description: 'IncorrectPassword', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'IncorrectPassword, OwnAdminAccount (an admin can\'t delete their own account)', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
             new OAS\Response(response: 409, description: 'LastAdmin', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
         ],
     )]
@@ -95,6 +96,9 @@ final class AccountController extends Controller
         self::confirmPassword($user, $password);
         if ($user->isLastAdmin()) {
             throw new ApiException('LastAdmin', 409, 'The last admin account can\'t be deleted. Make another admin first.');
+        }
+        if ($user->is_admin) {
+            throw new ApiException('OwnAdminAccount', 403, 'You can\'t delete your own account while you are an admin. Ask another admin to remove your admin role first.');
         }
 
         Login::end($request);

@@ -4,12 +4,32 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [7.2.0] - 2026-11-11
+
+### Added
+
+- The Apache VirtualHosts, the queue worker's unit and the scheduler's cron file are kept in the repository. Every deploy installs them where they differ from the server's, once Apache accepts the vhosts, and puts the previous files back if the deploy fails.
+- The API is at 7.1.0, which documents the session cookie's new name and the two new `403` answers below.
 
 ### Changed
 
+- Needs a one-time step at deploy (docs/ops.md, Upgrading to 7.2.0).
+- Sessions are kept in the gallery's database, found by a hash of their id, instead of in files. Everyone signs in again once; a browser kept signed in does so by itself.
+- On https the session cookie is named `__Host-gallery-session`, so only this host can set it.
+- An IPv6 visitor is counted by its /64 by the sign-in, sign-up and request limits, instead of by its single address.
+- An admin can't remove their own admin role or delete their own account: the Users and Account pages don't offer either, and the API answers `403 OwnAdminRole` or `403 OwnAdminAccount`. Another admin does either from the Users page.
 - `task deploy` ships the newest release tagged on main, built in a checkout of its own, so a commit made after the release no longer stops it and nothing uncommitted reaches the site.
-- Deploying a release the droplet already runs does nothing; `task deploy -- -Force` deploys it again. `-SkipBuild` goes with `-Preview` alone.
+- Deploying a release the droplet already runs does nothing unless `-Force` is given. `-SkipBuild` goes with `-Preview` alone.
+- The deploy takes the database snapshot before it swaps the new code in, so the migration is the first thing the new code runs.
+
+### Fixed
+
+- Signing in with a username that doesn't exist took about twice as long as with one that does.
+
+### Security
+
+- Passwords are hashed with argon2id (64 MiB). An account's older hash is replaced the next time it signs in with its password.
+- A copy of the database holds no session ids: they are stored as hashes.
 
 ## [7.1.0] - 2026-11-07
 
@@ -319,6 +339,7 @@ A complete rewrite as a Vue 3 single-page app on a PHP API, replacing the origin
 
 Before 2.0.0 the gallery was a jQuery and server-rendered PHP app, never versioned. It browsed images and videos, had a first tagging system with a tag page and sorting by tag name, and imported media with a cron script.
 
+[7.2.0]: https://github.com/jwill89/simple-image-gallery/compare/v7.1.0...v7.2.0
 [7.1.0]: https://github.com/jwill89/simple-image-gallery/compare/v7.0.1...v7.1.0
 [7.0.1]: https://github.com/jwill89/simple-image-gallery/compare/v7.0.0...v7.0.1
 [7.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v6.0.0...v7.0.0

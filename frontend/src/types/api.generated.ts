@@ -39,7 +39,8 @@ export interface paths {
         /**
          * Delete your account
          * @description DELETE /account — Delete the account, with its lists, blocked tags and
-         *     saved searches. Body: { password }. The last admin can't.
+         *     saved searches. Body: { password }. An admin can't (another admin removes
+         *     the role first), and the last admin least of all.
          */
         delete: operations["deleteAccount"];
         options?: never;
@@ -1629,7 +1630,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description IncorrectPassword */
+            /** @description IncorrectPassword, OwnAdminAccount (an admin can't delete their own account) */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4245,6 +4246,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Forbidden (not an admin), OwnAdminAccount (an admin can't delete their own account) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description UserNotFound */
             404: {
                 headers: {
@@ -4294,6 +4304,15 @@ export interface operations {
             };
             /** @description WeakPassword */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden (not an admin), OwnAdminRole (an admin can't remove their own admin role) */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

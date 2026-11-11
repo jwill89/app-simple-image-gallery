@@ -11,7 +11,7 @@ use Tests\Support\ContractFixture;
 
 /** The tables the Laravel app adds: Laravel's own, and the accounts' (2026_11_04_000000_create_accounts and after). */
 const LARAVEL_TABLES = [
-    'failed_jobs', 'job_batches', 'jobs', 'migrations', 'users',
+    'failed_jobs', 'job_batches', 'jobs', 'migrations', 'users', 'sessions',
     'blocked_tags', 'favorite_list_items', 'favorite_lists', 'passkeys', 'saved_searches',
 ];
 

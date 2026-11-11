@@ -95,6 +95,18 @@ class User extends Authenticatable implements PasskeyUser
         $this->save();
     }
 
+    /**
+     * The same password under a hash made with today's settings. Unlike
+     * setNewPassword() it keeps the remember token: nothing about who may sign
+     * in has changed. (A session signed in under the old hash ends at its next
+     * request, as after any change to the stored hash.)
+     */
+    public function rehashPassword(string $password): void
+    {
+        $this->password = $password;
+        $this->save();
+    }
+
     /** Whether another admin would remain without this one. */
     public function isLastAdmin(): bool
     {

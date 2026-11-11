@@ -34,6 +34,11 @@ async function loadUsers() {
 onMounted(loadUsers)
 watch(() => auth.isAdmin, loadUsers)
 
+/** Whether this row is the signed-in admin's own, which another admin changes. */
+function isYou(user: User): boolean {
+  return user.id === auth.user?.id
+}
+
 function replace(user: User) {
   users.value = users.value.map((u) => (u.id === user.id ? user : u))
 }
@@ -128,12 +133,13 @@ function joined(user: User): string {
               <tr v-for="user in users" :key="user.id">
                 <td>
                   {{ user.username }}
-                  <span v-if="user.id === auth.user?.id" class="tag is-small ml-1">you</span>
+                  <span v-if="isYou(user)" class="tag is-small ml-1">you</span>
                 </td>
                 <td>{{ user.is_admin ? 'Admin' : 'Member' }}</td>
                 <td>{{ joined(user) }}</td>
                 <td class="actions">
                   <button
+                    v-if="!isYou(user)"
                     type="button"
                     class="button is-small"
                     @click="setAdmin(user, !user.is_admin)"
@@ -144,6 +150,7 @@ function joined(user: User): string {
                     Set password
                   </button>
                   <button
+                    v-if="!isYou(user)"
                     type="button"
                     class="button is-small is-danger is-outlined"
                     @click="deleting = user"
@@ -154,6 +161,10 @@ function joined(user: User): string {
               </tr>
             </tbody>
           </table>
+          <p class="help">
+            An admin can't remove their own admin role or delete their own account. Another admin
+            does either from here.
+          </p>
         </div>
 
         <AppDialog

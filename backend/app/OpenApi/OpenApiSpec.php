@@ -48,8 +48,8 @@ use OpenApi\Spec as OAS;
     component: 'sessionCookie',
     type: 'apiKey',
     in: 'cookie',
-    name: 'gallery-session',
-    description: 'The session cookie a sign-in sets: until the browser closes, or 30 days with "keep me signed in".',
+    name: '__Host-gallery-session',
+    description: 'The session cookie a sign-in sets: until the browser closes, or 30 days with "keep me signed in". Over plain http (local development) it is named gallery-session.',
 )]
 #[OAS\Tag(name: 'System', description: 'Version and API documentation endpoints.')]
 #[OAS\Tag(name: 'Auth', description: 'Sign-up, sign-in (password or passkey) and sign-out.')]
@@ -66,5 +66,5 @@ final class OpenApiSpec
      * `api_version`. It moves only when the API surface changes, never with
      * an application release.
      */
-    public const string API_VERSION = '7.0.0';
+    public const string API_VERSION = '7.1.0';
 }

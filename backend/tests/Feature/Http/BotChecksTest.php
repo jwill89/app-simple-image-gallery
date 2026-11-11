@@ -80,6 +80,30 @@ test('behind Cloudflare, each visitor has their own login limit', function (): v
     $fromCloudflare('198.51.100.9')->postJson('/api/auth/login', ['username' => 'reader', 'password' => 'long-enough'])->assertOk();
 });
 
+test('an IPv6 visitor is counted by its /64, not by the address it happens to use', function (): void {
+    $fromCloudflare = static fn(string $visitor) => fromGallery(['X-Forwarded-For' => $visitor])
+        ->withServerVariables(['REMOTE_ADDR' => '162.158.10.20']);
+
+    // Ten attempts, each from another address in 2001:db8:1:2::/64.
+    foreach (range(1, 10) as $n) {
+        $fromCloudflare("2001:db8:1:2::{$n}")->postJson('/api/auth/login', ['username' => 'reader', 'password' => 'wrong-password'])->assertStatus(401);
+    }
+    $fromCloudflare('2001:db8:1:2:ffff:ffff:ffff:ffff')->postJson('/api/auth/login', ['username' => 'reader', 'password' => 'long-enough'])->assertStatus(429);
+    $fromCloudflare('2001:0db8:0001:0002:0000:0000:0000:0001')->postJson('/api/auth/login', ['username' => 'reader', 'password' => 'long-enough'])->assertStatus(429);
+
+    // The next /64 is another subscriber.
+    $fromCloudflare('2001:db8:1:3::1')->postJson('/api/auth/login', ['username' => 'reader', 'password' => 'long-enough'])->assertOk();
+});
+
+test('the API\'s own limit counts an IPv6 visitor by its /64 too', function (): void {
+    $fromCloudflare = static fn(string $visitor) => fromGallery(['X-Forwarded-For' => $visitor])
+        ->withServerVariables(['REMOTE_ADDR' => '162.158.10.20']);
+
+    $fromCloudflare('2001:db8:1:2::1')->getJson('/api/auth/config')->assertOk()->assertHeader('X-RateLimit-Remaining', '119');
+    $fromCloudflare('2001:db8:1:2::2')->getJson('/api/auth/config')->assertOk()->assertHeader('X-RateLimit-Remaining', '118');
+    $fromCloudflare('2001:db8:1:3::1')->getJson('/api/auth/config')->assertOk()->assertHeader('X-RateLimit-Remaining', '119');
+});
+
 test('from anywhere else, a forged X-Forwarded-For doesn\'t escape the limit', function (): void {
     foreach (range(1, 10) as $n) {
         fromGallery(['X-Forwarded-For' => "203.0.113.{$n}"])->withServerVariables(['REMOTE_ADDR' => '192.0.2.50'])

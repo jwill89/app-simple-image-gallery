@@ -11,10 +11,12 @@ use App\Http\Requests\RegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\Turnstile;
+use App\Support\ClientAddress;
 use App\Support\Login;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
@@ -25,19 +27,20 @@ use OpenApi\Spec as OAS;
  * Accounts: sign-up, login and logout. A signed-in browser carries its session
  * in a cookie (App\Support\Login). Sign-up and login pass Cloudflare Turnstile
  * first (App\Services\Turnstile), when it is set up. Login is throttled to 10
- * attempts per 5 minutes per IP, and sign-up to 5 accounts an hour, on top of
- * the API's limit. That is checked here rather than by a second throttle
+ * attempts per 5 minutes per visitor, and sign-up to 5 accounts an hour, on top
+ * of the API's limit; a visitor is an IPv4 address or an IPv6 /64
+ * (App\Support\ClientAddress). That is checked here rather than by a second throttle
  * middleware, which would report its own, smaller X-RateLimit-Remaining: the
  * contract's header is the API limit's.
  */
 final class AuthController extends Controller
 {
-    /** Login attempts allowed per IP in LOGIN_WINDOW seconds, successful ones included. */
+    /** Login attempts allowed per visitor in LOGIN_WINDOW seconds, successful ones included. */
     public const int LOGIN_ATTEMPTS = 10;
 
     public const int LOGIN_WINDOW = 300;
 
-    /** Accounts one IP may create in SIGNUP_WINDOW seconds. */
+    /** Accounts one visitor may create in SIGNUP_WINDOW seconds. */
     private const int SIGNUPS = 5;
 
     private const int SIGNUP_WINDOW = 3600;
@@ -125,7 +128,7 @@ final class AuthController extends Controller
             throw new ApiException('SignupClosed', 403, 'New accounts are not being accepted.');
         }
 
-        $throttleKey = 'signup:' . $request->ip();
+        $throttleKey = 'signup:' . ClientAddress::key($request);
         if (RateLimiter::tooManyAttempts($throttleKey, self::SIGNUPS)) {
             throw new ApiException('TooManySignups', 429, 'Too many accounts from this address. Please try again later.', [
                 'Retry-After' => (string) RateLimiter::availableIn($throttleKey),
@@ -183,14 +186,20 @@ final class AuthController extends Controller
         $this->turnstile->verify(self::turnstileToken($request), 'login', $request->ip());
 
         // The column is COLLATE NOCASE, so the name matches in any case. An
-        // unknown name still costs a hash check, so the answer's timing doesn't
-        // say which names exist.
+        // unknown name still costs one hash check, against a hash made once, so
+        // the answer's timing doesn't say which names exist.
+        $password = $request->string('password')->toString();
         $user = User::query()->where('username', $request->string('username')->toString())->first();
-        $hash = $user->password ?? Hash::make(Str::random(40));
-        if (!Hash::check($request->string('password')->toString(), $hash) || $user === null) {
+        if (!Hash::check($password, $user->password ?? self::unknownAccountHash()) || $user === null) {
             Log::warning('Login failed', ['ip' => $request->ip()]);
 
             throw new ApiException('InvalidCredentials', 401, 'The username or password is incorrect.');
+        }
+        // A hash made with other settings (bcrypt, before 7.2.0, or weaker argon2id
+        // ones) is replaced by one made with today's. This runs before the sign-in,
+        // so the new session holds the new hash and stays signed in.
+        if (Hash::needsRehash($user->password)) {
+            $user->rehashPassword($password);
         }
         Log::info('Login', ['user_id' => $user->id, 'ip' => $request->ip()]);
         Login::start($user, $request->boolean('remember'));
@@ -221,13 +230,13 @@ final class AuthController extends Controller
     }
 
     /**
-     * Count a login attempt from this address, refusing it (429
+     * Count a login attempt from this visitor, refusing it (429
      * TooManyAttempts) past the limit. A passkey login counts too
      * (PasskeyController).
      */
     public static function throttleLogin(Request $request): void
     {
-        $throttleKey = 'login:' . $request->ip();
+        $throttleKey = 'login:' . ClientAddress::key($request);
         if (RateLimiter::tooManyAttempts($throttleKey, self::LOGIN_ATTEMPTS)) {
             Log::warning('Login rate limit exceeded', ['ip' => $request->ip()]);
 
@@ -236,6 +245,19 @@ final class AuthController extends Controller
             ]);
         }
         RateLimiter::hit($throttleKey, self::LOGIN_WINDOW);
+    }
+
+    /**
+     * A hash for a login to check when no account has the name it gave, so
+     * that costs one check as a known name does. It is made once with the
+     * current settings (a different one when they change) and kept.
+     */
+    private static function unknownAccountHash(): string
+    {
+        return Cache::rememberForever(
+            'login.unknown-account-hash.' . md5(json_encode(config('hashing.argon'), JSON_THROW_ON_ERROR)),
+            static fn(): string => Hash::make(Str::random(40)),
+        );
     }
 
     private static function turnstileToken(Request $request): ?string

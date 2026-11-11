@@ -209,11 +209,35 @@ test('an admin lists accounts, makes admins, sets passwords and deletes accounts
     $readers->restart();
     $readers->send('GET', '/api/auth/session')->assertExactJson(['user' => null]);
 
-    asAdmin()->patchJson('/api/users/' . adminUser()->id, ['is_admin' => false])->assertOk();
-    asAccount($reader->refresh())->patchJson("/api/users/{$reader->id}", ['is_admin' => false])
+    asAccount($reader->refresh())->patchJson('/api/users/' . adminUser()->id, ['is_admin' => false])
+        ->assertOk()->assertJsonPath('is_admin', false);
+    asAccount($reader)->patchJson("/api/users/{$reader->id}", ['is_admin' => false])
         ->assertStatus(409)->assertJson(['error' => 'LastAdmin']);
     asAccount($reader)->deleteJson('/api/users/' . adminUser()->id)->assertNoContent();
     asAccount($reader)->deleteJson('/api/users/999')->assertNotFound()->assertJson(['error' => 'UserNotFound']);
+});
+
+test('an admin can\'t remove their own admin role or delete their own account, even with another admin there', function (): void {
+    $admin = adminUser();
+    $admin->update(['password' => 'long-enough']);
+    $other = User::factory()->admin()->create(['username' => 'other']);
+
+    asAccount($admin)->patchJson("/api/users/{$admin->id}", ['is_admin' => false])
+        ->assertStatus(403)->assertJson(['error' => 'OwnAdminRole']);
+    asAccount($admin)->deleteJson("/api/users/{$admin->id}")
+        ->assertStatus(403)->assertJson(['error' => 'OwnAdminAccount']);
+    asAccount($admin)->deleteJson('/api/account', ['password' => 'long-enough'])
+        ->assertStatus(403)->assertJson(['error' => 'OwnAdminAccount']);
+    expect($admin->refresh()->is_admin)->toBeTrue();
+
+    // Keeping the role, or changing what else an admin may on their own account, is still fine.
+    asAccount($admin)->patchJson("/api/users/{$admin->id}", ['is_admin' => true])->assertOk();
+    asAccount($admin)->patchJson("/api/users/{$admin->id}", ['password' => 'a-new-password'])->assertOk();
+
+    // Another admin takes the role off; then the account may delete itself.
+    asAccount($other)->patchJson("/api/users/{$admin->id}", ['is_admin' => false])->assertOk()->assertJsonPath('is_admin', false);
+    asAccount($admin->refresh())->deleteJson('/api/account', ['password' => 'a-new-password'])->assertNoContent();
+    expect(User::query()->find($admin->id))->toBeNull();
 });
 
 test('logging out signs out this browser, at once, and no other', function (): void {
