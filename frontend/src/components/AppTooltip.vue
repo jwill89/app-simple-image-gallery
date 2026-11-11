@@ -4,9 +4,9 @@ import { TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka
 /**
  * Tooltip for icon-only controls.
  *
- * Replaces `title`, which never appears on touch, can't be reached by keyboard,
- * and takes a browser-controlled second to show. Reka's opens on focus as well
- * as hover and dismisses on Escape.
+ * Use this instead of `title`, which never appears on touch, can't be reached
+ * by keyboard, and takes a browser-controlled second to show. Reka's opens on
+ * focus as well as hover and dismisses on Escape.
  *
  * Requires a `TooltipProvider` ancestor — App.vue mounts one at the root. Without
  * it the context injection throws during setup and takes down the entire

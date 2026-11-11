@@ -11,13 +11,13 @@ use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
 use Tests\Support\ContractFixture;
 
-// The nightly ingest, as cron.php did it: files in the media folder's root are
-// added and moved into full/, copies and taken names are deleted, other types
-// stay, and items whose file is gone are removed. The queue runs jobs inline
-// here (QUEUE_CONNECTION=sync), so each run ingests at once.
+// The nightly ingest: files in the media folder's root are added and moved into
+// full/, copies and taken names are deleted, other types stay, and items whose
+// file is gone are removed. The queue runs jobs inline here
+// (QUEUE_CONNECTION=sync), so each run ingests at once.
 
 /**
- * The ffmpeg arguments cron.php used to write a thumbnail.
+ * The ffmpeg arguments that write a thumbnail.
  *
  * @return list<string>
  */
@@ -62,13 +62,13 @@ test('new files are added with their type, time, hash, fingerprint and metadata,
 
     $named = static fn(string $name): Media => Media::query()->where('file_name', $name)->firstOrFail();
 
-    // Added in name order, as cron.php's scandir() listed them.
+    // Added in name order.
     expect(Media::query()->orderBy('media_id')->pluck('file_name')->all())->toBe(['moving.gif', 'still.gif', 'tiny.png'])
         ->and($named('tiny.png')->only(['media_type', 'file_time', 'hash', 'bits_fingerprint', 'width', 'height', 'duration', 'file_size']))->toBe([
             'media_type' => 'image',
             'file_time' => 1767225600,
             'hash' => md5_file(ContractFixture::path('uploads/tiny.png')),
-            // As the Slim app computed it for the same file (contract recording media/upload).
+            // The fingerprint the contract recording media/upload holds for the same file.
             'bits_fingerprint' => '1101111110010111011110010111100101111101011101110110011101110111',
             'width' => 40,
             'height' => 56,

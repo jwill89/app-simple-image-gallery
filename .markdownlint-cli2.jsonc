@@ -1,6 +1,5 @@
-// markdownlint for the docs (`task shared:lint:md`, and CI): the shared config from
-// shared-tooling's lint/markdown, which sets no line length (decided 2026-11-05). The VS
-// Code markdownlint extension reads this file too.
+// markdownlint for the docs (`task shared:lint:md`, and CI): the shared config, which
+// sets no line length. The VS Code markdownlint extension reads this file too.
 {
   "config": { "extends": "shared/lint/markdown/markdownlint.jsonc" },
   "globs": ["**/*.md"],

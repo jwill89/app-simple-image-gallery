@@ -10,8 +10,9 @@ import { useGalleryStore } from '../stores/gallery'
  *                 continuous scrolling apply.
  *
  * These are declared per route rather than derived from a chain of negations in
- * the navbar, which is how the per-page select and infinite-scroll toggle ended
- * up live on /favorites (no pagination) and on the 404 page.
+ * the navbar, which leaves the per-page select and infinite-scroll toggle live
+ * on pages where they do nothing, such as /favorites (no pagination) and the
+ * 404 page.
  */
 declare module 'vue-router' {
   interface RouteMeta {
@@ -109,8 +110,8 @@ const router = createRouter({
     {
       path: '/favorites',
       name: 'favorites',
-      // Renders media (so blur applies) but has no pagination — which is why
-      // the items-per-page select never belonged here.
+      // Renders media (so blur applies) but has no pagination, so no
+      // items-per-page select.
       meta: { title: 'Favorites', showBlur: true },
       component: () => import('../views/FavoritesView.vue'),
     },
@@ -123,8 +124,8 @@ const router = createRouter({
     {
       path: '/duplicates',
       name: 'duplicates',
-      // Side-by-side comparison images honour `blurThumbnails`, but the old
-      // negation chain lumped this in with "admin utility" and hid the toggle.
+      // Side-by-side comparison images honour `blurThumbnails`, so the blur
+      // toggle shows although this is an admin page.
       meta: { title: 'Duplicates', showBlur: true },
       component: () => import('../views/DuplicatesView.vue'),
     },
@@ -159,9 +160,9 @@ const router = createRouter({
       component: () => import('../views/NotFoundView.vue'),
     },
   ],
-  // Deprecated in vue-router 5.4 (2026-11), but its replacement, ScrollRestoration,
-  // still lives in `vue-router/experimental`. Move once that's stable.
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  // `scrollBehavior` is deprecated in vue-router, but its replacement,
+  // ScrollRestoration, is still in `vue-router/experimental`.
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- the replacement is still experimental
   scrollBehavior(to, _from, savedPosition) {
     // The infinite-scroll gallery manages its own scroll: it syncs the URL to
     // the position while scrolling and restores the position manually on return

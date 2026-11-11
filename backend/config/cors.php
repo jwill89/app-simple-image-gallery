@@ -7,7 +7,7 @@ declare(strict_types=1);
 | Cross-Origin Resource Sharing (CORS)
 |--------------------------------------------------------------------------
 |
-| The Slim app's CORS rules for /api. The allowed origins are
+| The CORS rules for /api. The allowed origins are
 | config('gallery.allowed_origins') (GALLERY_ALLOWED_ORIGINS), which
 | AppServiceProvider copies in, since this file is read before gallery.php.
 | The same list backs the origin check (App\Http\Middleware\VerifyOrigin).

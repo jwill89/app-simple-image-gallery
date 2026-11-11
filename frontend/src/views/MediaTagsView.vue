@@ -109,8 +109,8 @@ const groupedTags = computed(() => {
 
 /**
  * Short enough to sit on the metadata line without truncating. The full
- * timestamp — weekday, seconds and timezone included — moves to the `title`,
- * so the precision is still there on demand rather than clipped off the edge.
+ * timestamp — weekday, seconds and timezone included — is in the `title`, so
+ * the precision is there on demand rather than clipped off the edge.
  */
 const formattedDate = computed(() => {
   if (!mediaItem.value?.file_time) {
@@ -526,8 +526,7 @@ function onTouchEnd(e: TouchEvent) {
                   <font-awesome-icon icon="fa-solid fa-spinner" spin size="2x" />
                 </span>
               </div>
-              <!-- Uploaded videos come without caption files, so there is no track to offer. -->
-              <!-- eslint-disable-next-line vuejs-accessibility/media-has-caption -->
+              <!-- eslint-disable-next-line vuejs-accessibility/media-has-caption -- uploaded videos come without caption files, so there is no track to offer -->
               <video
                 v-if="mediaUrl && isVideo(mediaUrl)"
                 controls
@@ -538,9 +537,9 @@ function onTouchEnd(e: TouchEvent) {
                 ]"
                 @loadeddata="mediaReady = true"
               />
-              <!-- Enlarging the media is the primary verb on this page, but it
-                   used to be a text link buried in the metadata table. Videos
-                   keep their own controls, so only images open the lightbox. -->
+              <!-- Enlarging the media is the primary verb on this page, so the
+                   image itself is the control. Videos keep their own controls,
+                   so only images open the lightbox. -->
               <img
                 v-else-if="mediaUrl"
                 :src="mediaUrl"
@@ -662,9 +661,9 @@ function onTouchEnd(e: TouchEvent) {
               </div>
             </div>
 
-            <!-- Six facts don't need a bordered grid. As a table this had no
-                 `.table-container`, so on a 375px screen the date lost its
-                 timezone and the copy button sat outside the viewport. -->
+            <!-- Six facts don't need a bordered grid: a table without a
+                 `.table-container` loses the date's timezone on a 375px screen
+                 and leaves the copy button outside the viewport. -->
             <dl class="media-meta">
               <div v-if="dimensions" class="media-meta-item">
                 <dt>Dimensions</dt>
@@ -1023,10 +1022,10 @@ function onTouchEnd(e: TouchEvent) {
 }
 
 /* The × is always visible when you can remove tags.
-   Hiding it with `opacity: 0` kept it in the layout, so every chip carried a
-   blank gap and read as oddly wide until you hovered — and because the reveal
-   was bound to the group, hovering one tag lit up every tag in that category.
-   A chip whose width doesn't match its contents is worse than a visible ×. */
+   Hiding it with `opacity: 0` would keep it in the layout, so every chip would
+   carry a blank gap and read as oddly wide until you hovered — and a reveal
+   bound to the group would light up every tag in that category when you hover
+   one. A chip whose width doesn't match its contents is worse than a visible ×. */
 .tag-group .tags :deep(.tag-badge-delete) {
   opacity: 1;
 }

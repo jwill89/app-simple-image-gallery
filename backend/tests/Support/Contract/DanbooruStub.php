@@ -11,10 +11,9 @@ use Tests\Support\ContractFixture;
 
 /**
  * The Danbooru API the recordings were made against (the recorder's stub
- * server, gone with the Slim app), as an Http::fake(). It
- * answers the same three calls the same way, refuses other credentials with
- * 401, and logs each call as the stub did, without credentials, so a step can
- * be checked for the calls it made.
+ * server), as an Http::fake(). It answers the same three calls the same way,
+ * refuses other credentials with 401, and logs each call without credentials,
+ * as the recorder's stub did, so a step can be checked for the calls it made.
  *
  * Down, every call fails to connect, as when the recorder stopped the stub.
  */

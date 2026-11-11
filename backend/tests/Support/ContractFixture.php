@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 /**
- * The contract fixture the Slim app's API was recorded on (tests/Fixtures/):
+ * The contract fixture the API was recorded on (tests/Fixtures/):
  * the database rows (contract.sql), the upload and thumbnail files, and the
  * recordings themselves (contract/, format in its README).
  */
@@ -17,8 +17,8 @@ final class ContractFixture
     }
 
     /**
-     * The production schema as SQL (schema.sql, the Slim app's): what the
-     * migrations must build and contract.sql is loaded on.
+     * The production schema as SQL (schema.sql): what the migrations must build
+     * and contract.sql is loaded on.
      */
     public static function productionSchema(): string
     {

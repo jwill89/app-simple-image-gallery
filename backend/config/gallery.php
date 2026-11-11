@@ -9,8 +9,7 @@ use Illuminate\Support\Env;
 | Gallery settings
 |--------------------------------------------------------------------------
 |
-| Every variable in the Slim backend's .env.example, read the way its
-| Gallery\Core\Configuration reads it: an empty value counts as unset. Code
+| Every gallery variable in .env, where an empty value counts as unset. Code
 | reads these with config('gallery.…'), never env(), so they still resolve
 | after `php artisan config:cache`.
 |
@@ -68,7 +67,7 @@ return [
     // Duplicate-scan tuning, as written: the largest Hamming distance reported
     // (0-16, default 6) and the largest worst-region difference (0-255 or "off",
     // default 36). Unset or invalid values fall back to the defaults where the
-    // scanner reads them, as Configuration::getDuplicateMax*() do today.
+    // scanner reads them (ScanSettings).
     'duplicates' => [
         'max_distance' => $raw('DUPLICATE_MAX_DISTANCE'),
         'max_region_diff' => $raw('DUPLICATE_MAX_REGION_DIFF'),
@@ -76,7 +75,7 @@ return [
 
     // Where media files (full/, thumbs/ and the ingest folder) and duplicate-scan
     // reports live. On the droplet both sit beside the app in its folder, outside
-    // public/ (docs/laravel-migration.md, Deployment).
+    // public/, so only the media link in public/ exposes any of it.
     'media_path' => $orDefault($raw('GALLERY_MEDIA_PATH'), storage_path('app/media')),
     'dupes_path' => $orDefault($raw('GALLERY_DUPES_PATH'), storage_path('app/dupes')),
 

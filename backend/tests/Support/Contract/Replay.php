@@ -21,11 +21,11 @@ use function Pest\Laravel\call;
 use function Pest\Laravel\seed;
 
 /**
- * Replays the Slim app's recorded contract (tests/Fixtures/contract/, format
- * in its README) against this app, in the setup it was recorded in.
+ * Replays the recorded API contract (tests/Fixtures/contract/, format in its
+ * README) against this app, in the setup it was recorded in.
  *
  * A case runs step by step while its routes exist here. A step whose path
- * belongs to an inventory route that isn't ported yet stops the case, and
+ * belongs to an inventory route this app doesn't have yet stops the case, and
  * run() reports what it waits on. A step's expected response is the recorded
  * one unless the contract was changed on purpose (tests/Feature/Contract/
  * divergences.php).
@@ -36,7 +36,7 @@ final class Replay
      * How the recordings sign in: with the token the recorder gave its admin.
      * This app signs a browser in with a session cookie, so a request carrying
      * it acts as the admin, and one carrying any other token (an expired one,
-     * one without the Bearer scheme) as no one, as it always was.
+     * one without the Bearer scheme) as no one.
      */
     private const string ADMIN_AUTHORIZATION = 'Bearer <admin-token>';
 
@@ -54,15 +54,15 @@ final class Replay
     private const int UPLOAD_MAX_FILESIZE = 1024 * 1024;
 
     /**
-     * The release the recordings were made at, which GET /version reports. A
-     * release since moves config('gallery.version'), not the contract.
+     * The release the recordings were made at, which GET /version reports.
+     * config('gallery.version') moves with each release; the recordings don't.
      */
     private const string RECORDED_VERSION = '4.0.0';
 
     /**
-     * The API version the recordings were made against. API 5 changed some
-     * answers (each named in divergences.php as superseded) and moved
-     * config('gallery.api_version'); the rest still answer as recorded.
+     * The API version the recordings were made against. Later versions answer
+     * some cases differently (each named in divergences.php as superseded) and
+     * move config('gallery.api_version'); the rest still answer as recorded.
      */
     private const string RECORDED_API_VERSION = '4.0.0';
 
@@ -70,8 +70,8 @@ final class Replay
     private const int FIXTURE_REPORT_MTIME = 1761782400;
 
     /**
-     * Top-level fields API 5 added to answers, which API 4's recordings can't
-     * have: a validation failure's `errors` (every broken field) and a media
+     * Top-level fields the app adds to answers that API 4's recordings
+     * predate: a validation failure's `errors` (every broken field) and a media
      * page's `next_cursor`.
      */
     private const array ADDED_FIELDS = ['errors', 'next_cursor'];
@@ -80,8 +80,8 @@ final class Replay
     private const array PREFLIGHT_ONLY_HEADERS = ['access-control-allow-headers', 'access-control-allow-methods', 'access-control-max-age'];
 
     /**
-     * SecurityHeaders' two headers, which the Slim app set on its API's
-     * responses only. Here every response has them, the SPA shell's included.
+     * SecurityHeaders' two headers. The recordings show them on API responses
+     * only; here every response has them, the SPA shell's included.
      */
     private const array SECURITY_HEADERS = ['x-content-type-options' => 'nosniff', 'x-frame-options' => 'SAMEORIGIN'];
 
@@ -125,7 +125,7 @@ final class Replay
     }
 
     /**
-     * Run the case's steps until one needs a route not ported yet.
+     * Run the case's steps until one needs a route this app doesn't have yet.
      *
      * @return array{ran: int, of: int, waits_on: list<string>, problems: list<string>}
      */
@@ -169,7 +169,7 @@ final class Replay
         return ['ran' => count($steps), 'of' => count($steps), 'waits_on' => [], 'problems' => $problems];
     }
 
-    /** Fixture rows and files, the recorded .env, the recorder's tokens, Danbooru, then the case's own setup. */
+    /** Fixture rows and files, the recorded .env, the recorder's admin, Danbooru, then the case's own setup. */
     private function setUp(): void
     {
         /** @var array{env?: array<string, string>, sql?: list<string>, files?: array<string, string|null>, danbooru?: string} $setup */
@@ -190,7 +190,7 @@ final class Replay
             DB::connection()->getPdo()->exec($statement);
         }
 
-        // The recorder's admin, an account with is_admin set since API 6.
+        // The recorder's admin: an account with is_admin set.
         $this->admin = User::query()->create(['username' => 'admin', 'password' => 'contract-password', 'is_admin' => true]);
 
         $this->root = $root = sys_get_temp_dir() . '/gallery-replay-' . bin2hex(random_bytes(4));
@@ -393,7 +393,7 @@ final class Replay
 
         if (array_key_exists('json', $expected)) {
             $decoded = json_decode($body, true);
-            // Fields API 5 added to answers API 4 recorded (divergences.php explains each).
+            // Fields the recorded answers lack (ADDED_FIELDS; divergences.php explains each).
             if (is_array($decoded) && is_array($expected['json'])) {
                 foreach (self::ADDED_FIELDS as $field) {
                     if (!array_key_exists($field, $expected['json'])) {
@@ -419,8 +419,8 @@ final class Replay
     }
 
     /**
-     * The ported routes a request depends on that aren't ported yet: every
-     * inventory route whose path pattern matches (any method, since a 405's
+     * The inventory routes a request depends on that this app doesn't have yet:
+     * every inventory route whose path pattern matches (any method, since a 405's
      * Allow lists them all). A path no inventory route matches depends on none,
      * and neither does a preflight, which CORS handling answers before routing.
      *

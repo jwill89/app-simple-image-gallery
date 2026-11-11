@@ -36,9 +36,9 @@ return [
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            // The per-connection PRAGMAs the Slim backend's DatabaseConnection
-            // sets. The web app, the scheduler and the queue worker share one
-            // file, so WAL and a 5 s busy timeout keep them from failing on locks.
+            // The per-connection PRAGMAs. The web app, the scheduler and the queue
+            // worker share one file, so WAL and a 5 s busy timeout keep them from
+            // failing on locks.
             'busy_timeout' => 5000,
             'journal_mode' => 'wal',
             'synchronous' => 'normal',

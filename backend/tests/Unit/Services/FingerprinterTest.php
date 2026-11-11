@@ -6,9 +6,10 @@ use App\Services\Fingerprinter;
 use Intervention\ImageHash\Hash;
 use Tests\Support\ContractFixture;
 
-// Fingerprinting on images drawn with GD, and on files the Slim app already
-// fingerprinted: old and new fingerprints are compared with each other, so a
-// change in how they are computed would silently break the duplicate scan.
+// Fingerprinting on images drawn with GD, and on files whose fingerprints the
+// contract recordings hold: stored and new fingerprints are compared with each
+// other, so a change in how they are computed would silently break the
+// duplicate scan.
 
 /**
  * The fingerprint of a $size-pixel square split into a dark and a light half,

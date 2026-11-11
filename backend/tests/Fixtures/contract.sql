@@ -1,15 +1,14 @@
--- Contract fixture for the Phase 0 API recordings (docs/laravel-migration.md).
+-- Contract fixture: the rows the API recordings were made on.
 --
--- Data only: load tests/Support/schema.sql first, then this file. bin/record-contract.php
--- does exactly that for every recorded case, on a fresh copy each time; a Laravel
--- seeder can load the same rows on top of its own migrations.
+-- Data only: it is loaded onto the schema in tests/Fixtures/schema.sql (or the migrated
+-- one, by Tests\Support\ContractFixtureSeeder), on a fresh copy for every recorded case.
 --
 -- Rows were chosen to give each endpoint something to say. The notes on the media rows
 -- name what depends on them: the duplicate-scan pairs (fingerprints a fixed Hamming
 -- distance apart; any other two images are at least 17 apart), the MD5 that matches an
--- upload fixture, and the media the Danbooru stub (tests/Fixtures/danbooru-stub.php)
+-- upload fixture, and the media the Danbooru stub (Tests\Support\Contract\DanbooruStub)
 -- answers for by hash. Hashes are md5('contract-media-<id>') unless noted.
--- No auth rows: the recorder inserts its own tokens, since the Laravel app has no auth_tokens.
+-- No account rows: each replayed case makes its own admin.
 -- file_time counts up from 1767225600 (2026-01-01T00:00:00Z).
 
 PRAGMA foreign_keys = ON;
@@ -141,6 +140,6 @@ INSERT INTO danbooru_tag_map (id, danbooru_tag, gallery_tag) VALUES
     (2, 'cat_ears', 'cat'),
     (3, 'smiling', 'smile');
 
--- ── Duplicates: pair D (12, 13) was dismissed in the UI ──────────────────────
+-- ── Duplicates: pair D (12, 13) is dismissed ──────────────────────────────────
 INSERT INTO dismissed_duplicates (media_id_1, media_id_2, dismissed_at) VALUES
     (12, 13, 1767900000);

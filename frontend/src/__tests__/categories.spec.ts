@@ -39,8 +39,8 @@ describe('categories helpers', () => {
   it('falls back to neutral for colors outside the palette', () => {
     expect(colorToTagClass(null)).toBe('tag--neutral')
     expect(colorToTagClass(undefined)).toBe('tag--neutral')
-    // A stale row that still holds a pre-migration value must not emit a class
-    // that would collide with the semantic palette.
+    // A row that holds a semantic state name must not emit a class that would
+    // collide with the semantic palette.
     expect(colorToTagClass('danger')).toBe('tag--neutral')
     expect(colorToTextClass('warning')).toBe('tag-text--neutral')
   })

@@ -11,8 +11,8 @@ use function Pest\Laravel\getJson;
 use function Pest\Laravel\seed;
 use function Pest\Laravel\withHeaders;
 
-// What API 5 answers where API 4's recordings say otherwise (the cases
-// divergences.php supersedes point here), and what it added: real 404s,
+// What the app answers where API 4's recordings say otherwise (the cases
+// divergences.php supersedes point here), and what API 5 brought: real 404s,
 // partial edits, every validation error, logout, a media item with its tags,
 // ETags, cursors, and writes that clear the cached lists themselves.
 

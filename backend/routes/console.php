@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schedule;
 |--------------------------------------------------------------------------
 |
 | Times are in app.schedule_timezone (SCHEDULE_TIMEZONE), set to the
-| droplet's own so the ingest runs at its midnight, as cron.php did.
+| droplet's own so the ingest runs at its midnight.
 |
 */
 

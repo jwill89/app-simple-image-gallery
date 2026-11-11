@@ -9,10 +9,10 @@ import {
 /**
  * Overflow menu.
  *
- * Replaces a hand-rolled dropdown that opened on click, closed via a global
- * `window` click listener, and had no keyboard access at all — no arrow-key
- * navigation, no Escape, no focus return. Reka UI's DropdownMenu handles all of
- * it, including typeahead.
+ * A hand-rolled dropdown that opens on click and closes via a global `window`
+ * click listener has no keyboard access at all — no arrow-key navigation, no
+ * Escape, no focus return. Reka UI's DropdownMenu handles all of it, including
+ * typeahead.
  *
  * Items are `AppMenuItem`s supplied through the default slot.
  */

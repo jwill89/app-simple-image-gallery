@@ -1,5 +1,5 @@
-# Uploads of images and videos up to 100 MB, as the Slim app allowed. PHP-FPM,
-# which the droplet runs, reads these from .user.ini; php_value only exists
+# Uploads of images and videos up to 100 MB. PHP-FPM, which the droplet runs,
+# reads these from .user.ini; php_value only exists
 # under mod_php, and without the guard Apache answers every request with a 500.
 <IfModule php_module>
     php_value upload_max_filesize 100M
@@ -16,8 +16,8 @@
 </FilesMatch>
 
 # Browsers find a new service worker by fetching /sw.js again, so no cache may
-# keep it: Cloudflare caches .js files, and served a deploy's old worker for up
-# to two hours. With no-cache, Cloudflare checks with the server every time.
+# keep it: Cloudflare caches .js files and would serve a deploy's old worker for
+# up to two hours. With no-cache, Cloudflare checks with the server every time.
 <IfModule mod_headers.c>
     <Files "sw.js">
         Header set Cache-Control "no-cache"

@@ -12,12 +12,12 @@ import {
 /**
  * Page navigation, on Reka UI.
  *
- * The hand-rolled version computed the visible window across seven separate
- * `v-if`s — first page, leading ellipsis, previous, current, next, trailing
- * ellipsis, last — which had to be kept mutually consistent by hand. Reka's
- * PaginationRoot derives that from `page`/`total`/`siblingCount` and hands back
- * a typed list, so the window arithmetic isn't ours to get wrong. It also
- * brings real `aria-current` and list semantics, which the bare anchors lacked.
+ * Computing the visible window by hand takes seven separate `v-if`s — first
+ * page, leading ellipsis, previous, current, next, trailing ellipsis, last —
+ * which have to be kept mutually consistent. Reka's PaginationRoot derives it
+ * from `page`/`total`/`siblingCount` and hands back a typed list, so the window
+ * arithmetic isn't ours to get wrong. It also brings real `aria-current` and
+ * list semantics, which bare anchors lack.
  *
  * `itemsPerPage` is 1 and `total` is the page count, because the caller already
  * thinks in pages rather than items.

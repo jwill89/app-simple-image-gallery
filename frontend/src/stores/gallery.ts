@@ -5,7 +5,7 @@ import { endpoints } from '../api/endpoints'
 import type { Tag, TagCategory, Count } from '../types'
 
 // Domain types are generated from the OpenAPI spec — re-export the ones used
-// across the app so existing `from '../stores/gallery'` imports keep working.
+// across the app so they can be imported from this store too.
 export type { Tag, TagCategory, MediaItem } from '../types'
 
 /** The most tags one ?ids= or ?names= lookup asks for (the API's limit). */

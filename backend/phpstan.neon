@@ -1,4 +1,4 @@
-# The shared PHPStan bar (shared-tooling's lint/php): level 8. Larastan,
+# The shared PHPStan bar: level 8. Larastan,
 # phpstan-strict-rules and phpstan-deprecation-rules load through
 # phpstan/extension-installer, so they need no `includes:` here.
 includes:

@@ -2,9 +2,8 @@
 /**
  * The one empty / failed / nothing-here state.
  *
- * Every view hand-rolled this — same icon, same centred column, slightly
- * different spacing each time — and Duplicates used a plain notification bar
- * for the same situation, so the app said "nothing here" two different ways.
+ * Every view uses this one — same icon, same centred column, same spacing — so
+ * the app says "nothing here" one way.
  */
 withDefaults(
   defineProps<{

@@ -84,10 +84,9 @@ const acceptString = ALL_EXTENSIONS.join(',')
  * Persistent summary of the last upload, shown beneath the per-file list.
  *
  * The toasts report the same counts as they happen and then leave; this stays
- * so the outcome is still on screen once they have gone. Unlike the banner it
- * replaces, it does not require an empty file list — failed files stay
- * selected for retry, which meant the old summary was hidden in exactly the
- * case worth summarising.
+ * so the outcome is still on screen once they have gone. It does not require
+ * an empty file list — failed files stay selected for retry, so a summary that
+ * waited for one would be hidden in exactly the case worth summarising.
  */
 const uploadSummary = computed(() => {
   if (uploading.value || lastUploadResults.value.length === 0) {

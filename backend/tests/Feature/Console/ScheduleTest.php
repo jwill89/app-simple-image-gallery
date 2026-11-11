@@ -5,9 +5,8 @@ declare(strict_types=1);
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 
-// routes/console.php: the nightly ingest, as cron.php ran. Expired sessions
-// need no schedule: the file driver sweeps them as requests arrive
-// (session.lottery).
+// routes/console.php: the nightly ingest. Expired sessions need no schedule:
+// the file driver sweeps them as requests arrive (session.lottery).
 
 /** @return array<string, Event> */
 function scheduled(): array

@@ -1,5 +1,5 @@
 {
-  // The shared settings for the Node-side files (shared-tooling's lint/web).
+  // The shared settings for the Node-side files.
   "extends": "@jwill89/lint-web/tsconfig.node.json",
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",

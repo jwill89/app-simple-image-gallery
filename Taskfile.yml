@@ -2,8 +2,8 @@ version: '3'
 
 # Day-to-day commands; `task` alone lists them. CI (.github/workflows/ci.yml) runs the same checks.
 
-# The tasks every repo shares, from the shared-tooling submodule (shared:lint:scripts,
-# shared:lint:md, shared:update and the rest).
+# The shared tasks, from the shared/ submodule (shared:lint:scripts, shared:lint:md,
+# shared:update and the rest).
 includes:
   shared: ./shared/repo/Taskfile.yml
 
@@ -114,7 +114,7 @@ tasks:
     desc: Lint, audit, test, and build, as CI does (CI also checks the generated files are current)
     cmds:
       # The steps that don't depend on each other run at once, each line prefixed with
-      # its task (standards/testing.md); the ones that need them follow, in order.
+      # its task; the ones that need them follow, in order.
       - task --parallel --output prefixed lint vuln test
       - task: build
       - task: test:e2e

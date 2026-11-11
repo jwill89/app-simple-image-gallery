@@ -15,7 +15,7 @@ use function Pest\Laravel\seed;
 
 // The scan's candidate and threshold logic on fingerprints written straight to
 // the database, its thumbnail pass on drawn thumbnails, and its answers on the
-// contract fixture, which must be the Slim app's.
+// contract fixture, which must match the recordings'.
 
 const SCAN_BASE_BITS = '0110100111010010101100011100101001101001110100101011000111001010';
 

@@ -3,18 +3,16 @@
 declare(strict_types=1);
 
 /*
- * Where the Laravel app answers differently from the recordings on purpose,
- * decided before Phase 3 (docs/laravel-migration.md, "Contract changes").
- * Each entry replaces the recorded response of the listed steps (0-based) with
- * the expected one, in the recordings' format.
+ * Where the app answers differently from the recordings on purpose. Each entry
+ * replaces the recorded response of the listed steps (0-based) with the
+ * expected one, in the recordings' format.
  *
  * Three smaller differences are rules in Tests\Support\Contract\Replay instead,
  * since they apply to whole kinds of response: Access-Control-Allow-Headers,
  * -Methods and -Max-Age are sent only on preflights (where browsers read
- * them), a response the Slim app sent without Cache-Control may carry
- * Symfony's default "no-cache, private", and the SPA shell's pages carry
- * X-Frame-Options and X-Content-Type-Options, which the Slim app set only on
- * the API.
+ * them), a response recorded without Cache-Control may carry Symfony's default
+ * "no-cache, private", and the SPA shell's pages carry X-Frame-Options and
+ * X-Content-Type-Options, which the recordings show only on the API.
  */
 
 $security = ['x-content-type-options' => 'nosniff', 'x-frame-options' => 'SAMEORIGIN'];
@@ -43,7 +41,7 @@ $preflight = [
 
 $divergences = [
     'errors/unmatched-path' => [
-        'reason' => 'An unmatched path is 404 NotFound as { error, message }, not Slim\'s 405 page from its OPTIONS catch-all.',
+        'reason' => 'An unmatched path is 404 NotFound as { error, message }, not the recorded 405 page from an OPTIONS catch-all.',
         'steps' => [
             0 => $notFound,
             1 => $notFound,
@@ -52,7 +50,7 @@ $divergences = [
         ],
     ],
     'errors/method-not-allowed' => [
-        'reason' => 'A wrong method is 405 MethodNotAllowed as { error, message }, not Slim\'s HTML or { message } page.',
+        'reason' => 'A wrong method is 405 MethodNotAllowed as { error, message }, not the recorded HTML or { message } page.',
         'steps' => [
             0 => $methodNotAllowed('PUT', 'GET, HEAD, DELETE'),
             1 => $methodNotAllowed('PUT', 'GET, HEAD, DELETE'),
@@ -94,14 +92,15 @@ $divergences = [
 ];
 
 /*
- * API 5 (2026-11) changed these cases on purpose, too much for step-by-step
- * divergences, so they are set aside: the tests named say what API 5 answers.
- * A field API 5 only added (a validation failure's `errors`, a media page's
- * `next_cursor`) is a rule in Replay instead, as are the ones above.
+ * Later API versions answer these cases differently on purpose, too much for
+ * step-by-step divergences, so they are set aside: the tests named say what the
+ * app answers. A field only added since the recordings (a validation failure's
+ * `errors`, a media page's `next_cursor`) is a rule in Replay instead, as are
+ * the ones above.
  */
 $superseded = static fn(string $reason): array => ['superseded' => $reason];
 $missingRecord = $superseded('A path id is digits and names a record that exists, or the request is a 404 with the resource\'s code (MediaNotFound, TagNotFound, CategoryNotFound, MappingNotFound, ImplicationNotFound), where API 4 answered 400 for a malformed id, 200 or 204 for a missing one, and used several codes. tests/Feature/Http/Api5Test.php.');
-$danbooru = $superseded('The Danbooru import no longer returns `all_tags` (every tag in the gallery). tests/Feature/Http/Api5Test.php.');
+$danbooru = $superseded('The Danbooru import returns no `all_tags` (every tag in the gallery). tests/Feature/Http/Api5Test.php.');
 $upload = $superseded('An upload queues its thumbnails and Danbooru lookup: a file says tags_status "queued" (or why not, as tags_error), GET /media/tag-imports reports the outcome, and total_tags_applied is gone. tests/Feature/Http/UploadQueueTest.php.');
 $partial = $superseded('A PUT or PATCH changes only the fields it sends; API 4 reset the rest to their defaults. tests/Feature/Http/Api5Test.php.');
 $accounts = $superseded('API 6 has accounts: login takes a username and password (MissingCredentials 400, InvalidCredentials 401); the shared GALLERY_ADMIN_PASSWORD, and AdminNotConfigured with it, are gone. API 7 signs the browser in with a session cookie and answers { user }, with no token. tests/Feature/Http/AccountsTest.php.');

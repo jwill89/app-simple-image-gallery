@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 use Rector\Config\RectorConfig;
 
-// The shared Rector set (shared-tooling's lint/php: no dead code), current PHP idioms for
-// the PHP composer.json requires, and rector-laravel's rules for the installed Laravel
-// version. `composer rector` applies, `composer rector:check` (the CI step) lists.
+// The shared Rector set (no dead code), current PHP idioms for the PHP composer.json
+// requires, and rector-laravel's rules for the installed Laravel version. `composer
+// rector` applies, `composer rector:check` (the CI step) lists.
 return RectorConfig::configure()
     ->withPaths([
         __DIR__ . '/app',

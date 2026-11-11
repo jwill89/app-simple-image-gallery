@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Queue;
 use Tests\Support\ContractFixture;
 
 // gallery:regenerate rebuilds what is derived from each item's file in
-// media/full/, as the Slim app's regenerate-*.php scripts did.
+// media/full/.
 
 /**
  * A media item for the fixture upload $fixture, stored in media/full/ under its own name.

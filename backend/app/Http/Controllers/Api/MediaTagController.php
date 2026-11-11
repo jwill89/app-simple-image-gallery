@@ -21,7 +21,7 @@ use OpenApi\Spec as OAS;
 
 /**
  * A media item's tags. Anyone may tag (adding and removing are public); the
- * Danbooru import needs the admin's token. Tagging clears the cached lists
+ * Danbooru import needs an admin account. Tagging clears the cached lists
  * through the Media model.
  */
 final class MediaTagController extends Controller

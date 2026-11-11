@@ -117,8 +117,7 @@ async function register() {
             <div class="field">
               <label class="label" for="register-username">Username</label>
               <div class="control has-icons-left">
-                <!-- The first field: focusing it is what arriving at a sign-up page is for. -->
-                <!-- eslint-disable vuejs-accessibility/no-autofocus -->
+                <!-- eslint-disable vuejs-accessibility/no-autofocus -- the first field: focusing it is what arriving at a sign-up page is for -->
                 <input
                   id="register-username"
                   v-model="username"

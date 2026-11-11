@@ -8,18 +8,18 @@
      2. Semantic  — danger / success / warning / info. State, never decoration.
      3. Tag       — the `--tag-*` scale below. Decoration, never state.
 
-   Rule 2 and 3 must not borrow from each other. Tag categories used to be
-   stored as Bulma semantic names (Artist = `danger`), which made the Artist
-   chip and the delete button the same red, and tied the tag palette to Bulma.
-   They now live in their own `tag--<hue>` namespace.
+   Palettes 2 and 3 must not borrow from each other. A category stored as a
+   Bulma semantic name (Artist = `danger`) would make the Artist chip and the
+   delete button the same red, and tie the tag palette to Bulma. Tag
+   categories live in their own `tag--<hue>` namespace.
 
    Everything below reads from a token. Nothing hardcodes a hex outside the
-   :root blocks — which is what makes dropping Bulma a deletion job later,
-   rather than a rewrite.
+   :root blocks, so the Bulma overrides can be deleted without rewriting the
+   rules that read the tokens.
    ═══════════════════════════════════════════════════════════ */
 
 /* The palette itself: the one place a colour is written as a literal. */
-/* stylelint-disable color-no-hex, declaration-property-value-disallowed-list */
+/* stylelint-disable color-no-hex, declaration-property-value-disallowed-list -- the palette is where colours are defined */
 :root {
   /* ── Chrome: surfaces ─────────────────────────────────── */
   --surface-0: #fff; /* page ground */
@@ -158,7 +158,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 /* Bulma only sets the family on `body`, so anything outside that cascade
-   (and the document default) fell back to Times New Roman. */
+   (and the document default) would fall back to Times New Roman. */
 html {
   font-family: var(--font-sans);
   background-color: var(--surface-0);
@@ -207,8 +207,8 @@ hr {
 
 /* ═══════════════════════════════════════════════════════════
    Density — Bulma's block defaults are magazine-sized
-   `.section` shipped 48px on every side and `.footer` 48/24/96,
-   which cost ~200px of vertical space and 96px of horizontal
+   `.section` is 48px on every side and `.footer` 48/24/96,
+   which costs ~200px of vertical space and 96px of horizontal
    space on a phone.
    ═══════════════════════════════════════════════════════════ */
 
@@ -246,8 +246,8 @@ hr {
 
 /* ═══════════════════════════════════════════════════════════
    Typography — a scale that is actually used.
-   Page titles used to be whichever of .title / .title.is-4 the
-   view happened to pick.
+   A bare .title is the page-title size, so a view needn't pick
+   between .title and .title.is-4.
    ═══════════════════════════════════════════════════════════ */
 
 .title {
@@ -290,8 +290,8 @@ hr {
   font-size: var(--t-base);
 }
 
-/* Bulma spaces `.icon` inside `.button` but not inside `.title`, so headings
-   rendered as "≋Category Mappings" with the glyph against the text. */
+/* Bulma spaces `.icon` inside `.button` but not inside `.title`, so a heading
+   would render as "≋Category Mappings" with the glyph against the text. */
 .title .icon,
 .subtitle .icon {
   margin-right: 0.4em;
@@ -345,7 +345,7 @@ hr {
 
 /* Hover/selected styling is scoped to anchors only. Bulma also uses
    `.navbar-item` for the plain `<div>` wrappers around the search field, the
-   toggles and the per-page select — highlighting those made five inert cells
+   toggles and the per-page select — highlighting those would make inert cells
    look like clickable navigation.
    No corner radius: these are full-height cells in a full-width bar, so a
    rounded highlight floats oddly inside the bar instead of filling its slot. */
@@ -569,7 +569,7 @@ a.navbar-item.is-selected {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Tables — denser. Rows were 50px for a single line of text.
+   Tables — dense. Bulma's rows are 50px for a single line of text.
    ═══════════════════════════════════════════════════════════ */
 
 .table {
@@ -646,13 +646,13 @@ a.navbar-item.is-selected {
 
 /* Bulma's `.notification` is deliberately not styled here — inline alerts go
    through `AppAlert`, which draws its severity from the same tokens as the
-   toasts. Styling `.notification` again would reintroduce the ad-hoc, framework-
-   palette banners AppAlert replaced. Field validation stays on `.help.is-danger`
-   beside its input. */
+   toasts. Styling `.notification` would bring back ad-hoc banners coloured from
+   the framework palette. Field validation stays on `.help.is-danger` beside its
+   input. */
 
 /* ═══════════════════════════════════════════════════════════
-   Breadcrumb — kept (it earns its place on nested pages), but it
-   no longer occupies a 48px band of 16px text above every page.
+   Breadcrumb — small text that sits in the page header, not in a
+   band of its own above every page.
    ═══════════════════════════════════════════════════════════ */
 
 .breadcrumb {
@@ -797,7 +797,7 @@ a.navbar-item.is-selected {
 }
 
 /* General holds the overwhelming majority of tags, so it stays the quietest
-   chip — but it is still a chip. A transparent fill made it read as loose text
+   chip — but it is still a chip. A transparent fill would read as loose text
    with a hairline around it rather than as a tag. */
 .tag--neutral:not(body) {
   background-color: var(--surface-3);
@@ -865,7 +865,7 @@ a.navbar-item.is-selected {
 /* ═══════════════════════════════════════════════════════════
    Portalled overlay surfaces
 
-   These MUST live here rather than in a component's `\3c style scoped>`.
+   These MUST live here rather than in a component's scoped style block.
    Reka renders the combobox dropdown and the dropdown menu through a Teleport,
    and Vue has no root element on this side of that boundary to stamp the
    `data-v-*` scope id onto — so scoped rules silently never match and the
@@ -1033,8 +1033,8 @@ a.navbar-item.is-selected {
 
   /* ...but the toasts themselves stay clickable. Reka's modal Dialog sets
      `pointer-events: none` on <body> while it is open, which the viewport and
-     toasts inherit — that left Dismiss and Undo dead on any toast raised from
-     inside a dialog. Since every response message is a toast, this is the
+     toasts inherit — that would leave Dismiss and Undo dead on any toast raised
+     from inside a dialog. Since every response message is a toast, this is the
      difference between the feedback being usable there and not. */
   pointer-events: auto;
   grid-template-columns: auto 1fr auto;
@@ -1046,7 +1046,7 @@ a.navbar-item.is-selected {
   border: 1px solid var(--border);
 
   /* The severity reads as a stripe, so colour carries meaning without tinting
-     the whole surface — which is what made the old toasts a second palette. */
+     the whole surface, which would make toasts a second palette. */
   border-left: 3px solid var(--text-3);
   border-radius: var(--r-md);
   box-shadow: var(--shadow-3);
@@ -1212,10 +1212,10 @@ a.navbar-item.is-selected {
 }
 
 /* The shared media grid. Tracks are `1fr`, not a fixed max: `auto-fill` sizes
-   the track count using the *maximum*, so `minmax(150px, 200px)` always made
-   200px columns and left the remainder as dead gutter — one single column on a
-   375px phone. Thumbnails stay letterboxed; that's booru convention, and
-   Danbooru does the same. */
+   the track count using the *maximum*, so `minmax(150px, 200px)` would make
+   200px columns and leave the remainder as dead gutter — one single column on a
+   375px phone. Thumbnails stay letterboxed, as booru galleries conventionally
+   show them. */
 .media-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));

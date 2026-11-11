@@ -17,8 +17,8 @@ use function Pest\Laravel\postJson;
 use function Pest\Laravel\withHeaders;
 
 // The cross-cutting behavior the recorded contract fixes for every endpoint,
-// on test routes: what the 401, 403 and 429 recordings show for the real ones,
-// which arrive in Phase 4 (the contract replay then checks them too).
+// on test routes: what the 401, 403 and 429 recordings show for the real ones
+// (the contract replay checks those too).
 
 const ALLOWED = 'https://gallery.test';
 

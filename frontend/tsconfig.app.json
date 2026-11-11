@@ -1,6 +1,6 @@
 {
-  // The shared app settings (shared-tooling's lint/web): Vue's DOM base, unused locals and
-  // parameters, switch fallthrough, and an index that may find nothing typed as such.
+  // The shared app settings: Vue's DOM base, unused locals and parameters, switch
+  // fallthrough, and an index that may find nothing typed as such.
   "extends": "@jwill89/lint-web/tsconfig.app.json",
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",

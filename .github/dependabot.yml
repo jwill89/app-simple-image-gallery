@@ -1,7 +1,5 @@
 # Weekly dependency updates, grouped so a quiet week is one pull request per ecosystem:
-# minors and patches together, majors one by one (they can need code changes). The
-# shape every repo follows (shared-tooling's repo/dependabot.example.yml). It would have
-# raised November's Symfony advisories as a pull request before the audit failed CI.
+# minors and patches together, majors one by one (they can need code changes).
 #
 # Dependabot can't read Actions secrets, so the Font Awesome registry's token is also a
 # Dependabot secret, FONTAWESOME_NPM_TOKEN (Settings, Secrets and variables, Dependabot).
@@ -43,15 +41,13 @@ updates:
       - dependency-name: typescript
         update-types: ['version-update:semver-major']
       # vue-tsc 3.3.14 turns a `//` in a static attribute (placeholder="https://") into
-      # broken virtual code, which stops it checking the rest of that template
-      # (vuejs/language-tools#6322; held at 3.3.13 on 2026-11-07). Only that version:
-      # the fix comes through.
+      # broken virtual code, which stops it checking the rest of that template. Only
+      # that version is skipped: the fix comes through.
       - dependency-name: vue-tsc
         versions: ['3.3.14']
-      # The tools shared-tooling's lint/web owns move to a new major once, in
-      # shared-tooling, with the plugins and configs that must match, and reach here with
-      # `task shared:update`; a plugin of our own for one moves with it. Minors and
-      # patches still come here.
+      # The lint and format tools move to a new major once, together with the plugins
+      # and configs that must match, and reach here with `task shared:update`; a
+      # plugin of our own for one moves with it. Minors and patches still come here.
       - dependency-name: eslint
         update-types: ['version-update:semver-major']
       - dependency-name: 'eslint-*'

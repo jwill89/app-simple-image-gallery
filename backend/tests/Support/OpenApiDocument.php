@@ -28,8 +28,8 @@ final class OpenApiDocument
 
     /**
      * The resources that carry an entity schema. They are listed rather than
-     * scanned so the schemas keep the order the document has always had,
-     * after the other response shapes.
+     * scanned so the schemas come in a fixed order, after the other response
+     * shapes.
      */
     private const array SCHEMA_RESOURCES = [
         MediaResource::class,

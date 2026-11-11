@@ -2,9 +2,8 @@
 /**
  * A row of label / value statistics.
  *
- * Duplicates was the only page in the app with real label-value hierarchy —
- * a small uppercase label above a prominent figure — and it was the page you
- * see least. Extracted so it can be reused wherever counts are reported.
+ * A small uppercase label above a prominent figure, for wherever counts are
+ * reported.
  */
 defineProps<{
   stats: { label: string; value: string | number }[]

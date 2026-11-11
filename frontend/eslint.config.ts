@@ -1,10 +1,9 @@
 import shared, { tsStylistic, vueConventions } from '@jwill89/lint-web'
 
-// The shared front-end rules (shared-tooling's lint/web): Vue 3 + TypeScript
-// strictTypeChecked, template accessibility, the Vue conventions AGENTS.md §8 holds
-// (<script setup lang="ts"> only, no inline styles) and typescript-eslint's stylistic
-// set, with Prettier's conflict list. Below them, what only this app needs. Build and
-// tooling config files are not linted.
+// The shared front-end rules: Vue 3 + TypeScript strictTypeChecked, template
+// accessibility, the Vue conventions (<script setup lang="ts"> only, no inline styles)
+// and typescript-eslint's stylistic set, with Prettier's conflict list. Below them, what
+// only this app needs. Build and tooling config files are not linted.
 export default [
   {
     name: 'gallery/ignores',
@@ -35,8 +34,8 @@ export default [
   },
   {
     // Every API call goes through composables/useApi.ts, so a failure always
-    // arrives as a structured ApiError, the bearer token is always attached and
-    // a 401 always clears it (AGENTS.md §8).
+    // arrives as a structured ApiError, the session cookie always goes with it and
+    // a 401 always reaches the auth store.
     name: 'gallery/api-client-only',
     files: ['src/**/*.{ts,vue}'],
     // The service worker downloads thumbnails and assets, not the API.

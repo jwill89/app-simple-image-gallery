@@ -40,10 +40,8 @@ test('every operation has its own readable operationId', function (): void {
         }
     }
 
-    // API 4's 43; API 5's logout, cursor feed and tag-import status; API 6's
-    // accounts: 7 for sign-up and an account's own settings, 10 for lists, 4
-    // for saved searches and 3 for the admin's Users page; and the sign-up and
-    // login pages' settings (GET /auth/config).
+    // The count moves with every operation added or removed, so it also catches
+    // one that stops being scanned.
     expect($ids)->toHaveCount(78)
         ->and(array_unique($ids))->toHaveCount(count($ids));
     foreach ($ids as $operation => $id) {

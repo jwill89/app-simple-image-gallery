@@ -107,8 +107,8 @@ async function parseApiError(response: Response, _url: string): Promise<ApiError
 let onUnauthorized: (() => void) | null = null
 
 /**
- * Runs whenever the server answers 401: the browser's session no longer signs
- * anyone in (it ran out, signed out elsewhere, or a new password ended it).
+ * Runs whenever the server answers 401: the browser's session signs no one
+ * in (it ran out, signed out elsewhere, or a new password ended it).
  * The auth store uses it to forget the account. The session itself is a
  * cookie the browser sends and the page never sees.
  */

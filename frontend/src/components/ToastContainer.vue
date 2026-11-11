@@ -5,17 +5,15 @@ import { useToastStore, type ToastAction } from '../stores/toast'
 /**
  * Toast rendering, on Reka UI.
  *
- * The Pinia store is unchanged — it still owns queueing, timeouts and the undo
- * action. Only the presentation moved, which buys swipe-to-dismiss, per-severity
- * `aria-live` politeness (errors assertive, everything else polite), pause on
- * hover/focus, and a keyboard route into the toast region via F8.
+ * The Pinia store owns queueing, timeouts and the undo action; this component
+ * only presents them. Reka brings swipe-to-dismiss, per-severity `aria-live`
+ * politeness (errors assertive, everything else polite), pause on hover/focus,
+ * and a keyboard route into the toast region via F8.
  *
- * The old container also carried fourteen hardcoded colours — Bulma's stock
- * semantic palette plus a grey ramp that matched nothing else in the app — so a
- * success toast was a different green from a success notification. Severity is
- * now a stripe drawn from the same `--success`/`--danger`/`--warning`/`--info`
- * tokens everything else uses. Styles live in style.css because the viewport is
- * portalled, and scoped rules cannot cross a Teleport.
+ * Severity is a stripe drawn from the same `--success`/`--danger`/`--warning`/
+ * `--info` tokens everything else uses, so a success toast is the same green as
+ * a success alert. Styles live in style.css because the viewport is portalled,
+ * and scoped rules cannot cross a Teleport.
  */
 const toastStore = useToastStore()
 

@@ -13,10 +13,10 @@
  */
 import { THUMBNAIL_PATH } from '../constants/thumbnails'
 
-// Not bumped when the media listings stopped coming through here: bumping
+// Changed only when cached entries would be wrong for the new code: a change
 // renames every cache, and emptying the thumbnail cache makes the next scroll
-// download every thumbnail again. removeOldCaches() drops the old listing cache
-// anyway, since this version no longer names it.
+// download every thumbnail again. removeOldCaches() drops any cache this
+// version doesn't name.
 const CACHE_VERSION = 'v4'
 export const STATIC_CACHE = `gallery-static-${CACHE_VERSION}`
 export const THUMB_CACHE = `gallery-thumbs-${CACHE_VERSION}`
@@ -32,9 +32,8 @@ interface Trim {
 // Each cache's size cap, and how many entries it takes between trims. A trim
 // lists every key, and Chrome runs a cache's operations one at a time, so a
 // listing holds up every read of that cache until it's done. Trimming the
-// thumbnail cache after every download, as this once did, queued dozens of
-// listings of 2000 keys per batch, and the thumbnails on screen waited seconds
-// behind them.
+// thumbnail cache after every download would queue dozens of listings of 2000
+// keys per batch, and the thumbnails on screen would wait seconds behind them.
 const TRIM: Record<CacheName, Trim> = {
   [STATIC_CACHE]: { max: 100, every: 1, added: 0, running: null },
   [THUMB_CACHE]: { max: 2000, every: 100, added: 0, running: null },
@@ -72,14 +71,14 @@ export function cacheFor(request: Request): CacheName | null {
     return STATIC_CACHE
   }
   // Everything else goes straight to the network: full-size media, and the
-  // API. The media listings came through here for a while (network-first, to
-  // keep an offline copy), which queued infinite scroll's next batch behind the
+  // API. Routing the media listings through here (network-first, to keep an
+  // offline copy) would queue infinite scroll's next batch behind the
   // thumbnail cache's work: seconds, for a request the server answers in a
   // fraction of one.
   return null
 }
 
-/** Delete the caches this version doesn't name: an older version's, or the old listing cache. */
+/** Delete the caches this version doesn't name, such as an older version's. */
 export async function removeOldCaches(): Promise<void> {
   const keys = await caches.keys()
   await Promise.all(keys.filter((key) => !(key in TRIM)).map((key) => caches.delete(key)))

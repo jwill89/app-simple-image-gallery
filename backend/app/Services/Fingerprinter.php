@@ -11,10 +11,10 @@ use Intervention\ImageHash\Strategies\PerceptualStrategy;
 /**
  * The perceptual fingerprint the duplicate scan compares images by.
  *
- * A fingerprint is only comparable with ones computed the same way, so this is
- * exactly the Slim app's: intervention/imagehash's pHash, always through GD,
- * never whichever of GD or Imagick is loaded (the two resample differently).
- * Change any of that and every stored fingerprint must be recomputed.
+ * A fingerprint is only comparable with ones computed the same way, so the
+ * method is fixed: intervention/imagehash's pHash, always through GD, never
+ * whichever of GD or Imagick is loaded (the two resample differently). Change
+ * any of that and every stored fingerprint must be recomputed.
  */
 final class Fingerprinter
 {

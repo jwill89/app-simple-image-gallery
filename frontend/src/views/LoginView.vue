@@ -145,8 +145,7 @@ async function signIn() {
             <div class="field">
               <label class="label" for="login-username">Username</label>
               <div class="control has-icons-left">
-                <!-- The first field: focusing it is what arriving at a sign-in page is for. -->
-                <!-- eslint-disable vuejs-accessibility/no-autofocus -->
+                <!-- eslint-disable vuejs-accessibility/no-autofocus -- the first field: focusing it is what arriving at a sign-in page is for -->
                 <input
                   id="login-username"
                   v-model="username"

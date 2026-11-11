@@ -208,9 +208,9 @@ async function loadPage() {
     if (nextCursor.value === null) {
       allLoaded.value = true
     } else {
-      // Warm the batch you're about to scroll into. Paged mode has always done
-      // this; infinite scroll never did, so every batch arrived cold — which is
-      // exactly where it's most noticeable, since the grid keeps moving.
+      // Warm the batch you're about to scroll into, as paged mode warms the next
+      // page: without it every batch arrives cold, which is most noticeable
+      // where the grid keeps moving.
       prefetchNextBatch(nextCursor.value)
     }
   } else {
@@ -616,9 +616,9 @@ function onCardClick(id: number) {
       </EmptyState>
 
       <div v-else>
-        <!-- One pagination bar, at the bottom. The top copy plus its two rules
-             cost ~170px and pushed the thumbnails below the fold — nobody
-             paginates before they've looked at the page. -->
+        <!-- One pagination bar, at the bottom. A copy at the top, with its two
+             rules, would cost ~170px and push the thumbnails below the fold —
+             nobody paginates before they've looked at the page. -->
         <div class="gallery-body">
           <div
             v-if="isInfiniteScroll && batchStartPage > 1"

@@ -11,8 +11,8 @@
  *              that caused it, a warning attached to one section of a page.
  *
  * A message that would read identically in either place belongs in the toast,
- * so it is reported once. This replaces four ad-hoc Bulma `.notification`
- * blocks that each picked their own colours off the framework palette.
+ * so it is reported once. Use an alert rather than a Bulma `.notification`,
+ * which picks its colours off the framework palette, not the severity tokens.
  *
  * The two are deliberately drawn *differently*, not as a matched set — if a
  * pinned alert and a floating toast look alike, nothing on screen tells you

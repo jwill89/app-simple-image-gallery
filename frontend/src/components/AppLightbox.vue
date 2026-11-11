@@ -32,7 +32,7 @@ const emit = defineEmits<{ 'update:open': [value: boolean] }>()
         <!-- Clicking the surrounding space closes, the way every image viewer
              behaves; clicking the image itself must not. It's the pointer
              equivalent of Escape, which the Dialog already handles. -->
-        <!-- eslint-disable-next-line vuejs-accessibility/click-events-have-key-events, vuejs-accessibility/no-static-element-interactions -->
+        <!-- eslint-disable-next-line vuejs-accessibility/click-events-have-key-events, vuejs-accessibility/no-static-element-interactions -- the click is only the pointer equivalent of Escape -->
         <div class="lb-stage" @click="emit('update:open', false)">
           <img :src="src" :alt="alt" class="lb-img" @click.stop />
         </div>

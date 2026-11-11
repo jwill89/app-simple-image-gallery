@@ -5,7 +5,7 @@
 /IMPROVEMENTS.md
 
 # Deploy tooling: track the script + config template (no secrets in them); keep
-# the local deploy.config.ps1 (host/user/key/webroot) out of git.
+# the local deploy.config.ps1 (host/user/key/app folder) out of git.
 /scripts/*
 !/scripts/deploy.ps1
 !/scripts/deploy.config.example.ps1
@@ -14,10 +14,9 @@
 # backend/.gitignore and backend/database/.gitignore cover the app itself.
 /backend/coverage/
 
-# ── Old backend (Slim) ────────────────────────────────────────────────────────
-# Removed from the repo in the Laravel migration's Phase 8. A checkout may still
-# hold its untracked files (.env, a database copy, vendor/), which must never be
-# committed.
+# ── backend-old/ ──────────────────────────────────────────────────────────────
+# A checkout may hold an untracked backend-old/ (its .env, a database copy,
+# vendor/), which must never be committed.
 /backend-old/
 
 # ── Frontend (Vite) ───────────────────────────────────────────────────────────

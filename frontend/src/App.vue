@@ -15,8 +15,8 @@ const navbarHeight = ref(52)
 let resizeObserver: ResizeObserver | null = null
 
 // Pages fade from one to the next, but the first page appears as it is: there
-// is no page before it to fade from, and fading it in from nothing left its
-// text washed out (failing contrast) for its first quarter-second.
+// is no page before it to fade from, and fading it in from nothing would leave
+// its text washed out (failing contrast) for its first quarter-second.
 const fade = ref(false)
 const stopFadeWatch = useRouter().afterEach((_to, from) => {
   fade.value = from !== START_LOCATION

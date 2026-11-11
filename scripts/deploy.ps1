@@ -6,22 +6,22 @@
     Build and deploy the Gallery (Laravel backend + Vue SPA) to the DigitalOcean droplet.
 
 .DESCRIPTION
-    Built on shared-tooling's SharedDeploy module (shared/deploy/pwsh), the shape every
-    deploy follows: one archive, one held SSH connection, one remote run.
+    Built on the shared SharedDeploy module: one archive, one held SSH connection,
+    one remote run.
 
     The droplet runs the Laravel app from the gallery's domain folder (AppRoot),
     whose public/ is Apache's DocumentRoot. The database, media and duplicate
     reports sit beside the code in that folder (db/, media/, dupes/, at the paths
-    its .env names), as do backups/ and slim-rollback/. A deploy ships and
-    replaces code only, and never touches those.
+    its .env names), as does backups/. A deploy ships and replaces code only, and
+    never touches those.
 
     What ships is the newest release: the newest tag CI made on main for
     frontend/package.json's version (the tags are fetched first), checked out into a
     folder of its own, with npm ci from its lockfile, and built and packed from there.
-    Commits after it, a shared-tooling update or work not yet released, are not part of
-    it, and neither is anything uncommitted. -Preview ships the working tree instead. The
-    host records the release each deploy leaves running; when that is already this
-    release, nothing is done (-Force deploys it again).
+    Commits after it, an update of the shared submodule or work not yet released, are
+    not part of it, and neither is anything uncommitted. -Preview ships the working
+    tree instead. The host records the release each deploy leaves running; when that
+    is already this release, nothing is done (-Force deploys it again).
 
     Steps, on one SSH connection held for the whole run:
       1. Build the frontend (vue-tsc + vite) -> frontend/dist.
@@ -41,7 +41,7 @@
              (kept afterwards unless -NoBackup), then package:discover; the site
              runs the old code or the new, never a half-replaced folder,
            - snapshot the database next to it in .backups/, compressed and
-             integrity-checked (shared-tooling's Backup-RemoteDatabase), keeping
+             integrity-checked (Backup-RemoteDatabase), keeping
              the five most recent                          (skip with -NoBackup),
            - php artisan migrate --force                   (skip with -SkipMigrate),
            - storage:link (public/media), optimize, queue:restart. Neither storage/
@@ -56,21 +56,21 @@
          fails, the previous code goes back (the database stays as it is), unless
          -NoBackup left nothing to go back to. Once both pass, the host records the
          release.
-      6. Check the daily backup (shared-tooling's Install-BackupTimer): a systemd timer
-         that runs as www-data at 10:00 UTC and copies the database with VACUUM INTO to
+      6. Check the daily backup (Install-BackupTimer): a systemd timer that runs as
+         www-data at 10:00 UTC and copies the database with VACUUM INTO to
          db/backups/gallery-YYYY-MM-DD.db.gz, integrity-checked and compressed, keeping
-         28 days. Those sit
-         apart from step 4's snapshots in db/.backups/. If the timer is already as it
-         should be, nothing changes; if it is new or changed, it runs once first, and a
-         failed run puts the previous timer back.
+         28 days. Those sit apart from step 4's snapshots in db/.backups/. If the timer
+         is already as it should be, nothing changes; if it is new or changed, it runs
+         once first, and a failed run puts the previous timer back.
       7. Pull a copy of the live database to the local one backend/.env names
          (DB_DATABASE), keeping the three previous local copies     (skip with -NoDbPull).
          It is skipped, with a warning, while the local database is in use.
     Steps 6 and 7 run only once the site checks pass, so a deploy that rolled back
     changes neither.
 
-    The first deploy to a new AppRoot needs its .env first (the plan's Deployment
-    section, docs/laravel-migration.md); this script refuses to run without one.
+    The first deploy to a new AppRoot needs its .env created there first, since the
+    archive never carries one (it holds the app key, the database path and the
+    secrets); this script refuses to run without it.
 
     Uses PuTTY's plink (0.85 or later) so the DigitalOcean .ppk key works directly.
     It runs in batch mode, so a passphrase-protected .ppk must be loaded into
@@ -108,8 +108,7 @@
 
 .PARAMETER Preview
     Deploy the working tree as it is, uncommitted changes included, stamped
-    preview-<date-time>. Without it the deploy ships only the newest release
-    (standards/deploy-and-ops.md).
+    preview-<date-time>. Without it the deploy ships only the newest release.
 
 .EXAMPLE
     .\scripts\deploy.ps1                       # full build + deploy + composer + migrate
@@ -170,14 +169,14 @@ if (-not $NoDbPull) {
 
 # The code, by its top-level entries: what the archive carries, and vendor/, which the
 # host builds beside it. The new set is built whole and swapped in by renames, so the
-# site runs either the old code or the new: never a half-replaced folder, which failed
-# every request for the 10-20 s that composer install, the migration and optimize took.
+# site runs either the old code or the new: never a half-replaced folder, which would
+# fail every request while composer install, the migration and optimize ran.
 $shipped = 'app', 'bootstrap', 'config', 'database', 'public', 'resources', 'routes', 'artisan', 'composer.json', 'composer.lock', 'openapi.json'
 $code = @($shipped) + 'vendor'
 $queueRestart = 'php artisan queue:restart >/dev/null 2>&1 || true'
 
-# Only a release ships: the newest tag CI made for frontend/package.json's version
-# (standards/deploy-and-ops.md). -Preview ships the tree as it is, stamped preview-<date-time>.
+# Only a release ships: the newest tag CI made for frontend/package.json's version.
+# -Preview ships the tree as it is, stamped preview-<date-time>.
 if ($Preview) {
     $version = 'preview-' + (Get-Date -Format 'yyyyMMdd-HHmm')
     Write-Warning "Preview: deploying the working tree untagged, as $version."
@@ -222,12 +221,12 @@ chown -R www-data:www-data "$stage"
 if ($SkipMigrate) {
     $migrate = "echo '==> -SkipMigrate: skipping database migrations'"
 } else {
-    # Snapshot the database immediately before anything can modify it, to shared-tooling's
-    # standard (Backup-RemoteDatabase): sqlite3 .backup, which is WAL-aware where a plain
+    # Snapshot the database immediately before anything can modify it
+    # (Backup-RemoteDatabase): sqlite3 .backup, which is WAL-aware where a plain
     # `cp gallery.db` would miss whatever is still in the -wal file, PRAGMA integrity_check,
-    # then gzip, to db/.backups/gallery-<UTC time>.db.gz. The newest five stay, the
-    # uncompressed gallery-<time>.db copies earlier deploys took among them, so those age
-    # out. A failed snapshot stops the step before the migration.
+    # then gzip, to db/.backups/gallery-<UTC time>.db.gz. The newest five stay, counting
+    # any uncompressed gallery-<time>.db copies already in the folder, so those age out.
+    # A failed snapshot stops the step before the migration.
     #
     # The snapshot is deliberately NOT restored by the failure trap, which fires on
     # *any* non-zero exit, including after a successful migration: rolling the database
@@ -266,8 +265,8 @@ echo '==> storage:link, optimize, queue:restart'
 # Config, routes and events; the app has no Blade views to cache.
 php artisan optimize --except=views
 php artisan queue:restart
-# What the artisan runs above wrote as root. Not the whole folder: the data, backups/
-# and slim-rollback/ sit beside the code and keep their own owners.
+# What the artisan runs above wrote as root. Not the whole folder: the data and backups/
+# sit beside the code and keep their own owners.
 chown -R www-data:www-data bootstrap storage
 '@
 

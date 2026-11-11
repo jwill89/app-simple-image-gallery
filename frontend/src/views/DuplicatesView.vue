@@ -433,8 +433,8 @@ watch(authenticated, (isAdmin) => {
         </template>
       </SignInGate>
 
-      <!-- Bulk deletion is the most destructive action in the app; it was the
-           last thing still behind a native confirm(), which can't be styled,
+      <!-- Bulk deletion is the most destructive action in the app, so it asks in
+           a destructive dialog, not a native confirm(), which can't be styled,
            can't be focus-trapped and can't be tested. -->
       <AppDialog
         :open="showDeleteConfirm"

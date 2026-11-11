@@ -25,10 +25,8 @@ use Illuminate\Support\Facades\Route;
 | API routes (prefixed /api)
 |--------------------------------------------------------------------------
 |
-| API 7. The recordings in tests/Fixtures/contract/ say how the Slim app
-| answered API 4; tests/Feature/Contract/ContractTest.php replays them, and
-| divergences.php lists what API 5 to 7 answer differently. The api group
-| keeps the session (bootstrap/app.php) and adds the 120-a-minute rate limiter.
+| The api group keeps the session (bootstrap/app.php) and adds the
+| 120-a-minute rate limiter.
 |
 | A path id is digits and names a record that exists, or the request is a 404
 | (AppServiceProvider binds each {…_id} to its model).

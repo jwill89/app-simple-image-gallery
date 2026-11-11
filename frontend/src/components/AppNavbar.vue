@@ -61,19 +61,19 @@ const isTagsActive = computed(() => {
 })
 const isFavoritesActive = computed(() => route.name === 'favorites')
 const isLoginActive = computed(() => route.name === 'login')
-// Upload and Duplicates no longer have their own nav items — they live in the
+// Upload and Duplicates have no nav items of their own — they live in the
 // account menu, so there's nothing to mark as selected.
 
-// Declared per route rather than derived from a chain of negations — that chain
-// is why the per-page select and infinite-scroll toggle rendered, live and
-// clickable, on /favorites (which has no pagination) and on the 404 page.
+// Declared per route rather than derived from a chain of negations — a chain
+// would leave the per-page select and infinite-scroll toggle live and
+// clickable on /favorites (which has no pagination) and on the 404 page.
 const showBlurToggle = computed(() => route.meta.showBlur === true)
 const showViewMode = computed(() => route.meta.showViewMode === true)
 
 /**
- * Items-per-page and infinite scroll were two controls expressing one decision,
- * so they're one control now. `0` is the continuous sentinel in the select only
- * — the store still holds the real boolean.
+ * Items-per-page and infinite scroll express one decision, so they are one
+ * control. `0` is the continuous sentinel in the select only — the store holds
+ * the real boolean.
  */
 const blurPressed = computed({
   get: () => store.blurThumbnails,
@@ -273,9 +273,9 @@ router.afterEach((to) => {
   }
   if (to.params.perPage !== '') {
     const pp = Number(to.params.perPage)
-    // `0` in the URL is a stale value from when it meant infinite scroll; the
-    // mode now lives in the store, and `0` only exists as the select's sentinel.
-    // Falling back to 40 keeps the select from rendering blank.
+    // `0` in the URL is not a page size: infinite scroll lives in the store, and
+    // `0` exists only as the select's sentinel. Falling back to 40 keeps the
+    // select from rendering blank.
     perPage.value = isNaN(pp) || pp < 1 ? 40 : pp
   }
 })
@@ -358,8 +358,8 @@ router.afterEach((to) => {
     </div>
 
     <!-- Deliberately a sibling of `.navbar-menu`, not a child: Bulma hides the
-         menu below 1024px, which is how search — the primary tool for a
-         5,000-item library — ended up two taps deep inside the burger.
+         menu below 1024px, which would put search — the primary tool for a
+         5,000-item library — two taps deep inside the burger.
          Roving tabindex makes the whole cluster one tab stop. -->
     <ToolbarRoot class="nav-toolbar" aria-label="View and search controls">
       <div class="navbar-item nav-search">

@@ -29,9 +29,8 @@ class TagCategory extends Model
      *
      * Hue names only. These are display values and must never overlap the
      * semantic palette (danger / success / warning / info), which is reserved
-     * for state in the UI. Categories previously stored Bulma state names —
-     * Artist was `danger` — which made the Artist chip and the delete button
-     * the same red. Migration 20260805000000 rewrote the stored values.
+     * for state in the UI. A category stored with a state name would draw its
+     * chip in a state colour: an Artist chip the same red as the delete button.
      *
      * Keep in sync with `VALID_COLORS` in frontend/src/constants/categories.ts.
      */

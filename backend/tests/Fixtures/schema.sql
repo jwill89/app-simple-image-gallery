@@ -1,12 +1,10 @@
--- Auto-generated from Phinx migrations (backend/db/migrations), then hand-adjusted
--- to mirror the deployed (production) schema. This is a flattened snapshot used to
--- build a fresh in-memory SQLite database for each test. Regenerate when the schema
--- changes (see CONTRIBUTING.md), preserving the two manual edits below:
---   1. tags.tag_name and tag_categories.category_name are COLLATE
---      NOCASE — the legacy/production columns are case-insensitive, but the migrations
---      only add NOCASE *indexes* (see 20260625000000_enforce_nocase_collation.php),
---      so a raw migration dump would be case-sensitive at the column level.
---   2. the phinxlog migration-tracking table is omitted (tests don't need it).
+-- The deployed (production) schema as SQL: a flattened snapshot that
+-- tests/Feature/Database/SchemaTest.php builds a database from and compares the
+-- migrations' result against. A migration that changes a gallery table changes this
+-- file in the same commit. Two things differ from a raw dump of the tables:
+--   1. tags.tag_name and tag_categories.category_name are COLLATE NOCASE on the
+--      column, as in production, not only through a NOCASE index.
+--   2. The migration-tracking table is omitted (tests don't need it).
 
 CREATE TABLE `auth_tokens` (`token` TEXT NOT NULL, `created_at` INTEGER NOT NULL, PRIMARY KEY (`token`));
 CREATE TABLE "danbooru_category_map" (`danbooru_category_id` INTEGER NOT NULL, `danbooru_category_name` VARCHAR(50) NOT NULL, `gallery_category_id` INTEGER NOT NULL, PRIMARY KEY (`danbooru_category_id`), FOREIGN KEY (`gallery_category_id`) REFERENCES `tag_categories` (`category_id`) ON DELETE CASCADE);

@@ -5,12 +5,9 @@ import { colorToTagClass } from '../constants/categories'
 /**
  * What the tag colours mean.
  *
- * Replaces TagShortcodeModal, which mostly documented the `a:artist name`
- * prefix syntax. That syntax was parsed by `TagRepository::getOrCreate()`, which
- * had no callers — tags are created either from the Tags page (explicit category
- * dropdown) or by the Danbooru importer (category map, by id). So the
- * instructions described something the app could not do, and the useful half was
- * always the colour legend.
+ * A tag's category is chosen explicitly — from the Tags page's category
+ * dropdown, or by the Danbooru importer's category map, by id — and never typed
+ * as a name prefix, so the colour legend is all the help there is to give.
  */
 defineEmits<{ close: [] }>()
 

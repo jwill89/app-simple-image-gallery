@@ -10,14 +10,14 @@ use Illuminate\Support\Facades\Schema;
 /*
  * The baseline: the gallery's tables as production has them, each created only
  * where it is missing. On a fresh database this builds the schema; on the live
- * one, which the Slim app's Phinx migrations built, it does nothing. Columns,
- * keys, collations and index names follow tests/Fixtures/schema.sql, the
- * Slim app's, which tests/Feature/Database/SchemaTest.php compares the result
+ * one, which already holds these tables, it does nothing. Columns, keys,
+ * collations and index names follow tests/Fixtures/schema.sql, the production
+ * schema, which tests/Feature/Database/SchemaTest.php compares the result
  * against.
  *
- * auth_tokens and rate_limits are left out: Sanctum's personal_access_tokens
- * and Laravel's rate limiter replace them. Production keeps its copies for the
- * old app until the migration plan's Phase 8 drops them.
+ * No table is created for logins or rate limits: sessions are files and rate
+ * limits live in the cache. A live database may still hold leftover
+ * auth_tokens and rate_limits tables, which nothing reads.
  */
 return new class extends Migration {
     public function up(): void

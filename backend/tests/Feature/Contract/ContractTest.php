@@ -5,11 +5,11 @@ declare(strict_types=1);
 use PHPUnit\Framework\IncompleteTestError;
 use Tests\Support\Contract\Replay;
 
-// The Slim app's recorded contract (API 4), replayed case by case. A case
-// passes when every step answers as recorded (or as divergences.php changes it
-// on purpose); it is incomplete while some of its routes aren't ported, after
-// its earlier steps have matched. A case API 5 superseded is left out: the
-// test its entry names covers what API 5 answers instead.
+// The recorded API contract (API 4), replayed case by case. A case passes when
+// every step answers as recorded (or as divergences.php changes it on purpose);
+// it is incomplete while some of its routes don't exist yet, after its earlier
+// steps have matched. A case a later API version superseded is left out: the
+// test its entry names covers what the app answers instead.
 
 $divergences = require __DIR__ . '/divergences.php';
 

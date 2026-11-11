@@ -7,19 +7,19 @@
  *
  * These colours are **display only**. They deliberately do not overlap with
  * the semantic palette (danger / success / warning / info), which is reserved
- * for state. Categories used to be stored as Bulma semantic names — Artist was
- * literally `danger`, so the Artist chip and the delete button were the same
- * red — which both muddied the meaning of colour and tied the tag palette to
- * Bulma. The `tag--<hue>` namespace below is ours and survives dropping Bulma.
+ * for state. A category stored as a Bulma semantic name (Artist as `danger`)
+ * would draw the Artist chip the same red as the delete button, muddying the
+ * meaning of colour and tying the tag palette to Bulma. The `tag--<hue>`
+ * namespace below is ours and does not depend on Bulma.
  *
- * Keep `VALID_COLORS` in sync with `TagCategoryController::VALID_COLORS`.
+ * Keep `VALID_COLORS` in sync with `TagCategory::COLORS` in the backend.
  */
 
 import { useGalleryStore, type TagCategory } from '../stores/gallery'
 
 /**
  * Colours a tag category may use. Hue names only — nothing here may be a
- * state name, or we end up back where we started.
+ * state name, or a category chip would read as a state.
  */
 export const VALID_COLORS = [
   'neutral',

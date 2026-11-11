@@ -10,10 +10,10 @@ import {
   backendEnv,
 } from './e2e/env.ts'
 
-// The end-to-end run (`npm run test:e2e`), on shared-tooling's Playwright settings: the
-// built SPA under `vite preview`, which sends /api and the media files to the Laravel app
-// on PHP's built-in server, on a throwaway database holding the backend's contract
-// fixture (e2e/server/prepare.ts). Locally on Windows it drives the installed Edge.
+// The end-to-end run (`npm run test:e2e`), on the shared Playwright settings: the built
+// SPA under `vite preview`, which sends /api and the media files to the Laravel app on
+// PHP's built-in server, on a throwaway database holding the backend's contract fixture
+// (e2e/server/prepare.ts). Locally on Windows it drives the installed Edge.
 export default defineConfig({
   ...playwrightDefaults,
   use: {

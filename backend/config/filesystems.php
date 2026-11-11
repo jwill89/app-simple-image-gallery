@@ -73,9 +73,9 @@ return [
     |
     */
 
-    // public/media → gallery.media_path, so /media/full/… and /media/thumbs/…
-    // are served as they were. Set by AppServiceProvider, since this file is
-    // read before config/gallery.php.
+    // public/media → gallery.media_path, which serves /media/full/… and
+    // /media/thumbs/…. Set by AppServiceProvider, since this file is read
+    // before config/gallery.php.
     'links' => [],
 
 ];

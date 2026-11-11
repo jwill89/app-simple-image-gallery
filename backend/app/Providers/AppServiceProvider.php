@@ -76,7 +76,7 @@ class AppServiceProvider extends ServiceProvider
             )));
 
         // Queued Danbooru imports (ImportDanbooruTags): about one every two
-        // seconds, as the Slim app's bulk import paused between items.
+        // seconds, so a bulk import can't hammer Danbooru.
         RateLimiter::for('danbooru', static fn(): Limit => Limit::perMinute(30));
     }
 }

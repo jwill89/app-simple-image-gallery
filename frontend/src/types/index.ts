@@ -14,7 +14,7 @@ type Schemas = components['schemas']
 // ── Entities (always returned in full) ──────────────────────────────
 /** A media item (image or video). */
 export type Media = Required<Schemas['Media']>
-/** Backward-compatible alias for {@link Media}. */
+/** An alias for {@link Media}. */
 export type MediaItem = Media
 /** A tag. */
 export type Tag = Required<Schemas['Tag']>

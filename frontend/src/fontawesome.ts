@@ -6,9 +6,9 @@
  * registered renders nothing, and src/__tests__/icons.spec.ts fails on it.
  *
  * The icons come from Font Awesome kit @awesome.me/kit-4f2bd9b614 (classic solid,
- * classic regular and brands), shared with Fantasy Dossier and Home Library. A Pro icon
- * is fine to use; one from a style the kit lacks means adding that style to the kit
- * first, which makes every install of it bigger.
+ * classic regular and brands). A Pro icon is fine to use; one from a style the kit
+ * lacks means adding that style to the kit first, which enlarges the kit for
+ * everything that installs it.
  *
  * svg-core's stylesheet is imported in main.ts rather than injected at runtime, so the
  * page needs no inline style for it.

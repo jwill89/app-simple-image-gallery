@@ -2,15 +2,13 @@
 import AppBreadcrumb from './AppBreadcrumb.vue'
 
 /**
- * The single page header used by every view.
+ * The single page header used by every view, so a page title is the same size
+ * in every section instead of whichever of `.title` (32px) or `.title.is-4`
+ * (24px) a view happens to reach for.
  *
- * Page titles used to be whichever of `.title` (32px) or `.title.is-4` (24px)
- * a view happened to reach for, so the heading changed size between sections
- * for no reason a reader could perceive.
- *
- * It also absorbs the breadcrumb. The trail is worth keeping on nested pages,
- * but it doesn't justify its own 48px band above every page — so the last
- * crumb *is* the title, and the separate `<h1>` goes away.
+ * It also holds the breadcrumb. The trail is worth keeping on nested pages,
+ * but it doesn't justify a 48px band of its own above every page, so it sits
+ * directly above the title, which stands in for the trail's last crumb.
  */
 withDefaults(
   defineProps<{

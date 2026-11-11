@@ -502,8 +502,8 @@ onMounted(() => {
                   </router-link>
                 </td>
                 <!-- One menu instead of three filled buttons per row: at 25
-                     rows that was 75 saturated chips, making the least-used
-                     control the loudest thing on the page. -->
+                     rows those would be 75 saturated chips, making the
+                     least-used control the loudest thing on the page. -->
                 <td v-if="authenticated" class="row-actions">
                   <AppMenu :label="`Actions for ${tag.tag_name}`">
                     <AppMenuItem icon="fa-solid fa-pen" @select="editTag(tag)">Edit</AppMenuItem>
@@ -525,9 +525,9 @@ onMounted(() => {
           </table>
         </div>
 
-        <!-- Below 768px the table becomes a list. As a table it produced 132px
-             rows, because the Actions column squeezed to 56px and stacked its
-             buttons vertically — 242px off the right edge, where you couldn't
+        <!-- Below 768px the table becomes a list. As a table it would produce
+             132px rows, because the Actions column squeezes to 56px and stacks
+             its buttons vertically — 242px off the right edge, where you can't
              see the thing setting the row height. -->
         <ul class="tag-list">
           <li v-for="tag in pagedTags" :key="tag.tag_id" class="tag-list-row">
@@ -563,8 +563,8 @@ onMounted(() => {
           <li v-if="pagedTags.length === 0" class="tag-list-empty">No tags found.</li>
         </ul>
 
-        <!-- The same pager as the media grid, rather than a second one that
-             could only step one page at a time. -->
+        <!-- The same pager as the media grid, which jumps to any page rather than
+             stepping one at a time. -->
         <PaginationBar
           v-if="totalPages > 1"
           class="mt-4"

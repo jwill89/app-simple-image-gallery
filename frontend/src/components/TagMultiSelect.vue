@@ -19,11 +19,11 @@ import { getCategoryClassById } from '../constants/categories'
  * `modelValue` holds signed tag IDs: a negative ID means the tag is excluded
  * from the search (rendered struck through, serialised as `-name`).
  *
- * The listbox mechanics come from Reka UI's Combobox. The hand-rolled version
- * closed its dropdown with a 200ms `setTimeout` on blur and exposed no listbox
- * roles or `aria-activedescendant`, so it raced its own click handler and was
- * invisible to screen readers. The negation behaviour is ours — Reka has no
- * concept of a negative selection — so it stays custom.
+ * The listbox mechanics come from Reka UI's Combobox, which exposes listbox
+ * roles and `aria-activedescendant` and needs no `setTimeout` on blur to let a
+ * click land before the dropdown closes (such a timer races its own click
+ * handler and is invisible to screen readers). The negation behaviour is ours
+ * — Reka has no concept of a negative selection — so it stays custom.
  */
 const props = withDefaults(
   defineProps<{
@@ -195,7 +195,7 @@ function onBackspace() {
           <ComboboxAnchor class="tag-input-wrapper">
             <!-- Right-click is a shortcut: typing a leading `-` in the input
                  excludes a tag from the keyboard. -->
-            <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions -->
+            <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions -- right-click is only a shortcut; the keyboard route is the leading `-` -->
             <span
               v-for="tag in selectedTagObjects"
               :key="tag.tag_id"
@@ -296,8 +296,8 @@ function onBackspace() {
   border: none;
   outline: none;
 
-  /* Inherit the app's family. This used to re-declare the old Bulma stack, so
-     text typed here rendered in a different typeface from every other input. */
+  /* Inherit the app's family: re-declaring Bulma's stack would render text typed
+     here in a different typeface from every other input. */
   font-family: inherit;
   font-size: var(--t-md);
   padding: 2px;

@@ -31,8 +31,7 @@ final class RegenerateMedia extends Command
             return self::INVALID;
         }
 
-        // Thumbnails are WebP; anything else in the folder is left from an
-        // older format and goes.
+        // Thumbnails are WebP; any other file in the folder is a leftover and goes.
         if ($derivative === MediaDerivative::Thumbnails) {
             $directory = config()->string('gallery.media_path') . '/thumbs';
             $old = File::isDirectory($directory)

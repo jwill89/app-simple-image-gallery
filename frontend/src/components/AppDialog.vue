@@ -16,10 +16,9 @@ import { computed } from 'vue'
 /**
  * The one modal in the app.
  *
- * Replaces twelve hand-rolled Bulma `.modal` blocks that had no focus trap, no
- * Escape handling, no `aria-modal`, and no body scroll lock — Reka UI's Dialog
- * supplies all four. Keeping the chrome here means a modal fix lands once
- * instead of twelve times.
+ * A hand-rolled Bulma `.modal` has no focus trap, no Escape handling, no
+ * `aria-modal`, and no body scroll lock — Reka UI's Dialog supplies all four.
+ * Keeping the chrome here means a modal fix lands once for every dialog.
  *
  * `destructive` swaps in AlertDialog, which is the right primitive when the
  * action can't be undone: it announces as `alertdialog`, and it won't close on

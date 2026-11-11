@@ -6,8 +6,8 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\ContractFixture;
 
-// Phase 2's finish line (docs/laravel-migration.md): a fresh migrate builds the
-// production schema, and migrating the live database adds only Laravel's tables.
+// A fresh migrate builds the production schema, and migrating the live database
+// adds only Laravel's tables.
 
 /** The tables the Laravel app adds: Laravel's own, and the accounts' (2026_11_04_000000_create_accounts and after). */
 const LARAVEL_TABLES = [
@@ -15,7 +15,7 @@ const LARAVEL_TABLES = [
     'blocked_tags', 'favorite_list_items', 'favorite_lists', 'passkeys', 'saved_searches',
 ];
 
-/** The production tables the Laravel app replaces rather than keeps (see the baseline migration). */
+/** The production tables the migrations don't create (see the baseline migration). */
 const REPLACED_TABLES = ['auth_tokens', 'rate_limits'];
 
 function productionSchemaDb(): PDO

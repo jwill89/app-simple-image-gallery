@@ -121,8 +121,8 @@ const crumbs = computed<Crumb[]>(() => {
 </template>
 
 <style scoped>
-/* Sits inside PageHeader now rather than in its own band above the page, so it
-   contributes a single 18px line instead of a 48px block of 16px text. */
+/* Sits inside PageHeader, not in a band of its own above the page, so it takes
+   a single 18px line. */
 .app-breadcrumb {
   padding: 0;
   margin: 0;

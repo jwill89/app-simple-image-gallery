@@ -5,7 +5,7 @@ import { expect, test } from './fixtures.ts'
 /**
  * The main pages, each opened by its own URL: it shows its heading and the fixture's
  * data, and passes axe at WCAG 2.2 AA. Everything is found by role and name, never by a
- * Bulma class, so the suite still holds when the component kit replaces Bulma.
+ * Bulma class, so the suite doesn't depend on the CSS framework.
  */
 const pages: { path: string; heading: string; shows?: (page: Page) => Promise<void> }[] = [
   {
