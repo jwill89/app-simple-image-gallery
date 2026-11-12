@@ -7,7 +7,7 @@ const version = __APP_VERSION__
     <div class="content has-text-centered">
       <p>
         Programmed by <a href="https://www.mathdad.me" target="_blank">MathDad</a>. View project on
-        <a href="https://github.com/jwill89/image-gallery">GitHub</a>.<br />
+        <a href="https://github.com/jwill89/app-simple-image-gallery">GitHub</a>.<br />
         All images &copy; their respective creators. All characters in images &copy; their
         respective owners.
       </p>

@@ -347,18 +347,18 @@ A complete rewrite as a Vue 3 single-page app on a PHP API, replacing the origin
 
 Before 2.0.0 the gallery was a jQuery and server-rendered PHP app, never versioned. It browsed images and videos, had a first tagging system with a tag page and sorting by tag name, and imported media with a cron script.
 
-[7.3.0]: https://github.com/jwill89/simple-image-gallery/compare/v7.2.0...v7.3.0
-[7.2.0]: https://github.com/jwill89/simple-image-gallery/compare/v7.1.0...v7.2.0
-[7.1.0]: https://github.com/jwill89/simple-image-gallery/compare/v7.0.1...v7.1.0
-[7.0.1]: https://github.com/jwill89/simple-image-gallery/compare/v7.0.0...v7.0.1
-[7.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v6.0.0...v7.0.0
-[6.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v5.0.0...v6.0.0
-[5.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v4.0.0...v5.0.0
-[4.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v3.3.0...v4.0.0
-[3.3.0]: https://github.com/jwill89/simple-image-gallery/compare/v3.2.0...v3.3.0
-[3.2.0]: https://github.com/jwill89/simple-image-gallery/compare/v3.1.0...v3.2.0
-[3.1.0]: https://github.com/jwill89/simple-image-gallery/compare/v3.0.0...v3.1.0
-[3.0.0]: https://github.com/jwill89/simple-image-gallery/compare/v2.0.2...v3.0.0
-[2.0.2]: https://github.com/jwill89/simple-image-gallery/compare/v2.0.1...v2.0.2
-[2.0.1]: https://github.com/jwill89/simple-image-gallery/compare/v2.0.0...v2.0.1
-[2.0.0]: https://github.com/jwill89/simple-image-gallery/releases/tag/v2.0.0
+[7.3.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v7.2.0...v7.3.0
+[7.2.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v7.1.0...v7.2.0
+[7.1.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v7.0.1...v7.1.0
+[7.0.1]: https://github.com/jwill89/app-simple-image-gallery/compare/v7.0.0...v7.0.1
+[7.0.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v6.0.0...v7.0.0
+[6.0.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v5.0.0...v6.0.0
+[5.0.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v4.0.0...v5.0.0
+[4.0.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v3.3.0...v4.0.0
+[3.3.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v3.2.0...v3.3.0
+[3.2.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v3.1.0...v3.2.0
+[3.1.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v3.0.0...v3.1.0
+[3.0.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v2.0.2...v3.0.0
+[2.0.2]: https://github.com/jwill89/app-simple-image-gallery/compare/v2.0.1...v2.0.2
+[2.0.1]: https://github.com/jwill89/app-simple-image-gallery/compare/v2.0.0...v2.0.1
+[2.0.0]: https://github.com/jwill89/app-simple-image-gallery/releases/tag/v2.0.0
