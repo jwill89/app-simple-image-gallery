@@ -69,7 +69,7 @@ return [
 
     // The scheduler's clock (routes/console.php): the droplet's timezone, so
     // the nightly ingest runs at its midnight.
-    'schedule_timezone' => env('SCHEDULE_TIMEZONE', 'UTC'),
+    'schedule_timezone' => env('GALLERY_SCHEDULE_TIMEZONE', 'UTC'),
 
     /*
     |--------------------------------------------------------------------------

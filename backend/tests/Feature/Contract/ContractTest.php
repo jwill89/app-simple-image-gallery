@@ -2,14 +2,13 @@
 
 declare(strict_types=1);
 
-use PHPUnit\Framework\IncompleteTestError;
 use Tests\Support\Contract\Replay;
 
-// The recorded API contract (API 4), replayed case by case. A case passes when
-// every step answers as recorded (or as divergences.php changes it on purpose);
-// it is incomplete while some of its routes don't exist yet, after its earlier
-// steps have matched. A case a later API version superseded is left out: the
-// test its entry names covers what the app answers instead.
+// The recorded API contract (API 4), replayed case by case in API 8's terms. A
+// case passes when every step answers as its recording translates
+// (Tests\Support\Contract\Api8), or as divergences.php changes it on purpose.
+// A case a later API version superseded is left out: the test its entry names
+// covers what the app answers instead.
 
 $divergences = require __DIR__ . '/divergences.php';
 
@@ -25,13 +24,7 @@ dataset('recordings', static function () use ($divergences): Generator {
 test('the recording matches', function (array $recording, array $divergences): void {
     /** @var array<string, mixed> $recording */
     /** @var array<int, array<string, mixed>> $divergences */
-    $result = new Replay($recording, $divergences)->run();
-
-    expect($result['problems'])->toBe([]);
-
-    if ($result['waits_on'] !== []) {
-        throw new IncompleteTestError("Steps {$result['ran']} of {$result['of']} matched; the rest wait on " . implode(', ', $result['waits_on']) . '.');
-    }
+    expect(new Replay($recording, $divergences)->run())->toBe([]);
 })->with('recordings');
 
 test('every divergence names a recording, and every superseded one the test that replaced it', function () use ($divergences): void {

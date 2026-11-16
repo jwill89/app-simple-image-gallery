@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schedule;
 | Schedule (`php artisan schedule:run`, every minute from cron)
 |--------------------------------------------------------------------------
 |
-| Times are in app.schedule_timezone (SCHEDULE_TIMEZONE), set to the
+| Times are in app.schedule_timezone (GALLERY_SCHEDULE_TIMEZONE), set to the
 | droplet's own so the ingest runs at its midnight.
 |
 */

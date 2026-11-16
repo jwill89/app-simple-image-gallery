@@ -71,30 +71,30 @@ const SWIPE_THRESHOLD = 50 // min px distance
 const SWIPE_MAX_TIME = 400 // max ms for a swipe
 const SWIPE_ANGLE_LIMIT = 30 // max degrees from horizontal
 
-const appliedTagIds = computed(() => tags.value.map((t) => t.tag_id))
+const appliedTagIds = computed(() => tags.value.map((t) => t.tagId))
 
 const mediaAltText = computed(() => `Media #${props.mediaId}`)
 
 /**
  * Group the applied tags by category so the "Current Tags" cloud reads as
  * labeled sections (Artist / Copyright / General / Meta …) instead of one flat
- * wall. Categories are ordered by their `sort_order`; tags are alphabetised
+ * wall. Categories are ordered by their `sortOrder`; tags are alphabetised
  * within each group.
  */
 const groupedTags = computed(() => {
-  const sortOrderById = new Map(store.categories.map((c) => [c.category_id, c.sort_order]))
-  const nameById = new Map(store.categories.map((c) => [c.category_id, c.category_name]))
+  const sortOrderById = new Map(store.categories.map((c) => [c.categoryId, c.sortOrder]))
+  const nameById = new Map(store.categories.map((c) => [c.categoryId, c.categoryName]))
   const groups = new Map<number, { name: string; sortOrder: number; tags: Tag[] }>()
 
   for (const tag of tags.value) {
-    let group = groups.get(tag.category_id)
+    let group = groups.get(tag.categoryId)
     if (!group) {
       group = {
-        name: nameById.get(tag.category_id) ?? 'Other',
-        sortOrder: sortOrderById.get(tag.category_id) ?? Number.MAX_SAFE_INTEGER,
+        name: nameById.get(tag.categoryId) ?? 'Other',
+        sortOrder: sortOrderById.get(tag.categoryId) ?? Number.MAX_SAFE_INTEGER,
         tags: [],
       }
-      groups.set(tag.category_id, group)
+      groups.set(tag.categoryId, group)
     }
     group.tags.push(tag)
   }
@@ -102,7 +102,7 @@ const groupedTags = computed(() => {
   return [...groups.values()]
     .map((g) => ({
       ...g,
-      tags: [...g.tags].sort((a, b) => a.tag_name.localeCompare(b.tag_name)),
+      tags: [...g.tags].sort((a, b) => a.tagName.localeCompare(b.tagName)),
     }))
     .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
 })
@@ -113,10 +113,10 @@ const groupedTags = computed(() => {
  * the precision is there on demand rather than clipped off the edge.
  */
 const formattedDate = computed(() => {
-  if (!mediaItem.value?.file_time) {
+  if (!mediaItem.value?.fileTime) {
     return ''
   }
-  return new Date(mediaItem.value.file_time * 1000).toLocaleString(undefined, {
+  return new Date(mediaItem.value.fileTime).toLocaleString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -126,10 +126,10 @@ const formattedDate = computed(() => {
 })
 
 const fullDate = computed(() => {
-  if (!mediaItem.value?.file_time) {
+  if (!mediaItem.value?.fileTime) {
     return ''
   }
-  return new Date(mediaItem.value.file_time * 1000).toLocaleString(undefined, {
+  return new Date(mediaItem.value.fileTime).toLocaleString(undefined, {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -145,10 +145,10 @@ const fullPath = computed(() => {
   if (!mediaItem.value) {
     return ''
   }
-  return `/media/full/${mediaItem.value.file_name}`
+  return `/media/full/${mediaItem.value.fileName}`
 })
 
-const isVideoItem = computed(() => mediaItem.value?.media_type === 'video')
+const isVideoItem = computed(() => mediaItem.value?.mediaType === 'video')
 
 const dimensions = computed(() => {
   const w = mediaItem.value?.width ?? 0
@@ -170,7 +170,7 @@ const formattedDuration = computed(() => {
 })
 
 const formattedFileSize = computed(() => {
-  const bytes = mediaItem.value?.file_size ?? 0
+  const bytes = mediaItem.value?.fileSize ?? 0
   if (!bytes || bytes <= 0) {
     return ''
   }
@@ -192,7 +192,7 @@ watch(() => props.mediaId, load)
 // ── Blocked tags ─────────────────────────────────────────────────────
 // Listings leave out what the account blocks; reached directly (a link, the
 // arrows), the item asks before showing.
-const blockingTags = computed(() => tags.value.filter((t) => account.blockedIds.has(t.tag_id)))
+const blockingTags = computed(() => tags.value.filter((t) => account.blockedIds.has(t.tagId)))
 const revealed = ref(false)
 watch(
   () => props.mediaId,
@@ -204,7 +204,7 @@ const hidden = computed(() => blockingTags.value.length > 0 && !revealed.value)
 
 // ── Lists ────────────────────────────────────────────────────────────
 // The heart is the default list; the menu beside it holds the others.
-const otherLists = computed(() => favorites.lists.filter((l) => !l.is_default))
+const otherLists = computed(() => favorites.lists.filter((l) => !l.isDefault))
 const holding = ref(new Set<number>())
 
 async function loadHolding() {
@@ -237,7 +237,7 @@ async function load() {
   mediaReady.value = false
   await fetchMediaAndTags(props.mediaId)
   if (mediaItem.value) {
-    mediaUrl.value = `/media/full/${mediaItem.value.file_name}`
+    mediaUrl.value = `/media/full/${mediaItem.value.fileName}`
   }
 }
 
@@ -263,7 +263,7 @@ async function newRandom() {
     // Clear gallery context (no prev/next for random access) and stay under the
     // `/random/media/...` route so the navbar/breadcrumb keep showing Random.
     store.lastViewedItemIds = []
-    void router.replace({ name: 'media-random', params: { id: item.media_id } })
+    void router.replace({ name: 'media-random', params: { id: item.mediaId } })
   } catch {
     toastStore.error('Could not load a random media item. Please try again.', 6000, 'Random Failed')
   }
@@ -280,12 +280,12 @@ async function onAddTags() {
 async function onRemoveTag(tagId: number) {
   // Removing a tag is trivially reversible, so skip a blocking confirm and
   // offer an Undo toast instead — far less friction when cleaning up a list.
-  const removed = tags.value.find((t) => t.tag_id === tagId)
+  const removed = tags.value.find((t) => t.tagId === tagId)
   await removeTag(props.mediaId, tagId)
   if (removed) {
-    toastStore.add(`Removed tag "${removed.tag_name}".`, 'info', 6000, 'Tag Removed', {
+    toastStore.add(`Removed tag "${removed.tagName}".`, 'info', 6000, 'Tag Removed', {
       label: 'Undo',
-      handler: () => void addTags(props.mediaId, [removed.tag_id]),
+      handler: () => void addTags(props.mediaId, [removed.tagId]),
     })
   }
 }
@@ -398,7 +398,7 @@ async function fetchDanbooruTags() {
         danbooruFetching.value = false
         return
       }
-      payload.danbooru_post_id = id
+      payload.danbooruPostId = id
     }
 
     const data = await api.post<DanbooruFetchResult>(
@@ -411,9 +411,9 @@ async function fetchDanbooruTags() {
 
     tags.value = data.tags
     store.rememberTags(data.tags)
-    const created = data.tags_created > 0 ? ` ${data.tags_created} newly created.` : ''
+    const created = data.tagsCreated > 0 ? ` ${data.tagsCreated} newly created.` : ''
     toastStore.success(
-      `Applied ${data.tags_applied} tag(s) via ${data.method}.${created}`,
+      `Applied ${data.tagsApplied} tag(s) via ${data.method}.${created}`,
       4000,
       'Danbooru Import',
     )
@@ -490,6 +490,7 @@ function onTouchEnd(e: TouchEvent) {
 <template>
   <section class="section">
     <div class="container is-wide">
+      <h1 class="is-sr-only">{{ mediaAltText }}</h1>
       <LoadingSpinner v-if="loading && !mediaItem" />
       <EmptyState
         v-else-if="loadFailed && !mediaItem"
@@ -510,7 +511,7 @@ function onTouchEnd(e: TouchEvent) {
           <div class="column is-three-fifths">
             <AppAlert v-if="hidden" severity="warning" title="Hidden by your blocked tags">
               It's tagged
-              {{ blockingTags.map((t) => t.tag_name).join(', ') }}, which you block.
+              {{ blockingTags.map((t) => t.tagName).join(', ') }}, which you block.
               <button type="button" class="button is-small mt-2" @click="revealed = true">
                 Show it anyway
               </button>
@@ -630,13 +631,11 @@ function onTouchEnd(e: TouchEvent) {
                   <template #trigger><font-awesome-icon icon="fa-solid fa-list-check" /></template>
                   <AppMenuItem
                     v-for="list in otherLists"
-                    :key="list.list_id"
+                    :key="list.listId"
                     :icon="
-                      holding.has(list.list_id)
-                        ? 'fa-solid fa-square-check'
-                        : 'fa-regular fa-square'
+                      holding.has(list.listId) ? 'fa-solid fa-square-check' : 'fa-regular fa-square'
                     "
-                    @select="toggleInList(list.list_id)"
+                    @select="toggleInList(list.listId)"
                   >
                     {{ list.name }}
                   </AppMenuItem>
@@ -713,7 +712,7 @@ function onTouchEnd(e: TouchEvent) {
             <hr />
 
             <!-- Add Tags -->
-            <h3 class="title is-6">Add Tags</h3>
+            <h2 class="title is-6">Add Tags</h2>
             <TagMultiSelect
               v-model="selectedTagIds"
               :exclude-tag-ids="appliedTagIds"
@@ -751,17 +750,17 @@ function onTouchEnd(e: TouchEvent) {
             <hr />
 
             <!-- Current Tags -->
-            <h3 class="title is-6">Current Tags</h3>
+            <h2 class="title is-6">Current Tags</h2>
             <div v-if="tags.length === 0" class="has-text-grey">No tags applied yet.</div>
             <div v-for="group in groupedTags" v-else :key="group.name" class="tag-group">
-              <h4 class="tag-group-label">{{ group.name }}</h4>
+              <h3 class="tag-group-label">{{ group.name }}</h3>
               <div class="tags are-medium">
                 <TagBadge
                   v-for="tag in group.tags"
-                  :key="tag.tag_id"
-                  :tag-id="tag.tag_id"
-                  :tag-name="tag.tag_name"
-                  :category-id="tag.category_id"
+                  :key="tag.tagId"
+                  :tag-id="tag.tagId"
+                  :tag-name="tag.tagName"
+                  :category-id="tag.categoryId"
                   :removable="authenticated"
                   @remove="onRemoveTag"
                 />
@@ -918,6 +917,12 @@ function onTouchEnd(e: TouchEvent) {
 
 .media-fade.is-loaded {
   opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .media-fade {
+    transition: none;
+  }
 }
 
 .is-zoomable {

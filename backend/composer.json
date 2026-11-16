@@ -68,11 +68,11 @@
         "rector:check": "rector process --dry-run",
         "test": [
             "@php artisan config:clear --ansi",
-            "pest"
+            "@php -d date.timezone=Pacific/Kiritimati vendor/bin/pest"
         ],
         "test:coverage": [
             "@php artisan config:clear --ansi",
-            "@php -d xdebug.mode=coverage vendor/bin/pest --coverage-clover .phpunit.cache/clover.xml",
+            "@php -d date.timezone=Pacific/Kiritimati -d xdebug.mode=coverage vendor/bin/pest --coverage-clover .phpunit.cache/clover.xml",
             "@php ../shared/test/php/coverage-check.php .phpunit.cache/clover.xml --lines=94 --methods=86"
         ],
         "post-autoload-dump": [

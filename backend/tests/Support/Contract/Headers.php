@@ -12,6 +12,7 @@ final class Headers
         'x-cache',
         'x-ratelimit-remaining',
         'retry-after',
+        'x-total-count',
         'cache-control',
         'allow',
         'access-control-allow-origin',

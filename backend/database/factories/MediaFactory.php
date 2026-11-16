@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Factories;
 
 use App\Models\Media;
+use App\Support\Timestamp;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -17,7 +18,7 @@ class MediaFactory extends Factory
         return [
             'media_type' => 'image',
             'file_name' => fake()->unique()->slug(3) . '.' . fake()->randomElement(['jpg', 'png', 'webp']),
-            'file_time' => fake()->dateTimeBetween('-2 years')->getTimestamp(),
+            'file_time' => Timestamp::of(fake()->dateTimeBetween('-2 years')),
             'hash' => fake()->md5(),
             'bits_fingerprint' => self::fingerprint(),
             'width' => fake()->numberBetween(200, 4000),

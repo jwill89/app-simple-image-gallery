@@ -8,7 +8,7 @@ searches, and admin-gated uploads.
 
 > - **[AGENTS.md](AGENTS.md)** — in-depth architecture, data model, and conventions.
 > - **API reference** — the live contract is the OpenAPI 3.1 spec at `/api/openapi.json`
->   ([backend/openapi.json](backend/openapi.json) in the repo), browsable at **`/api/docs`** (Scalar).
+>   ([backend/openapi.json](backend/openapi.json) in the repo), browsable at **`/api/docs`** (Swagger UI).
 > - **[CONTRIBUTING.md](CONTRIBUTING.md)** — how to report a bug and submit a change.
 > - **[CHANGELOG.md](CHANGELOG.md)** — release history.
 
@@ -78,8 +78,8 @@ searches, and admin-gated uploads.
 
    # Optional, recommended: Cloudflare Turnstile keys, the bot check on sign-up and login.
    # With no secret, nothing is checked.
-   CLOUDFLARE_TURNSTILE_SITEKEY=0x4AAAAAAA...
-   CLOUDFLARE_TURNSTILE_SECRET=0x4AAAAAAA...
+   GALLERY_TURNSTILE_SITEKEY=0x4AAAAAAA...
+   GALLERY_TURNSTILE_SECRET=0x4AAAAAAA...
 
    # Comma-separated list of allowed origins (CORS + CSRF check).
    GALLERY_ALLOWED_ORIGINS=https://gallery.example.com
@@ -93,9 +93,9 @@ searches, and admin-gated uploads.
 
    # Optional: Danbooru API credentials for automatic tag importing. Danbooru asks API
    # clients to name the account in their User-Agent, so the user ID is needed too.
-   DANBOORU_LOGIN=your-danbooru-username
-   DANBOORU_API_KEY=your-danbooru-api-key
-   DANBOORU_USER_ID=123456
+   GALLERY_DANBOORU_LOGIN=your-danbooru-username
+   GALLERY_DANBOORU_API_KEY=your-danbooru-api-key
+   GALLERY_DANBOORU_USER_ID=123456
    ```
 
    Real environment variables take precedence over `.env`.
@@ -156,8 +156,9 @@ The Vite dev server proxies `/api` and `/media` to `http://localhost`
 
 ### API contract & generated types
 
-The API is a **hybrid REST-RPC** interface described by an **OpenAPI 3.1** spec
-(generated from PHP attributes) and browsable via **Scalar** at `/api/docs`. After
+The API is a **REST** interface described by an **OpenAPI 3.1** spec (generated from PHP
+attributes) and browsable via **Swagger UI** at `/api/docs`. It speaks camelCase JSON, pages
+with `limit` and `offset` (or a cursor), and answers every error as RFC 9457 problem details. After
 changing any backend route or response shape, regenerate the spec and the frontend
 types and commit both (CI enforces they stay in sync):
 

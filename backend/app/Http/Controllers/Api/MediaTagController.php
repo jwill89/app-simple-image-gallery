@@ -17,6 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Log;
+use App\OpenApi\ProblemJson;
 use OpenApi\Spec as OAS;
 
 /**
@@ -32,17 +33,17 @@ final class MediaTagController extends Controller
     public function __construct(private readonly ResponseCache $cache) {}
 
     /**
-     * GET /media/{media_id}/tags — Tags applied to a media item. Cached.
+     * GET /media/{mediaId}/tags — Tags applied to a media item. Cached.
      */
     #[OAS\Operation\Get(
-        path: '/media/{media_id}/tags',
+        path: '/media/{mediaId}/tags',
         operationId: 'listMediaTags',
         summary: "A media item's tags",
         tags: ['Media'],
-        parameters: [new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        parameters: [new OAS\Parameter(name: 'mediaId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 200, description: 'The tags', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/Tag'))),
-            new OAS\Response(response: 404, description: 'MediaNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'MediaNotFound', content: new ProblemJson()),
         ],
     )]
     public function index(Media $media): JsonResponse
@@ -51,44 +52,38 @@ final class MediaTagController extends Controller
     }
 
     /**
-     * PATCH /media/{media_id}/tags — Apply tags to a media item (implications
-     * resolved). Body: { tag_ids: int[] }. Returns the item's updated tag list.
+     * PATCH /media/{mediaId}/tags — Apply tags to a media item (implications
+     * resolved). Body: { tagIds: int[] }. Returns the item's updated tag list.
      * Public (anyone may tag).
      */
     #[OAS\Operation\Patch(
-        path: '/media/{media_id}/tags',
+        path: '/media/{mediaId}/tags',
         operationId: 'addMediaTags',
         summary: 'Add tags to a media item',
         tags: ['Media'],
-        parameters: [new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
-        requestBody: new OAS\RequestBody(
-            required: true,
-            content: new OAS\MediaType\Json(
-                required: ['tag_ids'],
-                properties: [new OAS\Property(property: 'tag_ids', schema: new OAS\Schema(type: 'array', items: new OAS\Schema\Items(type: 'integer')))],
-            ),
-        ),
+        parameters: [new OAS\Parameter(name: 'mediaId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/MediaTagsBody')),
         responses: [
             new OAS\Response(response: 200, description: 'Updated tag list', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/Tag'))),
-            new OAS\Response(response: 400, description: 'InvalidTagList', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 404, description: 'MediaNotFound / TagNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'MediaNotFound', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'InvalidTagList, TagNotFound (an id with no tag)', content: new ProblemJson()),
         ],
     )]
     public function store(Request $request, Media $media): AnonymousResourceCollection
     {
         // A single id is taken as a list of one; ids that aren't positive numbers are dropped.
         $tagIds = array_values(array_unique(array_filter(
-            array_map(intval(...), (array) $request->input('tag_ids', [])),
+            array_map(intval(...), (array) $request->input('tagIds', [])),
             static fn(int $id): bool => $id > 0,
         )));
         if ($tagIds === []) {
-            throw new ApiException('InvalidTagList', 400, 'At least one valid tag must be provided.');
+            throw self::invalid('InvalidTagList', 'At least one valid tag must be provided.');
         }
 
         // Every tag must exist, or none is applied.
         $missing = array_values(array_diff($tagIds, Tag::query()->whereKey($tagIds)->pluck('tag_id')->all()));
         if ($missing !== []) {
-            throw new ApiException('TagNotFound', 404, "Tag #{$missing[0]} does not exist.");
+            throw self::invalid('TagNotFound', "Tag #{$missing[0]} does not exist.");
         }
 
         $media->addTags($tagIds);
@@ -99,21 +94,21 @@ final class MediaTagController extends Controller
     }
 
     /**
-     * DELETE /media/{media_id}/tags/{tag_id} — Remove a tag from a media item.
+     * DELETE /media/{mediaId}/tags/{tagId} — Remove a tag from a media item.
      * Returns the item's updated tag list. Public (anyone may tag).
      */
     #[OAS\Operation\Delete(
-        path: '/media/{media_id}/tags/{tag_id}',
+        path: '/media/{mediaId}/tags/{tagId}',
         operationId: 'removeMediaTag',
         summary: 'Remove a tag from a media item',
         tags: ['Media'],
         parameters: [
-            new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
-            new OAS\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'mediaId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'tagId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
         ],
         responses: [
             new OAS\Response(response: 200, description: 'Updated tag list', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/Tag'))),
-            new OAS\Response(response: 404, description: 'MediaNotFound / TagNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'MediaNotFound, TagNotFound', content: new ProblemJson()),
         ],
     )]
     public function destroy(Media $media, Tag $tag): AnonymousResourceCollection
@@ -127,27 +122,25 @@ final class MediaTagController extends Controller
     }
 
     /**
-     * POST /media/{media_id}/danbooru-tags — Import tags from Danbooru for a
-     * media item. Body: { danbooru_post_id? }. With a post ID, imports directly;
+     * POST /media/{mediaId}/danbooru-tags — Import tags from Danbooru for a
+     * media item. Body: { danbooruPostId? }. With a post ID, imports directly;
      * otherwise auto-looks-up by MD5 hash then IQDB visual similarity.
      */
     #[OAS\Operation\Post(
-        path: '/media/{media_id}/danbooru-tags',
+        path: '/media/{mediaId}/danbooru-tags',
         operationId: 'importDanbooruTags',
         summary: 'Import Danbooru tags for a media item',
         tags: ['Media'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        parameters: [new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
-        requestBody: new OAS\RequestBody(
-            required: false,
-            content: new OAS\MediaType\Json(properties: [new OAS\Property(property: 'danbooru_post_id', schema: new OAS\Schema(type: 'integer', nullable: true))]),
-        ),
+        parameters: [new OAS\Parameter(name: 'mediaId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        requestBody: new OAS\RequestBody(required: false, content: new OAS\MediaType\Json(ref: '#/components/schemas/DanbooruImportBody')),
         responses: [
             new OAS\Response(response: 200, description: 'Import result', content: new OAS\MediaType\Json(ref: '#/components/schemas/DanbooruFetchResult')),
-            new OAS\Response(response: 404, description: 'MediaNotFound / NotFoundOnDanbooru', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 429, description: 'DanbooruRateLimited', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 500, description: 'DanbooruNotConfigured / DanbooruAuthFailed', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 503, description: 'DanbooruUnreachable / DanbooruUnavailable / DanbooruBlocked', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'Forbidden (not an admin)', content: new ProblemJson()),
+            new OAS\Response(response: 404, description: 'MediaNotFound, NotFoundOnDanbooru', content: new ProblemJson()),
+            new OAS\Response(response: 429, description: 'DanbooruRateLimited', content: new ProblemJson()),
+            new OAS\Response(response: 500, description: 'DanbooruNotConfigured, DanbooruAuthFailed', content: new ProblemJson()),
+            new OAS\Response(response: 503, description: 'DanbooruUnreachable, DanbooruUnavailable, DanbooruBlocked', content: new ProblemJson()),
         ],
     )]
     public function importFromDanbooru(Request $request, DanbooruTagger $tagger, Media $media): JsonResponse
@@ -156,7 +149,7 @@ final class MediaTagController extends Controller
             throw new ApiException('DanbooruNotConfigured', 500, 'Danbooru credentials are not configured on the server.');
         }
 
-        $postId = $request->integer('danbooru_post_id');
+        $postId = $request->integer('danbooruPostId');
         $import = $postId > 0 ? $tagger->importFromPost($media, $postId) : $tagger->importForMedia($media);
 
         if (!$import->found) {
@@ -174,15 +167,15 @@ final class MediaTagController extends Controller
         Log::info('Danbooru tags imported', [
             'media_id' => $media->media_id,
             'method' => $import->method,
-            'tags_applied' => $import->tagsApplied,
-            'tags_created' => $import->tagsCreated,
+            'tagsApplied' => $import->tagsApplied,
+            'tagsCreated' => $import->tagsCreated,
         ]);
 
         return new JsonResponse([
             'tags' => TagResource::collection($media->sortedTags()),
             'method' => $import->method,
-            'tags_applied' => $import->tagsApplied,
-            'tags_created' => $import->tagsCreated,
+            'tagsApplied' => $import->tagsApplied,
+            'tagsCreated' => $import->tagsCreated,
         ]);
     }
 
@@ -198,7 +191,7 @@ final class MediaTagController extends Controller
         parameters: [new OAS\Parameter(name: 'ids', in: 'query', required: true, description: 'Comma-separated media ids (up to 200).', schema: new OAS\Schema(type: 'string'))],
         responses: [
             new OAS\Response(response: 200, description: 'Each item\'s import, in the order asked', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/TagImportStatus'))),
-            new OAS\Response(response: 400, description: 'InvalidInput', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 422, description: 'InvalidInput (not 1 to 200 ids)', content: new ProblemJson()),
         ],
     )]
     public function importStatus(Request $request, TagImports $imports): JsonResponse
@@ -207,10 +200,17 @@ final class MediaTagController extends Controller
             array_map(intval(...), explode(',', $request->string('ids')->toString())),
             static fn(int $id): bool => $id > 0,
         )));
-        if ($ids === []) {
-            throw new ApiException('InvalidInput', 400, 'A comma-separated list of media ids is required.');
+        if ($ids === [] || count($ids) > self::MAX_IMPORT_IDS) {
+            $message = 'ids is a comma-separated list of 1 to ' . self::MAX_IMPORT_IDS . ' media ids.';
+
+            throw new ApiException('InvalidInput', 422, $message, [], [['message' => $message, 'location' => 'query.ids']]);
         }
 
-        return new JsonResponse($imports->statuses(array_slice($ids, 0, self::MAX_IMPORT_IDS)));
+        return new JsonResponse($imports->statuses($ids));
+    }
+
+    private static function invalid(string $code, string $message): ApiException
+    {
+        return new ApiException($code, 422, $message, [], [['message' => $message, 'location' => 'body.tagIds']]);
     }
 }

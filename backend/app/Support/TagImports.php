@@ -43,7 +43,7 @@ final readonly class TagImports
      * Each item's status, in the order asked for.
      *
      * @param list<int> $mediaIds
-     * @return list<array{media_id: int, status: string, tags_applied: int, error: ?string}>
+     * @return list<array{mediaId: int, status: string, tagsApplied: int, error: ?string}>
      */
     public function statuses(array $mediaIds): array
     {
@@ -52,9 +52,9 @@ final readonly class TagImports
             $stored = is_array($stored) ? $stored : ['status' => 'none'];
 
             return [
-                'media_id' => $id,
+                'mediaId' => $id,
                 'status' => is_string($stored['status'] ?? null) ? $stored['status'] : 'none',
-                'tags_applied' => is_int($stored['tags_applied'] ?? null) ? $stored['tags_applied'] : 0,
+                'tagsApplied' => is_int($stored['tags_applied'] ?? null) ? $stored['tags_applied'] : 0,
                 'error' => is_string($stored['error'] ?? null) ? $stored['error'] : null,
             ];
         }, $mediaIds);

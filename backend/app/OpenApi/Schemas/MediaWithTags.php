@@ -6,18 +6,15 @@ namespace App\OpenApi\Schemas;
 
 use OpenApi\Spec as OAS;
 
-/**
- * A media item, with its tags when asked for (GET /media/{id}?include=tags).
- * Doc-only schema.
- */
+/** Response body: GET /media/{mediaId}. Doc-only schema. */
 #[OAS\Schema(
     component: 'MediaWithTags',
     description: 'A media item; with include=tags, also its tags in display order.',
     allOf: [
         new OAS\Schema(ref: '#/components/schemas/Media'),
         new OAS\Schema(properties: [
-            new OAS\Property(property: 'tags', schema: new OAS\Schema(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/Tag'))),
+            new OAS\Property(property: 'tags', schema: new OAS\Schema(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/Tag'), description: 'Its tags by category sort order, then name (include=tags only).')),
         ]),
     ],
 )]
-class MediaWithTags {}
+final class MediaWithTags {}

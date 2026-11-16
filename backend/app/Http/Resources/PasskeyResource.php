@@ -4,19 +4,25 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Models\Passkey;
+use App\Support\Timestamp;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Laravel\Passkeys\Passkey;
 use OpenApi\Spec as OAS;
 
 /** @mixin Passkey */
-#[OAS\Schema(component: 'Passkey', description: 'A passkey an account signs in with.', properties: [
-    new OAS\Property(property: 'id', schema: new OAS\Schema(type: 'integer')),
-    new OAS\Property(property: 'name', schema: new OAS\Schema(type: 'string')),
-    new OAS\Property(property: 'authenticator', schema: new OAS\Schema(type: 'string', nullable: true, description: 'Where it is kept (iCloud Keychain, Google Password Manager, Windows Hello…), when its maker says.')),
-    new OAS\Property(property: 'created_at', schema: new OAS\Schema(type: 'string', format: 'date-time')),
-    new OAS\Property(property: 'last_used_at', schema: new OAS\Schema(type: 'string', format: 'date-time', nullable: true)),
-])]
+#[OAS\Schema(
+    component: 'Passkey',
+    description: 'A passkey an account signs in with.',
+    required: ['id', 'name', 'authenticator', 'createdAt', 'lastUsedAt'],
+    properties: [
+        new OAS\Property(property: 'id', schema: new OAS\Schema(type: 'integer', description: 'The passkey\'s id.')),
+        new OAS\Property(property: 'name', schema: new OAS\Schema(type: 'string', description: 'What the account calls it.')),
+        new OAS\Property(property: 'authenticator', schema: new OAS\Schema(type: 'string', nullable: true, description: 'Where it is kept (iCloud Keychain, Google Password Manager, Windows Hello…), when its maker says.')),
+        new OAS\Property(property: 'createdAt', schema: new OAS\Schema(type: 'string', format: 'date-time', nullable: true, description: 'When it was added, RFC 3339 in UTC.')),
+        new OAS\Property(property: 'lastUsedAt', schema: new OAS\Schema(type: 'string', format: 'date-time', nullable: true, description: 'When it last signed in, RFC 3339 in UTC; null if it never has.')),
+    ],
+)]
 final class PasskeyResource extends JsonResource
 {
     /** @return array<string, mixed> */
@@ -26,8 +32,8 @@ final class PasskeyResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'authenticator' => $this->authenticator,
-            'created_at' => $this->created_at?->toIso8601String(),
-            'last_used_at' => $this->last_used_at?->toIso8601String(),
+            'createdAt' => $this->created_at !== null ? Timestamp::of($this->created_at) : null,
+            'lastUsedAt' => $this->last_used_at !== null ? Timestamp::of($this->last_used_at) : null,
         ];
     }
 }

@@ -23,7 +23,7 @@ final class TagRequest extends ApiRequest
     public function rules(): array
     {
         return [
-            'tag_name' => [
+            'tagName' => [
                 // An edit changes only the fields it sends.
                 ...($this->editing() !== null ? ['sometimes'] : []),
                 'required',
@@ -31,7 +31,7 @@ final class TagRequest extends ApiRequest
                 'max:' . self::MAX_NAME_LENGTH,
                 Rule::unique(Tag::class, 'tag_name')->ignore($this->editing()?->tag_id, 'tag_id'),
             ],
-            'category_id' => ['sometimes', 'integer', Rule::exists(TagCategory::class, 'category_id')],
+            'categoryId' => ['sometimes', 'integer', Rule::exists(TagCategory::class, 'category_id')],
         ];
     }
 
@@ -39,10 +39,10 @@ final class TagRequest extends ApiRequest
     public function messages(): array
     {
         return [
-            'tag_name' => 'Tag name cannot be empty.',
-            'tag_name.max' => 'Tag name must be :max characters or fewer.',
-            'tag_name.unique' => 'A tag named ":input" already exists.',
-            'category_id' => 'The selected tag category is not valid.',
+            'tagName' => 'Tag name cannot be empty.',
+            'tagName.max' => 'Tag name must be :max characters or fewer.',
+            'tagName.unique' => 'A tag named ":input" already exists.',
+            'categoryId' => 'The selected tag category is not valid.',
         ];
     }
 
@@ -55,11 +55,11 @@ final class TagRequest extends ApiRequest
     public function tag(): array
     {
         $fields = [];
-        if ($this->editing() === null || $this->has('tag_name')) {
-            $fields['tag_name'] = $this->string('tag_name')->toString();
+        if ($this->editing() === null || $this->has('tagName')) {
+            $fields['tag_name'] = $this->string('tagName')->toString();
         }
-        if ($this->editing() === null || $this->has('category_id')) {
-            $fields['category_id'] = $this->integer('category_id', self::DEFAULT_CATEGORY);
+        if ($this->editing() === null || $this->has('categoryId')) {
+            $fields['category_id'] = $this->integer('categoryId', self::DEFAULT_CATEGORY);
         }
 
         return $fields;
@@ -68,7 +68,7 @@ final class TagRequest extends ApiRequest
     /** The tag being edited, or null when one is being created. */
     private function editing(): ?Tag
     {
-        $tag = $this->route('tag_id');
+        $tag = $this->route('tagId');
 
         return $tag instanceof Tag ? $tag : null;
     }
@@ -76,18 +76,18 @@ final class TagRequest extends ApiRequest
     protected function errorCodes(): array
     {
         return [
-            'tag_name.max' => ['TagNameTooLong', 400],
-            'tag_name.unique' => ['TagAlreadyExists', 400],
-            'tag_name' => ['InvalidTagName', 400],
-            'category_id' => ['InvalidCategoryID', 400],
+            'tagName.max' => ['TagNameTooLong', 422],
+            'tagName.unique' => ['TagAlreadyExists', 409],
+            'tagName' => ['InvalidTagName', 422],
+            'categoryId' => ['InvalidCategoryID', 422],
         ];
     }
 
     protected function prepareForValidation(): void
     {
-        $name = $this->input('tag_name');
+        $name = $this->input('tagName');
         if (is_string($name)) {
-            $this->merge(['tag_name' => Tag::normalizeName($name)]);
+            $this->merge(['tagName' => Tag::normalizeName($name)]);
         }
     }
 }

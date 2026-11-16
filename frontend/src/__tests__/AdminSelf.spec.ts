@@ -33,18 +33,18 @@ vi.mock('vue-router', () => ({
   useRoute: () => ({ fullPath: '/' }),
 }))
 
-const me: User = { id: 1, username: 'admin', is_admin: true, created_at: '2026-01-01T00:00:00Z' }
+const me: User = { id: 1, username: 'admin', isAdmin: true, createdAt: '2026-01-01T00:00:00Z' }
 const otherAdmin: User = {
   id: 2,
   username: 'second',
-  is_admin: true,
-  created_at: '2026-01-02T00:00:00Z',
+  isAdmin: true,
+  createdAt: '2026-01-02T00:00:00Z',
 }
 const member: User = {
   id: 3,
   username: 'reader',
-  is_admin: false,
-  created_at: '2026-01-03T00:00:00Z',
+  isAdmin: false,
+  createdAt: '2026-01-03T00:00:00Z',
 }
 
 const stubs = {

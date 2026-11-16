@@ -10,34 +10,39 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use OpenApi\Spec as OAS;
 
 /** @mixin Media */
-#[OAS\Schema(component: 'Media', description: 'A media item (image or video).', properties: [
-    new OAS\Property(property: 'media_id', schema: new OAS\Schema(type: 'integer')),
-    new OAS\Property(property: 'media_type', schema: new OAS\Schema(type: 'string', enum: ['image', 'video'])),
-    new OAS\Property(property: 'file_name', schema: new OAS\Schema(type: 'string')),
-    new OAS\Property(property: 'file_time', schema: new OAS\Schema(type: 'integer', description: 'Unix timestamp the file was ingested.')),
-    new OAS\Property(property: 'hash', schema: new OAS\Schema(type: 'string', description: 'MD5 hash of the file contents.')),
-    new OAS\Property(property: 'bits_fingerprint', schema: new OAS\Schema(type: 'string', description: 'Perceptual fingerprint (images only).')),
-    new OAS\Property(property: 'width', schema: new OAS\Schema(type: 'integer')),
-    new OAS\Property(property: 'height', schema: new OAS\Schema(type: 'integer')),
-    new OAS\Property(property: 'duration', schema: new OAS\Schema(type: 'number', format: 'float', description: 'Duration in seconds; 0 for still images.')),
-    new OAS\Property(property: 'file_size', schema: new OAS\Schema(type: 'integer', description: 'File size in bytes.')),
-])]
+#[OAS\Schema(
+    component: 'Media',
+    description: 'A media item (image or video).',
+    required: ['mediaId', 'mediaType', 'fileName', 'fileTime', 'hash', 'bitsFingerprint', 'width', 'height', 'duration', 'fileSize'],
+    properties: [
+        new OAS\Property(property: 'mediaId', schema: new OAS\Schema(type: 'integer', description: 'The item\'s id.')),
+        new OAS\Property(property: 'mediaType', schema: new OAS\Schema(type: 'string', enum: ['image', 'video'], description: 'An animated GIF is a video.')),
+        new OAS\Property(property: 'fileName', schema: new OAS\Schema(type: 'string', description: 'The file under /media/full/; its thumbnails are /media/thumbs/<name without extension>.webp and @2x.webp.')),
+        new OAS\Property(property: 'fileTime', schema: new OAS\Schema(type: 'string', format: 'date-time', description: 'When it was added (an upload) or last changed (an ingested file), RFC 3339 in UTC; listings are newest first by it.')),
+        new OAS\Property(property: 'hash', schema: new OAS\Schema(type: 'string', description: 'MD5 hash of the file contents.')),
+        new OAS\Property(property: 'bitsFingerprint', schema: new OAS\Schema(type: 'string', description: 'Perceptual fingerprint, 64 bits as 0s and 1s (images only; empty for videos).')),
+        new OAS\Property(property: 'width', schema: new OAS\Schema(type: 'integer', description: 'Width in pixels.')),
+        new OAS\Property(property: 'height', schema: new OAS\Schema(type: 'integer', description: 'Height in pixels.')),
+        new OAS\Property(property: 'duration', schema: new OAS\Schema(type: 'number', format: 'float', description: 'Duration in seconds; 0 for still images.')),
+        new OAS\Property(property: 'fileSize', schema: new OAS\Schema(type: 'integer', description: 'File size in bytes.')),
+    ],
+)]
 final class MediaResource extends JsonResource
 {
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
         return [
-            'media_id' => $this->media_id,
-            'media_type' => $this->media_type,
-            'file_name' => $this->file_name,
-            'file_time' => $this->file_time,
+            'mediaId' => $this->media_id,
+            'mediaType' => $this->media_type,
+            'fileName' => $this->file_name,
+            'fileTime' => $this->file_time,
             'hash' => $this->hash,
-            'bits_fingerprint' => $this->bits_fingerprint,
+            'bitsFingerprint' => $this->bits_fingerprint,
             'width' => $this->width,
             'height' => $this->height,
             'duration' => $this->duration,
-            'file_size' => $this->file_size,
+            'fileSize' => $this->file_size,
         ];
     }
 }

@@ -22,8 +22,8 @@ vi.mock('../composables/useApi', async (importOriginal) => {
   }
 })
 
-const FAVORITES = { list_id: 1, name: 'Favorites', is_default: true, media_count: 2 }
-const WALLPAPERS = { list_id: 2, name: 'Wallpapers', is_default: false, media_count: 0 }
+const FAVORITES = { listId: 1, name: 'Favorites', isDefault: true, mediaCount: 2 }
+const WALLPAPERS = { listId: 2, name: 'Wallpapers', isDefault: false, mediaCount: 0 }
 
 beforeEach(() => {
   localStorage.clear()
@@ -102,7 +102,7 @@ describe('signed in', () => {
     await store.signedIn()
 
     expect(store.isAccount).toBe(true)
-    expect(store.defaultList?.list_id).toBe(1)
+    expect(store.defaultList?.listId).toBe(1)
     expect(store.isFavorite(5)).toBe(true)
     expect(store.count).toBe(2)
   })
@@ -117,7 +117,7 @@ describe('signed in', () => {
     await store.signedIn()
     await nextTick()
 
-    expect(post).toHaveBeenCalledWith('/lists/1/media', { media_ids: [7, 8] })
+    expect(post).toHaveBeenCalledWith('/lists/1/media', { mediaIds: [7, 8] })
     expect(store.allIds()).toEqual([])
     expect(JSON.parse(localStorage.getItem('gallery_favorites') ?? '[]')).toEqual([])
   })
@@ -130,7 +130,7 @@ describe('signed in', () => {
     await store.toggle(9)
     expect(put).toHaveBeenCalledWith('/lists/1/media/9')
     expect(store.isFavorite(9)).toBe(true)
-    expect(store.defaultList?.media_count).toBe(3)
+    expect(store.defaultList?.mediaCount).toBe(3)
 
     await store.toggle(5)
     expect(del).toHaveBeenCalledWith('/lists/1/media/5')

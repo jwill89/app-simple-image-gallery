@@ -3,9 +3,12 @@
 declare(strict_types=1);
 
 /*
- * Where the app answers differently from the recordings on purpose. Each entry
- * replaces the recorded response of the listed steps (0-based) with the
- * expected one, in the recordings' format.
+ * Where the app answers differently from the recordings on purpose, beyond
+ * what translating them into API 8's terms covers (Tests\Support\Contract\Api8:
+ * camelCase, the listings in GET /media, PATCH for PUT, problem details and
+ * their statuses, RFC 3339 times, X-Total-Count). Each entry replaces the
+ * expected response of the listed steps (0-based), written as API 8 answers
+ * the translated request, in the recordings' format.
  *
  * Three smaller differences are rules in Tests\Support\Contract\Replay instead,
  * since they apply to whole kinds of response: Access-Control-Allow-Headers,
@@ -17,18 +20,21 @@ declare(strict_types=1);
 
 $security = ['x-content-type-options' => 'nosniff', 'x-frame-options' => 'SAMEORIGIN'];
 $cors = ['access-control-allow-credentials' => 'true', 'access-control-allow-origin' => 'https://gallery.test'];
-$json = ['content-type' => 'application/json'];
+$problemType = ['content-type' => 'application/problem+json'];
+$titles = [400 => 'Bad Request', 404 => 'Not Found', 405 => 'Method Not Allowed', 409 => 'Conflict', 422 => 'Unprocessable Content', 500 => 'Internal Server Error'];
+/** A problem details response, as API 8 sends every error. */
+$problem = static fn(int $status, string $code, string $detail, array $headers): array => [
+    'status' => $status,
+    'headers' => $problemType + $headers + $security,
+    'json' => ['type' => problemType($code), 'title' => $titles[$status], 'status' => $status, 'detail' => $detail],
+];
+$read = ['x-ratelimit-remaining' => '119'];
+$write = $cors + $read;
 
-$notFound = [
-    'status' => 404,
-    'headers' => $json + $security,
-    'json' => ['error' => 'NotFound', 'message' => 'The requested endpoint does not exist.'],
-];
-$methodNotAllowed = static fn(string $method, string $allow): array => [
-    'status' => 405,
-    'headers' => ['allow' => $allow] + $json + $cors + $security,
-    'json' => ['error' => 'MethodNotAllowed', 'message' => "This endpoint does not support {$method} requests."],
-];
+$notFound = $problem(404, 'NotFound', 'The requested endpoint does not exist.', []);
+$methodNotAllowed = static fn(string $method, string $allow): array => $problem(405, 'MethodNotAllowed', "This endpoint does not support {$method} requests.", ['allow' => $allow] + $cors);
+$badOffset = [0 => $problem(422, 'InvalidInput', 'offset is a whole number, 0 or more.', $read)];
+$badLimit = [0 => $problem(422, 'InvalidInput', 'limit is a whole number from 1 to 100.', $read)];
 $preflight = [
     'status' => 204,
     'headers' => $cors + $security + [
@@ -41,7 +47,7 @@ $preflight = [
 
 $divergences = [
     'errors/unmatched-path' => [
-        'reason' => 'An unmatched path is 404 NotFound as { error, message }, not the recorded 405 page from an OPTIONS catch-all.',
+        'reason' => 'An unmatched path is 404 NotFound as problem details, not the recorded 405 page from an OPTIONS catch-all.',
         'steps' => [
             0 => $notFound,
             1 => $notFound,
@@ -50,7 +56,7 @@ $divergences = [
         ],
     ],
     'errors/method-not-allowed' => [
-        'reason' => 'A wrong method is 405 MethodNotAllowed as { error, message }, not the recorded HTML or { message } page.',
+        'reason' => 'A wrong method is 405 MethodNotAllowed as problem details, not the recorded HTML or { message } page.',
         'steps' => [
             0 => $methodNotAllowed('PUT', 'GET, HEAD, DELETE'),
             1 => $methodNotAllowed('PUT', 'GET, HEAD, DELETE'),
@@ -70,23 +76,50 @@ $divergences = [
         'steps' => [3 => $preflight],
     ],
     'tags/update-name-taken' => [
-        'reason' => 'Renaming a tag onto an existing name is 400 TagAlreadyExists, as creating one is, not a 500 from the UNIQUE constraint.',
-        'steps' => [
-            0 => [
-                'status' => 400,
-                'headers' => $json + $cors + $security + ['x-ratelimit-remaining' => '119'],
-                'json' => ['error' => 'TagAlreadyExists', 'message' => 'A tag named "cat" already exists.'],
-            ],
-        ],
+        'reason' => 'Renaming a tag onto an existing name is 409 TagAlreadyExists, as creating one is, not a 500 from the UNIQUE constraint.',
+        'steps' => [0 => $problem(409, 'TagAlreadyExists', 'A tag named "cat" already exists.', $write)],
     ],
     'duplicates/dismiss-unknown-media' => [
-        'reason' => 'Dismissing a pair with an unknown media id is 404 MediaNotFound, not a 500 from the foreign key.',
+        'reason' => 'Dismissing a pair with an unknown media id is 422 MediaNotFound (a reference to nothing), not a 500 from the foreign key.',
+        'steps' => [0 => $problem(422, 'MediaNotFound', 'One or both media items could not be found.', $write)],
+    ],
+    'tags/create-invalid-name' => [
+        'reason' => 'A body sent as JSON that doesn\'t parse is 400 MalformedJson, not read as an empty body and refused for its missing name.',
+        'steps' => [2 => $problem(400, 'MalformedJson', 'The request body is not valid JSON.', $cors + ['x-ratelimit-remaining' => '117'])],
+    ],
+    'media/page-not-a-number' => [
+        'reason' => 'Page "abc" translates to offset=abc, which is 422 InvalidInput, not 400 InvalidPageNumber.',
+        'steps' => $badOffset,
+    ],
+    'media/page-zero' => [
+        'reason' => 'Page 0 translates to a negative offset, which is 422 InvalidInput, not 400 InvalidPageNumber.',
+        'steps' => $badOffset,
+    ],
+    'media/untagged-zero' => [
+        'reason' => 'Page 0 translates to a negative offset, which is 422 InvalidInput, not 400 InvalidPageNumber.',
+        'steps' => $badOffset,
+    ],
+    'media/with-tags-page-zero' => [
+        'reason' => 'Page 0 translates to a negative offset, which is 422 InvalidInput: API 4 answered the first page, as page 0.',
+        'steps' => $badOffset,
+    ],
+    'media/page-per-page-clamped-high' => [
+        'reason' => 'A limit over 100 is refused with 422, not quietly cut to the most a page holds (200 in API 4).',
+        'steps' => $badLimit,
+    ],
+    'media/page-per-page-clamped-low' => [
+        'reason' => 'A limit under 1 is refused with 422, not quietly raised to 1.',
+        'steps' => $badLimit,
+    ],
+    'media/danbooru-upstream-failures' => [
+        'reason' => 'The gallery\'s settings are named with its GALLERY_ prefix, which the failure\'s advice names.',
         'steps' => [
-            0 => [
-                'status' => 404,
-                'headers' => $json + $cors + $security + ['x-ratelimit-remaining' => '119'],
-                'json' => ['error' => 'MediaNotFound', 'message' => 'One or both media items could not be found.'],
-            ],
+            0 => $problem(
+                500,
+                'DanbooruAuthFailed',
+                'Danbooru rejected the request. Check GALLERY_DANBOORU_LOGIN and GALLERY_DANBOORU_API_KEY in the server .env, and the IP allowlist on the API key — keys are revoked when the account password changes, and a new outbound address (enabling IPv6 gives the server one) is refused until it is allowlisted.',
+                $write,
+            ),
         ],
     ],
 ];
@@ -148,4 +181,5 @@ return [
     'tag-categories/update-partial' => $partial,
     'tags/update-default-category' => $partial,
     'tags/display' => $superseded('GET /tags/display is a page of tags (items, total, current_page, total_pages) with search, sort and ids, not every tag. tests/Feature/Http/TagSearchTest.php.'),
+    'system/docs' => $superseded('GET /docs is Swagger UI, from the gallery\'s own files under its Content-Security-Policy, not Scalar from a CDN. tests/Feature/Http/SecurityHeadersTest.php.'),
 ];

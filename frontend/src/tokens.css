@@ -1,0 +1,139 @@
+/* ═══════════════════════════════════════════════════════════
+   Gallery — design tokens
+
+   Three palettes, kept strictly apart:
+
+     1. Chrome    — neutral greys only. The artwork carries the colour;
+                    the interface deliberately carries none.
+     2. Semantic  — danger / success / warning / info. State, never decoration.
+     3. Tag       — the `--tag-*` scale below. Decoration, never state.
+
+   Palettes 2 and 3 must not borrow from each other. A category stored as a
+   Bulma semantic name (Artist = `danger`) would make the Artist chip and the
+   delete button the same red, and tie the tag palette to Bulma. Tag
+   categories live in their own `tag--<hue>` namespace.
+
+   style.css and every component read these tokens and write no colour of
+   their own, so the Bulma overrides can be deleted without rewriting the
+   rules that read the tokens.
+   ═══════════════════════════════════════════════════════════ */
+
+/* The palette itself: the one place a colour is written as a literal, so the
+   palette rule is off for this file alone (stylelint.config.js).
+
+   Every colour token holds both schemes, as light-dark(light, dark), chosen by
+   the `color-scheme` on :root: the device's, until `data-theme` on <html>
+   (set by src/theme.ts from the reader's pick) holds it to one scheme. The
+   build lowers light-dark() to variables switched on :root, so a token
+   resolves there, and an element's own `color-scheme` doesn't change it: a
+   surface that is dark in both schemes takes a token of its own.
+
+   Text tokens reach 7:1 on every surface they sit on, hover washes included;
+   e2e/contrast.spec.ts measures each pair in both schemes. */
+:root {
+  color-scheme: light dark;
+  scrollbar-color: var(--border-strong) var(--surface-1);
+
+  /* ── Chrome: surfaces ─────────────────────────────────── */
+  --surface-0: light-dark(#fff, #131417); /* page ground */
+  --surface-1: light-dark(#f6f7f8, #1a1c20); /* navbar, footer, raised panels */
+  --surface-2: light-dark(#eff0f2, #22252a); /* hover, inputs, quiet chips */
+  --surface-3: light-dark(#e3e5e8, #2c3037); /* pressed / selected */
+  --border: light-dark(#d8dade, #32363e); /* hairlines between regions */
+  --border-strong: light-dark(#83888f, #6d727a); /* control edges: ≥3:1 on surface-0/1/2 */
+
+  /* ── Chrome: text ─────────────────────────────────────── */
+  --text-1: light-dark(#16181c, #e6e8ea);
+  --text-2: light-dark(#3d4147, #c3c6cb);
+  --text-3: light-dark(#4b4f55, #aeb1b5);
+
+  /* ── Focus and links: functional, not a brand accent ──── */
+  --focus: light-dark(#2f6f86, #7fb3c8);
+  --focus-ring: 0 0 0 2px var(--focus);
+  --link: light-dark(#225163, #8fbdcf);
+
+  /* ── Semantic: state only ─────────────────────────────────
+     Each is a text colour on the surfaces and a fill under its
+     `-fg`. The `-soft` wash sits behind an alert or a hover. */
+  --danger: light-dark(#7f271c, #f1b0a6);
+  --danger-fg: light-dark(#fff, #1a0f0c);
+  --danger-soft: color-mix(in srgb, var(--danger) 12%, transparent);
+  --success: light-dark(#145033, #77d5a5);
+  --success-soft: color-mix(in srgb, var(--success) 12%, transparent);
+  --warning: light-dark(#623f06, #e8bd69);
+  --warning-fg: light-dark(#fff, #1a1305);
+  --warning-soft: color-mix(in srgb, var(--warning) 12%, transparent);
+  --info: light-dark(#204a5e, #80cee6);
+  --info-soft: color-mix(in srgb, var(--info) 12%, transparent);
+
+  /* ── Favourite: neither state nor tag; its own thing ──── */
+  --fav: light-dark(#832037, #f7a3b7);
+  --fav-on-scrim: #f7a3b7; /* on the dark chip over the artwork, in either scheme */
+
+  /* ── Tag category palette ─────────────────────────────────
+     Display only. Deliberately not named after states, so nobody
+     can wire "danger" to a category again. `--tag-ink` is the
+     text colour that sits on any filled chip, in either scheme. */
+  --tag-ink: #12161a;
+  --tag-rose: #f280a5;
+  --tag-amber: #e0a83c;
+  --tag-emerald: #4fc98a;
+  --tag-sky: #5bc0de;
+  --tag-violet: #b79ced;
+  --tag-teal: #45c8b8;
+  --tag-orange: #f0955a;
+  --tag-lime: #b6d95e;
+
+  /* `neutral` is the outline chip — General holds the overwhelming
+     majority of tags, so filling it drowns out the categorised ones. */
+
+  /* ── Type scale ───────────────────────────────────────── */
+  --t-xs: 0.6875rem; /* 11px   — micro labels, uppercase eyebrows */
+  /* stylelint-disable-next-line number-max-precision -- exactly 12.5px */
+  --t-sm: 0.78125rem; /* 12.5px — metadata, chips, table numerics */
+  --t-md: 0.875rem; /* 14px   — dense UI: tables, buttons, nav */
+  --t-base: 0.9375rem; /* 15px   — body copy */
+  --t-lg: 1.1875rem; /* 19px   — section headings */
+  --t-xl: 1.5625rem; /* 25px   — page titles */
+
+  --lh-tight: 1.25;
+  --lh-normal: 1.5;
+
+  /* ── Space scale ──────────────────────────────────────── */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.5rem;
+  --sp-6: 2rem;
+
+  /* ── Radius ───────────────────────────────────────────── */
+  --r-sm: 3px;
+  --r-md: 5px;
+  --r-lg: 8px;
+
+  /* ── Elevation ────────────────────────────────────────── */
+  --shadow-1: 0 1px 2px light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 40%));
+  --shadow-2: 0 4px 12px light-dark(rgb(0 0 0 / 12%), rgb(0 0 0 / 45%));
+  --shadow-3: 0 8px 28px light-dark(rgb(0 0 0 / 18%), rgb(0 0 0 / 55%));
+
+  /* ── Type families ────────────────────────────────────── */
+  --font-sans:
+    Inter, 'SF Pro', 'Segoe UI', Roboto, Oxygen, Ubuntu, 'Helvetica Neue', Helvetica, Arial,
+    sans-serif;
+  --font-mono:
+    ui-monospace, 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', Menlo, Consolas, monospace;
+
+  /* ── Chrome geometry ──────────────────────────────────── */
+  --navbar-h: 48px;
+}
+
+/* The reader's pick, from src/theme.ts. Bulma reads the same attribute for its
+   own variables, so its components follow the pick too. */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}

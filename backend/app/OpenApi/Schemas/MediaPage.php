@@ -6,20 +6,14 @@ namespace App\OpenApi\Schemas;
 
 use OpenApi\Spec as OAS;
 
-/**
- * A numbered page of media items (GET /media/page/…, /media/untagged/…,
- * /media/with-tags/…). Doc-only schema.
- */
-#[OAS\Schema(component: 'MediaPage', description: 'A numbered page of media items.')]
-class MediaPage
-{
-    /** @var array<int, mixed> */
-    #[OAS\Property(schema: new OAS\Schema(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/Media')))]
-    public array $items = [];
-    #[OAS\Property(schema: new OAS\Schema(type: 'integer'))]
-    public int $total_pages = 0;
-    #[OAS\Property(schema: new OAS\Schema(type: 'integer'))]
-    public int $current_page = 0;
-    #[OAS\Property(schema: new OAS\Schema(type: 'string', nullable: true, description: 'Continue after this page with GET /media?cursor=… (same listing); null when nothing follows.'))]
-    public ?string $next_cursor = null;
-}
+/** Response body: A page of GET /media. Doc-only schema. */
+#[OAS\Schema(
+    component: 'MediaPage',
+    description: 'A page of media items, newest first.',
+    required: ['items', 'nextCursor'],
+    properties: [
+        new OAS\Property(property: 'items', schema: new OAS\Schema(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/Media'), description: 'The page\'s items.')),
+        new OAS\Property(property: 'nextCursor', schema: new OAS\Schema(type: 'string', nullable: true, description: 'Pass as ?cursor= (with the same filters) for the items after these; null when nothing follows.')),
+    ],
+)]
+final class MediaPage {}

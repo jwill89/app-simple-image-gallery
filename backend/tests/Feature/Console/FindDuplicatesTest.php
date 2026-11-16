@@ -34,7 +34,7 @@ test('a scan reports what it found and writes the report the Duplicates page rea
 
 test('a tuning run keeps dismissed pairs, prints the table, and leaves the report alone', function (): void {
     [$first, $second] = Media::factory()->count(2)->create(['bits_fingerprint' => DUPES_BITS])->all();
-    DismissedDuplicate::query()->insert(['media_id_1' => $first->media_id, 'media_id_2' => $second->media_id, 'dismissed_at' => 0]);
+    DismissedDuplicate::query()->insert(['media_id_1' => $first->media_id, 'media_id_2' => $second->media_id, 'dismissed_at' => '2026-01-01T00:00:00Z']);
 
     command('gallery:dupes --tune --max-distance=2 --max-region-diff=off')
         ->expectsOutput('Settings: max distance 2 (LSH bands of 21 bits), max region diff off, tuning run')

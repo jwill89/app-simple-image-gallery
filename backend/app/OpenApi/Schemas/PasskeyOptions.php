@@ -7,9 +7,9 @@ namespace App\OpenApi\Schemas;
 use OpenApi\Spec as OAS;
 
 /**
- * What POST /auth/passkey/options and POST /account/passkeys/options answer:
- * WebAuthn's options, as the browser's PublicKeyCredential.parseRequestOptionsFromJSON()
- * and parseCreationOptionsFromJSON() read them. Doc-only schema.
+ * Response body: POST /auth/passkey/options and /account/passkeys/options.
+ * The WebAuthn options the browser passes on as they are, so their members
+ * keep WebAuthn's names. Doc-only schema.
  */
 #[OAS\Schema(
     component: 'PasskeyOptions',
@@ -17,9 +17,8 @@ use OpenApi\Spec as OAS;
     type: 'object',
     additionalProperties: true,
     required: ['challenge'],
+    properties: [
+        new OAS\Property(property: 'challenge', schema: new OAS\Schema(type: 'string', description: 'Random, base64url.')),
+    ],
 )]
-class PasskeyOptions
-{
-    #[OAS\Property(schema: new OAS\Schema(type: 'string', description: 'Random, base64url.'))]
-    public string $challenge = '';
-}
+final class PasskeyOptions {}

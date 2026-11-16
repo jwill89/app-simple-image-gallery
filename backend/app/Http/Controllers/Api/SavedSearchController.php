@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use App\OpenApi\ProblemJson;
 use OpenApi\Spec as OAS;
 
 /**
@@ -49,17 +50,11 @@ final class SavedSearchController extends Controller
         summary: 'Save a search',
         tags: ['Saved searches'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        requestBody: new OAS\RequestBody(
-            required: true,
-            content: new OAS\MediaType\Json(required: ['name', 'query'], properties: [
-                new OAS\Property(property: 'name', schema: new OAS\Schema(type: 'string', maxLength: 60)),
-                new OAS\Property(property: 'query', schema: new OAS\Schema(type: 'string', maxLength: 500)),
-            ]),
-        ),
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/SavedSearchCreateBody')),
         responses: [
             new OAS\Response(response: 201, description: 'The search', content: new OAS\MediaType\Json(ref: '#/components/schemas/SavedSearch')),
-            new OAS\Response(response: 400, description: 'InvalidSearchName, InvalidQuery', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 409, description: 'SearchExists', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 409, description: 'SearchExists', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'InvalidSearchName, InvalidQuery', content: new ProblemJson()),
         ],
     )]
     public function store(SavedSearchRequest $request): JsonResponse
@@ -73,28 +68,22 @@ final class SavedSearchController extends Controller
     }
 
     /**
-     * PATCH /saved-searches/{search_id} — Rename a search or change its query.
+     * PATCH /saved-searches/{searchId} — Rename a search or change its query.
      * Body: { name?, query? }.
      */
     #[OAS\Operation\Patch(
-        path: '/saved-searches/{search_id}',
+        path: '/saved-searches/{searchId}',
         operationId: 'updateSavedSearch',
         summary: 'Change a saved search',
         tags: ['Saved searches'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        parameters: [new OAS\Parameter(name: 'search_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
-        requestBody: new OAS\RequestBody(
-            required: true,
-            content: new OAS\MediaType\Json(properties: [
-                new OAS\Property(property: 'name', schema: new OAS\Schema(type: 'string', maxLength: 60)),
-                new OAS\Property(property: 'query', schema: new OAS\Schema(type: 'string', maxLength: 500)),
-            ]),
-        ),
+        parameters: [new OAS\Parameter(name: 'searchId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/SavedSearchUpdateBody')),
         responses: [
             new OAS\Response(response: 200, description: 'The search', content: new OAS\MediaType\Json(ref: '#/components/schemas/SavedSearch')),
-            new OAS\Response(response: 400, description: 'InvalidSearchName, InvalidQuery', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 404, description: 'SearchNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 409, description: 'SearchExists', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'SearchNotFound', content: new ProblemJson()),
+            new OAS\Response(response: 409, description: 'SearchExists', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'InvalidSearchName, InvalidQuery', content: new ProblemJson()),
         ],
     )]
     public function update(SavedSearchRequest $request, SavedSearch $search): SavedSearchResource
@@ -108,18 +97,18 @@ final class SavedSearchController extends Controller
     }
 
     /**
-     * DELETE /saved-searches/{search_id} — Delete a saved search.
+     * DELETE /saved-searches/{searchId} — Delete a saved search.
      */
     #[OAS\Operation\Delete(
-        path: '/saved-searches/{search_id}',
+        path: '/saved-searches/{searchId}',
         operationId: 'deleteSavedSearch',
         summary: 'Delete a saved search',
         tags: ['Saved searches'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        parameters: [new OAS\Parameter(name: 'search_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        parameters: [new OAS\Parameter(name: 'searchId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Deleted'),
-            new OAS\Response(response: 404, description: 'SearchNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'SearchNotFound', content: new ProblemJson()),
         ],
     )]
     public function destroy(Request $request, SavedSearch $search): Response

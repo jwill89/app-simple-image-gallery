@@ -11,6 +11,7 @@ use App\Models\DanbooruTagMapping;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use App\OpenApi\ProblemJson;
 use OpenApi\Spec as OAS;
 
 /**
@@ -38,7 +39,7 @@ final class DanbooruTagMappingController extends Controller
 
     /**
      * POST /danbooru/tag-mappings — Map a Danbooru tag name to a gallery tag name.
-     * Body: { danbooru_tag, gallery_tag }.
+     * Body: { danbooruTag, galleryTag }.
      */
     #[OAS\Operation\Post(
         path: '/danbooru/tag-mappings',
@@ -46,16 +47,12 @@ final class DanbooruTagMappingController extends Controller
         summary: 'Create a tag name mapping',
         tags: ['Danbooru'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(
-            required: ['danbooru_tag', 'gallery_tag'],
-            properties: [
-                new OAS\Property(property: 'danbooru_tag', schema: new OAS\Schema(type: 'string')),
-                new OAS\Property(property: 'gallery_tag', schema: new OAS\Schema(type: 'string')),
-            ],
-        )),
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/TagMappingCreateBody')),
         responses: [
             new OAS\Response(response: 201, description: 'The created mapping', content: new OAS\MediaType\Json(ref: '#/components/schemas/TagMapping')),
-            new OAS\Response(response: 400, description: 'InvalidInput / DuplicateMapping', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'Forbidden (not an admin)', content: new ProblemJson()),
+            new OAS\Response(response: 409, description: 'DuplicateMapping', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'InvalidInput', content: new ProblemJson()),
         ],
     )]
     public function store(DanbooruTagMappingRequest $request): TagMappingResource
@@ -67,27 +64,23 @@ final class DanbooruTagMappingController extends Controller
     }
 
     /**
-     * PUT /danbooru/tag-mappings/{id} — Update a tag-name mapping.
-     * Body: { danbooru_tag, gallery_tag }.
+     * PATCH /danbooru/tag-mappings/{mappingId} — Change a tag-name mapping.
+     * Body: { danbooruTag?, galleryTag? }; a field left out stays as it is.
      */
-    #[OAS\Operation\Put(
-        path: '/danbooru/tag-mappings/{id}',
+    #[OAS\Operation\Patch(
+        path: '/danbooru/tag-mappings/{mappingId}',
         operationId: 'updateDanbooruTagMapping',
-        summary: 'Update a tag name mapping',
+        summary: 'Update a tag name mapping (the fields given)',
         tags: ['Danbooru'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        parameters: [new OAS\Parameter(name: 'id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
-        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(
-            required: ['danbooru_tag', 'gallery_tag'],
-            properties: [
-                new OAS\Property(property: 'danbooru_tag', schema: new OAS\Schema(type: 'string')),
-                new OAS\Property(property: 'gallery_tag', schema: new OAS\Schema(type: 'string')),
-            ],
-        )),
+        parameters: [new OAS\Parameter(name: 'mappingId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/TagMappingUpdateBody')),
         responses: [
             new OAS\Response(response: 200, description: 'The updated mapping', content: new OAS\MediaType\Json(ref: '#/components/schemas/TagMapping')),
-            new OAS\Response(response: 400, description: 'InvalidInput / DuplicateMapping', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 404, description: 'MappingNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'Forbidden (not an admin)', content: new ProblemJson()),
+            new OAS\Response(response: 404, description: 'MappingNotFound', content: new ProblemJson()),
+            new OAS\Response(response: 409, description: 'DuplicateMapping', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'InvalidInput', content: new ProblemJson()),
         ],
     )]
     public function update(DanbooruTagMappingRequest $request, DanbooruTagMapping $mapping): TagMappingResource
@@ -99,18 +92,19 @@ final class DanbooruTagMappingController extends Controller
     }
 
     /**
-     * DELETE /danbooru/tag-mappings/{id} — Remove a tag-name mapping.
+     * DELETE /danbooru/tag-mappings/{mappingId} — Remove a tag-name mapping.
      */
     #[OAS\Operation\Delete(
-        path: '/danbooru/tag-mappings/{id}',
+        path: '/danbooru/tag-mappings/{mappingId}',
         operationId: 'deleteDanbooruTagMapping',
         summary: 'Delete a tag name mapping',
         tags: ['Danbooru'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        parameters: [new OAS\Parameter(name: 'id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        parameters: [new OAS\Parameter(name: 'mappingId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Deleted'),
-            new OAS\Response(response: 404, description: 'MappingNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'Forbidden (not an admin)', content: new ProblemJson()),
+            new OAS\Response(response: 404, description: 'MappingNotFound', content: new ProblemJson()),
         ],
     )]
     public function destroy(DanbooruTagMapping $mapping): Response

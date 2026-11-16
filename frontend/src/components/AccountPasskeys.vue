@@ -128,7 +128,7 @@ async function remove() {
 
 <template>
   <div class="box">
-    <h3 class="title is-5">Passkeys</h3>
+    <h2 class="title is-5">Passkeys</h2>
     <p class="section-note">
       Sign in with your phone, computer or password manager instead of your password. A passkey
       works only on this site, and your password still works too.
@@ -162,7 +162,7 @@ async function remove() {
             <span class="icon passkey-icon"><font-awesome-icon icon="fa-solid fa-key" /></span>
             <span class="passkey-name">{{ passkey.name }}</span>
             <span class="passkey-meta">
-              Added {{ when(passkey.created_at) }} · last used {{ when(passkey.last_used_at) }}
+              Added {{ when(passkey.createdAt) }} · last used {{ when(passkey.lastUsedAt) }}
             </span>
             <button type="button" class="button is-small is-text" @click="startRename(passkey)">
               Rename
@@ -266,6 +266,7 @@ async function remove() {
 
 <style scoped>
 .section-note {
+  max-width: 70ch;
   color: var(--text-2);
   font-size: var(--t-sm);
   margin-bottom: var(--sp-3);

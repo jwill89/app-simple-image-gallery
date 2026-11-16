@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Timestamp;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -25,6 +26,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 #[Fillable(['name', 'is_default'])]
 class FavoriteList extends Model
 {
+    #[\Override]
+    protected $dateFormat = Timestamp::FORMAT;
+
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {

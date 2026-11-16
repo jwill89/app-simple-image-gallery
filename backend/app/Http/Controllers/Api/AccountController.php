@@ -16,6 +16,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use App\OpenApi\ProblemJson;
 use OpenApi\Spec as OAS;
 
 /**
@@ -36,26 +37,17 @@ final class AccountController extends Controller
         summary: 'Change your password',
         tags: ['Account'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        requestBody: new OAS\RequestBody(
-            required: true,
-            content: new OAS\MediaType\Json(
-                required: ['current_password', 'password'],
-                properties: [
-                    new OAS\Property(property: 'current_password', schema: new OAS\Schema(type: 'string')),
-                    new OAS\Property(property: 'password', schema: new OAS\Schema(type: 'string', maxLength: 200, minLength: 8)),
-                ],
-            ),
-        ),
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/PasswordChangeBody')),
         responses: [
             new OAS\Response(response: 204, description: 'Changed'),
-            new OAS\Response(response: 400, description: 'MissingCredentials, WeakPassword', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 403, description: 'IncorrectPassword', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'IncorrectPassword', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'MissingCredentials, WeakPassword', content: new ProblemJson()),
         ],
     )]
     public function changePassword(PasswordChangeRequest $request): Response
     {
         $user = self::user($request);
-        self::confirmPassword($user, $request->string('current_password')->toString());
+        self::confirmPassword($user, $request->string('currentPassword')->toString());
 
         $remembered = Login::remembered($request);
         $user->setNewPassword($request->string('password')->toString());
@@ -75,15 +67,12 @@ final class AccountController extends Controller
         summary: 'Delete your account',
         tags: ['Account'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        requestBody: new OAS\RequestBody(
-            required: true,
-            content: new OAS\MediaType\Json(required: ['password'], properties: [new OAS\Property(property: 'password', schema: new OAS\Schema(type: 'string'))]),
-        ),
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/PasswordBody')),
         responses: [
             new OAS\Response(response: 204, description: 'Deleted'),
-            new OAS\Response(response: 400, description: 'MissingCredentials', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 403, description: 'IncorrectPassword, OwnAdminAccount (an admin can\'t delete their own account)', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 409, description: 'LastAdmin', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'IncorrectPassword, OwnAdminAccount (an admin can\'t delete their own account)', content: new ProblemJson()),
+            new OAS\Response(response: 409, description: 'LastAdmin', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'MissingCredentials', content: new ProblemJson()),
         ],
     )]
     public function destroy(Request $request): Response
@@ -91,7 +80,7 @@ final class AccountController extends Controller
         $user = self::user($request);
         $password = $request->input('password');
         if (!is_string($password) || $password === '') {
-            throw new ApiException('MissingCredentials', 400, 'Your password is required.');
+            throw new ApiException('MissingCredentials', 422, 'Your password is required.', [], [['message' => 'Your password is required.', 'location' => 'body.password']]);
         }
         self::confirmPassword($user, $password);
         if ($user->isLastAdmin()) {
@@ -128,19 +117,19 @@ final class AccountController extends Controller
     }
 
     /**
-     * PUT /account/blocked-tags/{tag_id} — Block a tag: media carrying it
+     * PUT /account/blocked-tags/{tagId} — Block a tag: media carrying it
      * leaves this account's listings. Blocking it again changes nothing.
      */
     #[OAS\Operation\Put(
-        path: '/account/blocked-tags/{tag_id}',
+        path: '/account/blocked-tags/{tagId}',
         operationId: 'blockTag',
         summary: 'Block a tag',
         tags: ['Account'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        parameters: [new OAS\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        parameters: [new OAS\Parameter(name: 'tagId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Blocked'),
-            new OAS\Response(response: 404, description: 'TagNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'TagNotFound', content: new ProblemJson()),
         ],
     )]
     public function blockTag(Request $request, Tag $tag): Response
@@ -151,18 +140,18 @@ final class AccountController extends Controller
     }
 
     /**
-     * DELETE /account/blocked-tags/{tag_id} — Unblock a tag.
+     * DELETE /account/blocked-tags/{tagId} — Unblock a tag.
      */
     #[OAS\Operation\Delete(
-        path: '/account/blocked-tags/{tag_id}',
+        path: '/account/blocked-tags/{tagId}',
         operationId: 'unblockTag',
         summary: 'Unblock a tag',
         tags: ['Account'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        parameters: [new OAS\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        parameters: [new OAS\Parameter(name: 'tagId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Unblocked'),
-            new OAS\Response(response: 404, description: 'TagNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'TagNotFound', content: new ProblemJson()),
         ],
     )]
     public function unblockTag(Request $request, Tag $tag): Response

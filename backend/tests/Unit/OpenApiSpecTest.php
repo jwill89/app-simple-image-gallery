@@ -42,7 +42,7 @@ test('every operation has its own readable operationId', function (): void {
 
     // The count moves with every operation added or removed, so it also catches
     // one that stops being scanned.
-    expect($ids)->toHaveCount(78)
+    expect($ids)->toHaveCount(74)
         ->and(array_unique($ids))->toHaveCount(count($ids));
     foreach ($ids as $operation => $id) {
         expect($id)->toMatch('/^[a-z][a-zA-Z]+$/', "{$operation} has no readable operationId.");

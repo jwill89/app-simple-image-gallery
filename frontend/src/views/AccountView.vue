@@ -43,7 +43,7 @@ async function changePassword() {
   passwordError.value = ''
   try {
     await api.patch(endpoints.account.password, {
-      current_password: currentPassword.value,
+      currentPassword: currentPassword.value,
       password: newPassword.value,
     })
     currentPassword.value = newPassword.value = confirmPassword.value = ''
@@ -59,7 +59,7 @@ async function changePassword() {
 // ── Blocked tags ─────────────────────────────────────────────────────
 // The picker's chips are the blocked tags: adding one blocks it, removing one
 // unblocks it.
-const blockedIds = computed(() => account.blockedTags.map((t) => t.tag_id))
+const blockedIds = computed(() => account.blockedTags.map((t) => t.tagId))
 
 async function onBlockedChange(ids: number[]) {
   const before = new Set(blockedIds.value)
@@ -90,7 +90,7 @@ function searchRoute(search: SavedSearch) {
 }
 
 function startRename(search: SavedSearch) {
-  renaming.value = search.search_id
+  renaming.value = search.searchId
   newName.value = search.name
 }
 
@@ -110,7 +110,7 @@ async function finishRename() {
 
 async function deleteSearch(search: SavedSearch) {
   try {
-    await account.deleteSearch(search.search_id)
+    await account.deleteSearch(search.searchId)
     toast.success(`Deleted the saved search "${search.name}".`, 4000, 'Saved searches')
   } catch (e) {
     toast.error(getErrorMessage(e, 'Could not delete the search.'), 6000, 'Saved searches')
@@ -151,7 +151,7 @@ async function deleteAccount() {
         />
 
         <div class="box">
-          <h3 class="title is-5">Blocked tags</h3>
+          <h2 class="title is-5">Blocked tags</h2>
           <p class="section-note">
             Media carrying any of these tags is left out of your listings, searches and random
             picks. Opening one directly asks before showing it.
@@ -164,7 +164,7 @@ async function deleteAccount() {
         </div>
 
         <div class="box">
-          <h3 class="title is-5">Saved searches</h3>
+          <h2 class="title is-5">Saved searches</h2>
           <EmptyState
             v-if="account.searches.length === 0"
             icon="fa-regular fa-bookmark"
@@ -172,8 +172,8 @@ async function deleteAccount() {
             hint="Search by tags, then choose Save this search from the bookmark menu."
           />
           <ul v-else class="saved-searches">
-            <li v-for="search in account.searches" :key="search.search_id">
-              <template v-if="renaming === search.search_id">
+            <li v-for="search in account.searches" :key="search.searchId">
+              <template v-if="renaming === search.searchId">
                 <input
                   v-model="newName"
                   class="input is-small"
@@ -207,7 +207,7 @@ async function deleteAccount() {
         <AccountPasskeys />
 
         <form class="box" @submit.prevent="changePassword">
-          <h3 class="title is-5">Change password</h3>
+          <h2 class="title is-5">Change password</h2>
           <input
             :value="auth.user?.username"
             type="text"
@@ -265,7 +265,7 @@ async function deleteAccount() {
         </form>
 
         <div class="box">
-          <h3 class="title is-5">Delete account</h3>
+          <h2 class="title is-5">Delete account</h2>
           <p v-if="auth.isAdmin" class="section-note">
             An admin can't delete their own account. Ask another admin to remove your admin role on
             the Users page, and the account can be deleted from here.
@@ -316,6 +316,7 @@ async function deleteAccount() {
 }
 
 .section-note {
+  max-width: 70ch;
   color: var(--text-2);
   font-size: var(--t-sm);
   margin-bottom: var(--sp-3);

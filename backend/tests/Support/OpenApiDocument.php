@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Http\Resources\CategoryMappingResource;
 use App\Http\Resources\FavoriteListResource;
 use App\Http\Resources\MediaResource;
 use App\Http\Resources\PasskeyResource;
 use App\Http\Resources\SavedSearchResource;
 use App\Http\Resources\TagCategoryResource;
+use App\Http\Resources\TagMappingResource;
 use App\Http\Resources\TagResource;
 use App\Http\Resources\UserResource;
 use OpenApi\Augmenter\Properties;
@@ -39,6 +41,8 @@ final class OpenApiDocument
         FavoriteListResource::class,
         SavedSearchResource::class,
         PasskeyResource::class,
+        CategoryMappingResource::class,
+        TagMappingResource::class,
     ];
 
     public static function builder(): Builder
@@ -55,7 +59,8 @@ final class OpenApiDocument
             // response class (`public bool $success = true` on ScanResult), not a
             // value the API fills in for a missing field, so all it would add are
             // misleading. Where the API has a default, the attribute says so.
-            ->withAugmenters(static fn(Pipeline $augmenters): Pipeline => $augmenters->remove(Properties::class));
+            // The errors every operation of a kind can answer (OpenApiCommonErrors).
+            ->withAugmenters(static fn(Pipeline $augmenters): Pipeline => $augmenters->remove(Properties::class)->add(new OpenApiCommonErrors()));
     }
 
     public static function outputPath(): string

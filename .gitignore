@@ -2,14 +2,16 @@
 /.idea/
 /.vscode/
 /.claude/
-/IMPROVEMENTS.md
 
 # Deploy tooling: track the script + config template (no secrets in them); keep
 # the local deploy.config.ps1 (host/user/key/web root) out of git.
 /scripts/*
 !/scripts/deploy.ps1
-!/scripts/HostConfig.ps1
 !/scripts/deploy.config.example.ps1
+
+# Copies of the live data each deploy brings to this machine (deploy.ps1): the
+# media folder's originals. They hold live files, so they never leave it.
+/devdata/
 
 # ── Backend (Laravel) ─────────────────────────────────────────────────────────
 # backend/.gitignore and backend/database/.gitignore cover the app itself.

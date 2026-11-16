@@ -37,13 +37,13 @@ beforeEach(() => {
   get.mockReset()
   get.mockImplementation((url: string) => {
     if (url.startsWith('/tags?names=')) {
-      return Promise.resolve([{ tag_id: 1, tag_name: 'alpha', category_id: 1 }])
+      return Promise.resolve([{ tagId: 1, tagName: 'alpha', categoryId: 1 }])
     }
     if (url.startsWith('/tags?search=')) {
       found++
       return Promise.resolve([
-        { tag_id: 1, tag_name: 'alpha', category_id: 1 },
-        { tag_id: 100 + found, tag_name: `new ${found}`, category_id: 1 },
+        { tagId: 1, tagName: 'alpha', categoryId: 1 },
+        { tagId: 100 + found, tagName: `new ${found}`, categoryId: 1 },
       ])
     }
     return Promise.resolve(undefined)

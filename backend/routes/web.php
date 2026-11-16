@@ -12,8 +12,11 @@ use Illuminate\Support\Facades\Route;
 |
 | Apache serves the built assets and media files under public/ itself, so
 | everything that reaches the app outside /api is a page of the SPA: the
-| shell answers it, and the SPA routes it in the browser. An /api path no API
-| route matches is left alone, so it stays a JSON 404 or 405.
+| shell answers it, and the SPA routes it in the browser. A path that can only
+| name a file (a missing asset, thumbnail or the like) is a 404 instead, never
+| the page (SpaController::namesFile). A trailing slash is ignored: the router
+| matches /tags/ as /tags. An /api path no API route matches is left alone, so
+| it stays a JSON 404 or 405.
 |
 | The web middleware group is empty (bootstrap/app.php): the shell needs no
 | session, cookie or CSRF token.

@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * Cloudflare Turnstile, the check that a sign-up or login comes from a person.
  * The page's widget hands the browser a token, sent with the request as
- * `turnstile_token`; Cloudflare says whether it passed. A token passes once,
+ * `turnstileToken`; Cloudflare says whether it passed. A token passes once,
  * for the action the widget was made for ("login" or "register"), so a token
  * from one form can't be replayed at the other. With no secret configured,
  * nothing is checked (local development, the tests).
@@ -44,7 +44,7 @@ final class Turnstile
             return;
         }
         if ($token === null || $token === '') {
-            throw new ApiException('CaptchaRequired', 400, 'Please complete the check that you\'re not a bot.');
+            throw new ApiException('CaptchaRequired', 403, 'Please complete the check that you\'re not a bot.');
         }
 
         try {
@@ -69,7 +69,7 @@ final class Turnstile
         // test keys answer with none, which can't be told apart and so passes.
         $issuedFor = is_string($result['action'] ?? null) ? $result['action'] : '';
         if (($result['success'] ?? false) !== true || ($issuedFor !== '' && $issuedFor !== $action)) {
-            Log::warning('Turnstile check failed', ['action' => $action, 'errors' => $result['error-codes'] ?? []]);
+            Log::info('Turnstile check failed', ['action' => $action, 'errors' => $result['error-codes'] ?? []]);
 
             throw new ApiException('CaptchaFailed', 403, 'The check that you\'re not a bot didn\'t pass. Please try it again.');
         }

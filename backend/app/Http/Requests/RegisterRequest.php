@@ -47,9 +47,9 @@ final class RegisterRequest extends ApiRequest
     protected function errorCodes(): array
     {
         return [
-            'username' => ['InvalidUsername', 400],
+            'username' => ['InvalidUsername', 422],
             'username.unique' => ['UsernameTaken', 409],
-            'password' => ['WeakPassword', 400],
+            'password' => ['WeakPassword', 422],
         ];
     }
 }

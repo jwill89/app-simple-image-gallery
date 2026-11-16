@@ -35,6 +35,16 @@
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="DB_URL" value=""/>
+        <!-- The gallery's settings as a fresh .env.example leaves them, whatever .env says. -->
+        <env name="GALLERY_CSP_REPORT_ONLY" value=""/>
+        <env name="GALLERY_DANBOORU_API_KEY" value=""/>
+        <env name="GALLERY_DANBOORU_LOGIN" value=""/>
+        <env name="GALLERY_DANBOORU_USER_ID" value=""/>
+        <env name="GALLERY_DUPLICATE_MAX_DISTANCE" value=""/>
+        <env name="GALLERY_DUPLICATE_MAX_REGION_DIFF" value=""/>
+        <env name="GALLERY_SCHEDULE_TIMEZONE" value="UTC"/>
+        <env name="GALLERY_TURNSTILE_SECRET" value=""/>
+        <env name="GALLERY_TURNSTILE_SITEKEY" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

@@ -11,7 +11,6 @@
     // Playwright's notes on a failed end-to-end run.
     "frontend/test-results/**",
     "frontend/playwright-report/**",
-    "backend/public/**",
-    "IMPROVEMENTS.md"
+    "backend/public/**"
   ]
 }

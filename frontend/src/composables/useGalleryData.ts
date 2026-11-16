@@ -9,6 +9,8 @@ export function useGalleryData() {
   const toastStore = useToastStore()
   const items = ref<Media[]>([])
   const totalPages = ref(0)
+  /** How many items the whole listing holds. */
+  const total = ref(0)
   /** Where GET /media continues after this page; null when nothing follows. */
   const nextCursor = ref<string | null>(null)
   const loading = ref(false)
@@ -19,22 +21,19 @@ export function useGalleryData() {
     loadFailed.value = false
 
     try {
-      const url =
-        tags === 'untagged'
-          ? endpoints.media.untagged(page, perPage)
-          : tags
-            ? endpoints.media.withTags(tags, page, perPage)
-            : endpoints.media.page(page, perPage)
-
-      const data = await api.get<MediaPage>(url)
+      const { data, total: count } = await api.getPage<MediaPage>(
+        endpoints.media.page(page, perPage, tags),
+      )
 
       items.value = data?.items ?? []
-      totalPages.value = data?.total_pages ?? 1
-      nextCursor.value = data?.next_cursor ?? null
+      total.value = count ?? items.value.length
+      totalPages.value = Math.max(1, Math.ceil(total.value / perPage))
+      nextCursor.value = data?.nextCursor ?? null
     } catch (e) {
       toastStore.error(getErrorMessage(e, 'Failed to load gallery'))
       loadFailed.value = true
       items.value = []
+      total.value = 0
       totalPages.value = 0
       nextCursor.value = null
     } finally {
@@ -42,5 +41,5 @@ export function useGalleryData() {
     }
   }
 
-  return { items, totalPages, nextCursor, loading, loadFailed, fetchPage }
+  return { items, total, totalPages, nextCursor, loading, loadFailed, fetchPage }
 }

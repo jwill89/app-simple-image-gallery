@@ -10,11 +10,13 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 
 /**
- * A form request that fails the way the API contract does: the first failed
- * rule, in the order rules() lists them, gives `{ error, message }` that
- * endpoint's code and status (usually 400), never Laravel's 422. Every field is
- * checked, and `errors` lists each broken field's messages, so a form can mark
- * them all. The messages are the rules', so messages() sets the wording.
+ * A form request that fails as problem details: the first failed rule, in the
+ * order rules() lists them, gives the endpoint's code and status (422 unless
+ * errorCodes() says otherwise), and its message is the `detail`. Every field is
+ * checked, and `errors` lists each broken field once, as `{ message, location }`
+ * with the location in huma's form (`body.tagName`, `query.limit`), so a form
+ * can mark them all. The messages are the rules', so messages() sets the
+ * wording.
  *
  * Authorization is the routes' business (auth, admin), so every request is
  * authorized here.
@@ -22,9 +24,9 @@ use Illuminate\Support\Str;
 abstract class ApiRequest extends FormRequest
 {
     /**
-     * The contract's code and status for a failed rule, keyed "field.rule"
-     * (snake_case rule name) or just "field" for any rule on it. A failure with
-     * no entry is 400 InvalidInput.
+     * The code and status for a failed rule, keyed "field.rule" (snake_case
+     * rule name) or just "field" for any rule on it. A failure with no entry is
+     * 422 InvalidInput.
      *
      * @return array<string, array{0: string, 1: int}>
      */
@@ -45,19 +47,27 @@ abstract class ApiRequest extends FormRequest
         $this->merge(array_map(trim(...), array_filter($this->only($fields), is_string(...))));
     }
 
+    /** Where the checked fields come from: a read's query string, a write's body. */
+    protected function location(): string
+    {
+        return $this->isMethod('GET') ? 'query' : 'body';
+    }
+
     protected function failedValidation(Validator $validator): never
     {
-        // Every broken field's messages, so a form can mark each one.
-        $extra = ['errors' => $validator->errors()->toArray()];
+        $errors = [];
+        foreach ($validator->errors()->toArray() as $field => $messages) {
+            $errors[] = ['message' => (string) ($messages[0] ?? ''), 'location' => $this->location() . '.' . $field];
+        }
         $codes = $this->errorCodes();
 
         foreach ($validator->failed() as $field => $rules) {
             $rule = Str::snake((string) array_key_first($rules));
-            [$code, $status] = $codes["{$field}.{$rule}"] ?? $codes[$field] ?? ['InvalidInput', 400];
+            [$code, $status] = $codes["{$field}.{$rule}"] ?? $codes[$field] ?? ['InvalidInput', 422];
 
-            throw new ApiException($code, $status, $validator->errors()->first($field), [], $extra);
+            throw new ApiException($code, $status, $validator->errors()->first($field), [], $errors);
         }
 
-        throw new ApiException('InvalidInput', 400, $validator->errors()->first(), [], $extra);
+        throw new ApiException('InvalidInput', 422, $validator->errors()->first(), [], $errors);
     }
 }

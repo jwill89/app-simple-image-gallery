@@ -6,7 +6,7 @@ import { useFavoritesStore } from '../stores/favorites'
 import { useGalleryStore } from '../stores/gallery'
 import { useToastStore } from '../stores/toast'
 import { endpoints } from '../api/endpoints'
-import type { MediaItem, MediaPage } from '../types'
+import type { MediaItem } from '../types'
 import GalleryCard from '../components/GalleryCard.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import PageHeader from '../components/PageHeader.vue'
@@ -15,6 +15,8 @@ import PaginationBar from '../components/PaginationBar.vue'
 import AppDialog from '../components/AppDialog.vue'
 
 const PER_PAGE = 60
+/** The most ids one POST /media/by-ids may ask for. */
+const BY_IDS_BATCH = 200
 
 const router = useRouter()
 const api = useApi()
@@ -31,14 +33,13 @@ const selectedId = ref<number | null>(null)
 const page = ref(1)
 const totalPages = ref(1)
 const selected = computed(
-  () =>
-    favorites.lists.find((l) => l.list_id === selectedId.value) ?? favorites.defaultList ?? null,
+  () => favorites.lists.find((l) => l.listId === selectedId.value) ?? favorites.defaultList ?? null,
 )
 const isEmpty = computed(() =>
-  favorites.isAccount ? (selected.value?.media_count ?? 0) === 0 : favorites.count === 0,
+  favorites.isAccount ? (selected.value?.mediaCount ?? 0) === 0 : favorites.count === 0,
 )
 const meta = computed(() => {
-  const n = favorites.isAccount ? (selected.value?.media_count ?? 0) : favorites.count
+  const n = favorites.isAccount ? (selected.value?.mediaCount ?? 0) : favorites.count
   return n === 0 ? '' : `${n.toLocaleString()} saved`
 })
 
@@ -52,7 +53,7 @@ async function load() {
       await loadLocal()
     }
     // Gallery context for the detail page's previous/next.
-    store.lastViewedItemIds = items.value.map((i) => i.media_id)
+    store.lastViewedItemIds = items.value.map((i) => i.mediaId)
   } catch (e) {
     toastStore.error(getErrorMessage(e, 'Failed to load favorites.'), 6000, 'Load Failed')
     loadFailed.value = true
@@ -67,9 +68,11 @@ async function loadList() {
     items.value = []
     return
   }
-  const result = await api.get<MediaPage>(endpoints.lists.media(list.list_id, page.value, PER_PAGE))
-  items.value = result?.items ?? []
-  totalPages.value = result?.total_pages ?? 1
+  const { data, total } = await api.getPage<MediaItem[]>(
+    endpoints.lists.media(list.listId, { limit: PER_PAGE, offset: (page.value - 1) * PER_PAGE }),
+  )
+  items.value = data ?? []
+  totalPages.value = Math.max(1, Math.ceil((total ?? items.value.length) / PER_PAGE))
 }
 
 /** Signed out: this browser's favorites. */
@@ -79,10 +82,24 @@ async function loadLocal() {
     items.value = []
     return
   }
-  const result = await api.post<MediaItem[]>(endpoints.media.byIds, { ids })
-  items.value = result ?? []
+  const batches = await Promise.all(
+    Array.from({ length: Math.ceil(ids.length / BY_IDS_BATCH) }, (_, n) =>
+      api.post<MediaItem[]>(endpoints.media.byIds, {
+        ids: ids.slice(n * BY_IDS_BATCH, (n + 1) * BY_IDS_BATCH),
+      }),
+    ),
+  )
+  // Newest first, as each batch is: RFC 3339 times sort as text.
+  items.value = batches
+    .flatMap((batch) => batch ?? [])
+    .sort((a, b) => {
+      if (a.fileTime === b.fileTime) {
+        return b.mediaId - a.mediaId
+      }
+      return a.fileTime > b.fileTime ? -1 : 1
+    })
   // Drop favorites that no longer exist.
-  favorites.prune(new Set(items.value.map((i) => i.media_id)))
+  favorites.prune(new Set(items.value.map((i) => i.mediaId)))
 }
 
 function selectList(listId: number) {
@@ -103,14 +120,14 @@ function onCardClick(id: number) {
 onMounted(load)
 // Signed in or out while here, or the lists arrived after the page opened.
 watch(
-  () => [favorites.isAccount, favorites.defaultList?.list_id],
+  () => [favorites.isAccount, favorites.defaultList?.listId],
   () => void load(),
 )
 // A heart clicked on this page changes what it shows.
 watch(
   () => favorites.count,
   () => {
-    if (!favorites.isAccount || selected.value?.is_default) {
+    if (!favorites.isAccount || selected.value?.isDefault) {
       void load()
     }
   },
@@ -140,10 +157,10 @@ async function saveName() {
     if (nameDialog.value === 'create') {
       const list = await favorites.createList(name)
       if (list) {
-        selectList(list.list_id)
+        selectList(list.listId)
       }
     } else if (selected.value) {
-      await favorites.renameList(selected.value.list_id, name)
+      await favorites.renameList(selected.value.listId, name)
     }
     nameDialog.value = null
   } catch (e) {
@@ -157,7 +174,7 @@ async function deleteList() {
     return
   }
   try {
-    await favorites.deleteList(list.list_id)
+    await favorites.deleteList(list.listId)
     toastStore.success(`Deleted the list "${list.name}".`, 4000, 'Lists')
     selectedId.value = null
     page.value = 1
@@ -186,7 +203,7 @@ async function deleteList() {
             Rename
           </button>
           <button
-            v-if="selected && !selected.is_default"
+            v-if="selected && !selected.isDefault"
             type="button"
             class="button is-small is-danger is-outlined"
             @click="deleteOpen = true"
@@ -203,16 +220,16 @@ async function deleteList() {
       >
         <button
           v-for="list in favorites.lists"
-          :key="list.list_id"
+          :key="list.listId"
           type="button"
           role="tab"
           class="button is-small"
-          :class="{ 'is-selected': list.list_id === selected?.list_id }"
-          :aria-selected="list.list_id === selected?.list_id"
-          @click="selectList(list.list_id)"
+          :class="{ 'is-selected': list.listId === selected?.listId }"
+          :aria-selected="list.listId === selected?.listId"
+          @click="selectList(list.listId)"
         >
           <span>{{ list.name }}</span>
-          <span class="list-count">{{ list.media_count.toLocaleString() }}</span>
+          <span class="list-count">{{ list.mediaCount.toLocaleString() }}</span>
         </button>
       </div>
 
@@ -234,10 +251,10 @@ async function deleteList() {
         v-else-if="isEmpty"
         icon="fa-regular fa-heart"
         :title="
-          favorites.isAccount && !selected?.is_default ? 'This list is empty.' : 'No favorites yet.'
+          favorites.isAccount && !selected?.isDefault ? 'This list is empty.' : 'No favorites yet.'
         "
         :hint="
-          favorites.isAccount && !selected?.is_default
+          favorites.isAccount && !selected?.isDefault
             ? 'Add media to it from a media page\'s list menu.'
             : 'Click the heart on any thumbnail or media page to add it here.'
         "
@@ -258,7 +275,7 @@ async function deleteList() {
         <div class="media-grid">
           <GalleryCard
             v-for="item in items"
-            :key="item.media_id"
+            :key="item.mediaId"
             :item="item"
             @click="onCardClick"
           />
@@ -319,6 +336,7 @@ async function deleteList() {
 <style scoped>
 /* The grid lives in style.css as `.media-grid`, shared with GalleryView. */
 .favorites-note {
+  max-width: 70ch;
   display: flex;
   align-items: flex-start;
   gap: var(--sp-2);

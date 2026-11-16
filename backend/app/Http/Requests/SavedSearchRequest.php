@@ -17,7 +17,7 @@ final class SavedSearchRequest extends ApiRequest
     /** @return array<string, list<mixed>> */
     public function rules(): array
     {
-        $search = $this->route('search_id');
+        $search = $this->route('searchId');
         $required = $this->isMethod('POST') ? 'required' : 'sometimes';
 
         return [
@@ -46,9 +46,9 @@ final class SavedSearchRequest extends ApiRequest
     protected function errorCodes(): array
     {
         return [
-            'name' => ['InvalidSearchName', 400],
+            'name' => ['InvalidSearchName', 422],
             'name.unique' => ['SearchExists', 409],
-            'query' => ['InvalidQuery', 400],
+            'query' => ['InvalidQuery', 422],
         ];
     }
 

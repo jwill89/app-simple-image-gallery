@@ -17,7 +17,7 @@ vi.mock('../composables/useApi', async (importOriginal) => {
   }
 })
 
-const READER = { id: 1, username: 'reader', is_admin: false, created_at: '2026-11-03T00:00:00Z' }
+const READER = { id: 1, username: 'reader', isAdmin: false, createdAt: '2026-11-03T00:00:00Z' }
 
 /** The server, signed in as `user` (or no one): its session, and the account's things. */
 function server(user: typeof READER | null) {
@@ -26,7 +26,7 @@ function server(user: typeof READER | null) {
       return Promise.resolve({ user })
     }
     if (url === '/lists') {
-      return Promise.resolve([{ list_id: 1, name: 'Favorites', is_default: true, media_count: 0 }])
+      return Promise.resolve([{ listId: 1, name: 'Favorites', isDefault: true, mediaCount: 0 }])
     }
     return Promise.resolve([])
   })

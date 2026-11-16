@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Media;
 use App\Models\Tag;
+use App\Support\ContentSecurityPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\File;
@@ -17,18 +18,49 @@ use Throwable;
  * built index.html (gallery.spa_index) with the page's link-preview tags, Open
  * Graph and Twitter card, so a link shared in a chat or on a social site shows
  * what it points at. The SPA routes the path itself, in the browser.
+ *
+ * Each answer has a fresh nonce, written into the shell wherever the build
+ * left NONCE_PLACEHOLDER (Vite's html.cspNonce, frontend/vite.config.ts) and
+ * named in the page's Content-Security-Policy.
+ *
+ * A path that can only name a file (STATIC_FILE) is a 404, never the shell:
+ * Cloudflare caches by extension, and would keep the page as that file.
  */
 final class SpaController extends Controller
 {
+    /** What the build writes in place of the nonce: frontend/vite.config.ts's html.cspNonce. */
+    public const string NONCE_PLACEHOLDER = '__CSP_NONCE__';
+
+    /**
+     * File extensions no page of the SPA ends in at the top level: Cloudflare's
+     * default cached extensions, and the other files a site serves there. The
+     * same list is in public/.htaccess.
+     */
+    public const array STATIC_EXTENSIONS = [
+        '7z', 'apk', 'avi', 'avif', 'bin', 'bmp', 'bz2', 'class', 'css', 'csv', 'dmg', 'doc', 'docx',
+        'ejs', 'eot', 'eps', 'exe', 'flac', 'gif', 'gz', 'ico', 'iso', 'jar', 'jpeg', 'jpg', 'js',
+        'json', 'map', 'mid', 'midi', 'mjs', 'mkv', 'mp3', 'mp4', 'ogg', 'otf', 'pdf', 'pict', 'pls',
+        'png', 'ppt', 'pptx', 'ps', 'rar', 'svg', 'svgz', 'swf', 'tar', 'tif', 'tiff', 'ttf', 'txt',
+        'wasm', 'webm', 'webmanifest', 'webp', 'woff', 'woff2', 'xls', 'xlsx', 'xml', 'zip', 'zst',
+    ];
+
+    /** The folders that hold only files: the build's assets, the API reference's files and the media. */
+    public const array STATIC_FOLDERS = ['assets', 'api-docs', 'media/full', 'media/thumbs'];
+
     public function __invoke(Request $request): Response
     {
+        // The path as requested, still percent-encoded, without a trailing slash.
+        $path = '/' . trim($request->getPathInfo(), '/');
+        if (self::namesFile($path)) {
+            return new Response('Not found.', 404, ['Content-Type' => 'text/plain; charset=UTF-8']);
+        }
+
         $index = config()->string('gallery.spa_index');
         if (!File::isFile($index)) {
             return new Response('index.html not found.', 500, ['Content-Type' => 'text/html; charset=UTF-8']);
         }
 
-        // The path as requested, still percent-encoded, and the page's absolute URL.
-        $path = '/' . ltrim($request->getPathInfo(), '/');
+        // The page's absolute URL.
         $base = $request->getSchemeAndHttpHost();
         ['title' => $title, 'description' => $description, 'image' => $image, 'card' => $card] = $this->preview($path, $base);
 
@@ -47,10 +79,23 @@ final class SpaController extends Controller
             '<meta name="twitter:image" content="' . $e($image) . '" />',
         ]);
 
-        $html = str_replace('</head>', "    {$tags}\n  </head>", File::get($index));
+        $nonce = ContentSecurityPolicy::nonce();
+        $html = str_replace([self::NONCE_PLACEHOLDER, '</head>'], [$nonce, "    {$tags}\n  </head>"], File::get($index));
         $html = preg_replace('#<title>[^<]*</title>#', '<title>' . $e($title) . '</title>', $html) ?? $html;
 
-        return new Response($html, 200, ['Content-Type' => 'text/html; charset=UTF-8']);
+        $response = new Response($html, 200, ['Content-Type' => 'text/html; charset=UTF-8']);
+        ContentSecurityPolicy::apply($response, ContentSecurityPolicy::spa($nonce));
+
+        return $response;
+    }
+
+    /** Whether $path (percent-encoded, starting with /) can only name a file: one in a STATIC_FOLDERS folder, or a top-level file with a STATIC_EXTENSIONS extension. */
+    public static function namesFile(string $path): bool
+    {
+        $folders = implode('|', array_map(static fn(string $folder): string => preg_quote($folder, '#'), self::STATIC_FOLDERS));
+        $extensions = implode('|', self::STATIC_EXTENSIONS);
+
+        return preg_match("#^/(?:(?:{$folders})/|[^/]+\\.(?:{$extensions})$)#i", $path) === 1;
     }
 
     /**
@@ -79,6 +124,12 @@ final class SpaController extends Controller
             }
             if ($path === '/favorites') {
                 return ['title' => 'Gallery — Favorites', 'description' => 'Your favorited media items.'] + $default;
+            }
+            if ($path === '/privacy') {
+                return ['title' => 'Gallery — Privacy', 'description' => 'What the gallery keeps, and what it loads from elsewhere.'] + $default;
+            }
+            if ($path === '/accessibility') {
+                return ['title' => 'Gallery — Accessibility', 'description' => 'The accessibility level the gallery meets, and what falls outside it.'] + $default;
             }
             if (preg_match('#^/tags/(\d+)$#', $path, $match) === 1) {
                 $name = Tag::query()->whereKey((int) $match[1])->value('tag_name');

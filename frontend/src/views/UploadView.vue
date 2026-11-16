@@ -5,7 +5,7 @@ import { useGalleryStore } from '../stores/gallery'
 import { useToastStore } from '../stores/toast'
 import { endpoints } from '../api/endpoints'
 import { UPLOAD_LIMITS, planUploadBatches } from '../constants/uploads'
-import type { TagImportStatus } from '../types'
+import type { TagImportStatus, UploadSummary } from '../types'
 import AppAlert from '../components/AppAlert.vue'
 import PageHeader from '../components/PageHeader.vue'
 import SignInGate from '../components/SignInGate.vue'
@@ -20,28 +20,22 @@ const selectedFiles = ref<File[]>([])
 const uploading = ref(false)
 const dragOver = ref(false)
 
+/** A file's result as the page shows it: the API's, with its states before and after. */
 interface UploadResult {
-  file_name: string
+  fileName: string
   status: 'success' | 'error' | 'duplicate' | 'pending'
   id?: number
-  existing_id?: number
+  existingId?: number
   hash?: string
   message?: string
   /**
    * Where the file's Danbooru lookup stands: queued by the upload, then as
    * GET /media/tag-imports reports it once the queue has run it.
    */
-  tags_status?: 'queued' | 'applied' | 'not_found' | 'failed'
-  tags_applied?: number
+  tagsStatus?: 'queued' | 'applied' | 'not_found' | 'failed'
+  tagsApplied?: number
   /** Why the file has no Danbooru tags: not set up on the server, or the lookup failed. */
-  tags_error?: string
-}
-
-interface UploadResponse {
-  results: UploadResult[]
-  total_uploaded: number
-  total_duplicates: number
-  total_failed: number
+  tagsError?: string
 }
 
 /** How often to ask how the queued Danbooru lookups went, and for how long at most. */
@@ -102,13 +96,13 @@ const uploadSummary = computed(() => {
     } else if (r.status === 'error') {
       counts.error++
     }
-    if (r.status === 'success' && r.tags_error) {
+    if (r.status === 'success' && r.tagsError) {
       counts.tagsFailed++
     }
-    if (r.status === 'success' && r.tags_status === 'not_found') {
+    if (r.status === 'success' && r.tagsStatus === 'not_found') {
       counts.noPost++
     }
-    if (r.status === 'success' && r.tags_status === 'queued' && fetchingTags.value) {
+    if (r.status === 'success' && r.tagsStatus === 'queued' && fetchingTags.value) {
       counts.fetching++
     }
   }
@@ -315,11 +309,11 @@ async function uploadFiles() {
   const wantTags = fetchTags.value
   let queued: number[] = []
   const failWith = (index: number, message: string): UploadResult => ({
-    file_name: files[index]?.name ?? '',
+    fileName: files[index]?.name ?? '',
     status: 'error',
     message,
   })
-  uploadResults.value = files.map((f) => ({ file_name: f.name, status: 'pending' as const }))
+  uploadResults.value = files.map((f) => ({ fileName: f.name, status: 'pending' as const }))
 
   try {
     const plan = planUploadBatches(files)
@@ -337,11 +331,11 @@ async function uploadFiles() {
         }
       }
       if (wantTags) {
-        formData.append('fetch_tags', '1')
+        formData.append('fetchTags', '1')
       }
 
       try {
-        const result = await api.upload<UploadResponse>(endpoints.media.upload, formData)
+        const result = await api.upload<UploadSummary>(endpoints.media.upload, formData)
         if (!result) {
           throw new Error('No response from the upload request')
         }
@@ -368,10 +362,10 @@ async function uploadFiles() {
     // Files added without the Danbooru tags asked for, because the server has
     // no Danbooru account to ask with. Queued lookups are reported as they finish.
     const tagErrors = results.flatMap((r) =>
-      r.status === 'success' && r.tags_error ? [r.tags_error] : [],
+      r.status === 'success' && r.tagsError ? [r.tagsError] : [],
     )
     queued = results.flatMap((r) =>
-      wantTags && r.status === 'success' && r.tags_status === 'queued' && r.id !== undefined
+      wantTags && r.status === 'success' && r.tagsStatus === 'queued' && r.id !== undefined
         ? [r.id]
         : [],
     )
@@ -433,20 +427,20 @@ async function uploadFiles() {
 function settle(result: UploadResult, status: TagImportStatus): UploadResult {
   switch (status.status) {
     case 'applied':
-      return { ...result, tags_status: 'applied', tags_applied: status.tags_applied }
+      return { ...result, tagsStatus: 'applied', tagsApplied: status.tagsApplied }
     case 'not_found':
-      return { ...result, tags_status: 'not_found' }
+      return { ...result, tagsStatus: 'not_found' }
     case 'failed':
       return {
         ...result,
-        tags_status: 'failed',
-        tags_error: status.error ?? 'The Danbooru lookup failed.',
+        tagsStatus: 'failed',
+        tagsError: status.error ?? 'The Danbooru lookup failed.',
       }
     case 'queued':
       return result
     case 'none': {
       // Nothing is known of it any more, so nothing more is said about it.
-      const { tags_status: _dropped, ...rest } = result
+      const { tagsStatus: _dropped, ...rest } = result
       return rest
     }
   }
@@ -478,11 +472,11 @@ async function followTagImports(run: number, ids: number[]) {
       }
     }
     for (const status of done) {
-      waiting.delete(status.media_id)
+      waiting.delete(status.mediaId)
       settled.push(status)
     }
     if (run === uploadRun && done.length > 0) {
-      const byId = new Map(done.map((status) => [status.media_id, status]))
+      const byId = new Map(done.map((status) => [status.mediaId, status]))
       lastUploadResults.value = lastUploadResults.value.map((r) => {
         const status = r.id === undefined ? undefined : byId.get(r.id)
         return status ? settle(r, status) : r
@@ -502,7 +496,7 @@ function reportTagImports(settled: TagImportStatus[], stillWaiting: number) {
   const notFound = settled.filter((s) => s.status === 'not_found').length
 
   if (applied.length > 0) {
-    const tags = applied.reduce((sum, s) => sum + s.tags_applied, 0)
+    const tags = applied.reduce((sum, s) => sum + s.tagsApplied, 0)
     toastStore.success(
       `${tags} Danbooru tags applied to ${applied.length} file(s).`,
       4000,
@@ -637,8 +631,8 @@ function reportTagImports(settled: TagImportStatus[], stillWaiting: number) {
                   class="has-text-success is-size-7"
                 >
                   <span class="icon"><font-awesome-icon icon="fa-solid fa-circle-check" /></span>
-                  <template v-if="uploadResults[index]?.tags_error">Tags not fetched</template>
-                  <template v-else-if="uploadResults[index]?.tags_status === 'queued'">
+                  <template v-if="uploadResults[index]?.tagsError">Tags not fetched</template>
+                  <template v-else-if="uploadResults[index]?.tagsStatus === 'queued'">
                     Fetching tags
                   </template>
                 </span>
@@ -712,6 +706,12 @@ function reportTagImports(settled: TagImportStatus[], stillWaiting: number) {
   transition:
     border-color 0.2s,
     background 0.2s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drop-zone {
+    transition: none;
+  }
 }
 
 .drop-zone:hover {

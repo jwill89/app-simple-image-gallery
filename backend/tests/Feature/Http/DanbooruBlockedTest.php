@@ -73,9 +73,9 @@ test('a firewall block is 503 DanbooruBlocked, quoting the Ray ID, not rejected 
 
     $response = asAdmin()->postJson('/api/media/1/danbooru-tags')
         ->assertStatus(503)
-        ->assertJsonPath('error', 'DanbooruBlocked');
+        ->assertJsonPath('type', problemType('DanbooruBlocked'));
 
-    expect($response->json('message'))->toContain('firewall')->toContain('Cloudflare Ray ID ' . BLOCK_RAY);
+    expect($response->json('detail'))->toContain('firewall')->toContain('Cloudflare Ray ID ' . BLOCK_RAY);
     Http::assertSent(static fn(Request $request): bool => str_contains($request->url(), 'md5'));
 });
 
@@ -85,11 +85,11 @@ test('a block without a user ID set says to set one', function (): void {
 
     $response = asAdmin()->postJson('/api/media/1/danbooru-tags')
         ->assertStatus(503)
-        ->assertJsonPath('error', 'DanbooruBlocked');
+        ->assertJsonPath('type', problemType('DanbooruBlocked'));
 
-    expect($response->json('message'))->toBe(
+    expect($response->json('detail'))->toBe(
         'Danbooru\'s firewall (Cloudflare) blocked this server\'s request before it reached the API, so the '
-        . 'credentials were never checked. Set DANBOORU_USER_ID in the server .env to the account\'s numeric '
+        . 'credentials were never checked. Set GALLERY_DANBOORU_USER_ID in the server .env to the account\'s numeric '
         . 'user ID, which Danbooru asks API clients to name in their User-Agent.',
     );
 });
@@ -99,7 +99,7 @@ test('a 403 from the API itself, in JSON, is still rejected credentials', functi
 
     asAdmin()->postJson('/api/media/1/danbooru-tags')
         ->assertStatus(500)
-        ->assertJsonPath('error', 'DanbooruAuthFailed');
+        ->assertJsonPath('type', problemType('DanbooruAuthFailed'));
 });
 
 test('an upload while blocked still adds the file, and its lookup reports why it has no tags', function (): void {
@@ -115,13 +115,13 @@ test('an upload while blocked still adds the file, and its lookup reports why it
         // The queue runs inline here, so the queued lookup is done on return.
         $response = asAdmin()->post('/api/media', [
             'files' => [new UploadedFile("{$root}/tiny.png", 'tiny.png', 'image/png', null, true)],
-            'fetch_tags' => '1',
+            'fetchTags' => '1',
         ]);
 
         $response->assertStatus(201)
-            ->assertJsonPath('total_uploaded', 1)
+            ->assertJsonPath('totalUploaded', 1)
             ->assertJsonPath('results.0.status', 'success')
-            ->assertJsonPath('results.0.tags_status', 'queued');
+            ->assertJsonPath('results.0.tagsStatus', 'queued');
         $status = getJson('/api/media/tag-imports?ids=' . $response->json('results.0.id'))->json('0');
         expect($status['status'])->toBe('failed')
             ->and($status['error'])->toContain('Cloudflare Ray ID ' . BLOCK_RAY);

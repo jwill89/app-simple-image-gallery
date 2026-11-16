@@ -12,7 +12,9 @@ const version = __APP_VERSION__
         respective owners.
       </p>
       <p class="is-size-7">
-        Gallery <a href="/api/docs" target="_blank" rel="noopener">v{{ version }}</a>
+        Gallery <a href="/api/docs" target="_blank" rel="noopener">v{{ version }}</a> &middot;
+        <router-link to="/privacy">Privacy</router-link> &middot;
+        <router-link to="/accessibility">Accessibility</router-link>
       </p>
     </div>
   </footer>

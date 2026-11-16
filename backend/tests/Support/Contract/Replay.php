@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
 use LogicException;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,11 +23,11 @@ use function Pest\Laravel\seed;
  * Replays the recorded API contract (tests/Fixtures/contract/, format in its
  * README) against this app, in the setup it was recorded in.
  *
- * A case runs step by step while its routes exist here. A step whose path
- * belongs to an inventory route this app doesn't have yet stops the case, and
- * run() reports what it waits on. A step's expected response is the recorded
- * one unless the contract was changed on purpose (tests/Feature/Contract/
- * divergences.php).
+ * The recordings were made against API 4. Each step's request and recorded
+ * response are translated into API 8's terms first (Api8), and the expected
+ * response is that translation unless the contract was changed on purpose in
+ * a way the translation doesn't cover (tests/Feature/Contract/divergences.php,
+ * written in API 8's terms).
  */
 final class Replay
 {
@@ -72,9 +71,9 @@ final class Replay
     /**
      * Top-level fields the app adds to answers that API 4's recordings
      * predate: a validation failure's `errors` (every broken field) and a media
-     * page's `next_cursor`.
+     * page's `nextCursor`.
      */
-    private const array ADDED_FIELDS = ['errors', 'next_cursor'];
+    private const array ADDED_FIELDS = ['errors', 'nextCursor'];
 
     /** Access-Control headers a browser reads only on a preflight; Laravel sends them only there. */
     private const array PREFLIGHT_ONLY_HEADERS = ['access-control-allow-headers', 'access-control-allow-methods', 'access-control-max-age'];
@@ -125,9 +124,9 @@ final class Replay
     }
 
     /**
-     * Run the case's steps until one needs a route this app doesn't have yet.
+     * Run the case's steps.
      *
-     * @return array{ran: int, of: int, waits_on: list<string>, problems: list<string>}
+     * @return list<string> How each step differed from what was expected.
      */
     public function run(): array
     {
@@ -140,22 +139,23 @@ final class Replay
         }
     }
 
-    /** @return array{ran: int, of: int, waits_on: list<string>, problems: list<string>} */
+    /** @return list<string> */
     private function runSteps(): array
     {
         /** @var list<array<string, mixed>> $steps */
         $steps = $this->recording['steps'];
+        $route = self::string($this->recording, 'route');
         $problems = [];
         foreach ($steps as $index => $step) {
-            /** @var array<string, mixed> $request */
-            $request = $step['request'];
-            $waitsOn = self::unportedRoutesFor(self::string($request, 'method'), self::string($request, 'path'));
-            if ($waitsOn !== []) {
-                return ['ran' => $index, 'of' => count($steps), 'waits_on' => $waitsOn, 'problems' => $problems];
-            }
+            /** @var array<string, mixed> $recorded */
+            $recorded = $step['request'];
+            $request = Api8::request($recorded);
+            $step['request'] = $request;
 
+            /** @var array<string, mixed> $response */
+            $response = $step['response'];
             /** @var array<string, mixed> $expected */
-            $expected = $this->divergences[$index] ?? $step['response'];
+            $expected = $this->divergences[$index] ?? Api8::response($response, $recorded, $route);
             if (!str_starts_with(self::string($request, 'path'), '/api')) {
                 /** @var array<string, string> $headers */
                 $headers = $expected['headers'] ?? [];
@@ -166,7 +166,7 @@ final class Replay
             }
         }
 
-        return ['ran' => count($steps), 'of' => count($steps), 'waits_on' => [], 'problems' => $problems];
+        return $problems;
     }
 
     /** Fixture rows and files, the recorded .env, the recorder's admin, Danbooru, then the case's own setup. */
@@ -416,37 +416,6 @@ final class Replay
         }
 
         return $problems;
-    }
-
-    /**
-     * The inventory routes a request depends on that this app doesn't have yet:
-     * every inventory route whose path pattern matches (any method, since a 405's
-     * Allow lists them all). A path no inventory route matches depends on none,
-     * and neither does a preflight, which CORS handling answers before routing.
-     *
-     * @return list<string>
-     */
-    private static function unportedRoutesFor(string $method, string $path): array
-    {
-        if ($method === 'OPTIONS') {
-            return [];
-        }
-
-        $ported = [];
-        foreach (Route::getRoutes()->getRoutes() as $route) {
-            foreach (array_diff($route->methods(), ['HEAD']) as $routeMethod) {
-                $ported[$routeMethod . ' /' . preg_replace('#^api/?#', '', $route->uri())] = true;
-            }
-        }
-
-        $waitsOn = [];
-        foreach (Inventory::routes() as $route) {
-            if (preg_match(Inventory::pattern($route), $path) === 1 && !isset($ported[$route])) {
-                $waitsOn[] = $route;
-            }
-        }
-
-        return $waitsOn;
     }
 
     /** @param array<string, mixed> $array */

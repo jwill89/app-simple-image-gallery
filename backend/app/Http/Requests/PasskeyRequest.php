@@ -51,9 +51,9 @@ final class PasskeyRequest extends ApiRequest
     protected function errorCodes(): array
     {
         return [
-            ...array_fill_keys(self::CREDENTIAL_FIELDS, ['InvalidPasskey', 400]),
-            'name' => ['InvalidPasskeyName', 400],
-            'remember' => ['InvalidInput', 400],
+            ...array_fill_keys(self::CREDENTIAL_FIELDS, ['InvalidPasskey', 422]),
+            'name' => ['InvalidPasskeyName', 422],
+            'remember' => ['InvalidInput', 422],
         ];
     }
 
@@ -68,6 +68,6 @@ final class PasskeyRequest extends ApiRequest
 
         return $credential instanceof PublicKeyCredential
             ? $credential
-            : throw new ApiException('InvalidPasskey', 400, 'The passkey\'s answer could not be read. Please try again.');
+            : throw new ApiException('InvalidPasskey', 422, 'The passkey\'s answer could not be read. Please try again.', [], [['message' => 'The passkey\'s answer could not be read.', 'location' => 'body.credential']]);
     }
 }

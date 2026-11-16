@@ -107,9 +107,9 @@ async function submitCatMapping() {
   catLoading.value = true
   try {
     await api.post<CategoryMapping>(endpoints.danbooru.categoryMappings, {
-      danbooru_category_id: dcid,
-      danbooru_category_name: catDanbooruName.value.trim(),
-      gallery_category_id: Number(catGalleryCategoryId.value),
+      danbooruCategoryId: dcid,
+      danbooruCategoryName: catDanbooruName.value.trim(),
+      galleryCategoryId: Number(catGalleryCategoryId.value),
     })
     await loadCategoryMappings()
     showCatModal.value = false
@@ -133,7 +133,7 @@ async function confirmDeleteCat() {
   }
   deleteCatLoading.value = true
   try {
-    await api.del(endpoints.danbooru.categoryMapping(deleteCatTarget.value.danbooru_category_id))
+    await api.del(endpoints.danbooru.categoryMapping(deleteCatTarget.value.danbooruCategoryId))
     await loadCategoryMappings()
     showDeleteCatModal.value = false
     toastStore.success('Category mapping removed.')
@@ -159,8 +159,8 @@ function openNewTagMapping() {
 function openEditTagMapping(m: TagMapping) {
   tagFormMode.value = 'edit'
   tagFormId.value = m.id
-  tagDanbooru.value = m.danbooru_tag
-  tagGallery.value = m.gallery_tag
+  tagDanbooru.value = m.danbooruTag
+  tagGallery.value = m.galleryTag
   tagHelp.value = ''
   tagHelpClass.value = ''
   showTagModal.value = true
@@ -181,14 +181,14 @@ async function submitTagMapping() {
   tagLoading.value = true
   try {
     if (tagFormMode.value === 'edit') {
-      await api.put<TagMapping>(endpoints.danbooru.tagMapping(tagFormId.value), {
-        danbooru_tag: tagDanbooru.value.trim(),
-        gallery_tag: tagGallery.value.trim(),
+      await api.patch<TagMapping>(endpoints.danbooru.tagMapping(tagFormId.value), {
+        danbooruTag: tagDanbooru.value.trim(),
+        galleryTag: tagGallery.value.trim(),
       })
     } else {
       await api.post<TagMapping>(endpoints.danbooru.tagMappings, {
-        danbooru_tag: tagDanbooru.value.trim(),
-        gallery_tag: tagGallery.value.trim(),
+        danbooruTag: tagDanbooru.value.trim(),
+        galleryTag: tagGallery.value.trim(),
       })
     }
     await loadTagMappings()
@@ -275,36 +275,34 @@ onMounted(loadRules)
               <tr>
                 <th>Danbooru ID</th>
                 <th>Danbooru Category</th>
-                <th />
+                <th><span class="is-sr-only">Maps to</span></th>
                 <th>Gallery Category</th>
                 <th v-if="authenticated" class="col-actions has-text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="m in categoryMappings" :key="m.danbooru_category_id">
+              <tr v-for="m in categoryMappings" :key="m.danbooruCategoryId">
                 <td>
-                  <code>{{ m.danbooru_category_id }}</code>
+                  <code>{{ m.danbooruCategoryId }}</code>
                 </td>
-                <td>{{ m.danbooru_category_name }}</td>
+                <td>{{ m.danbooruCategoryName }}</td>
                 <td class="has-text-centered has-text-grey">
                   <font-awesome-icon icon="fa-solid fa-arrow-right" />
                 </td>
                 <td>
                   <span
-                    v-if="m.gallery_category_name"
+                    v-if="m.galleryCategoryName"
                     class="tag is-medium"
                     :class="
                       colorToTagClass(
-                        store.categories.find((c) => c.category_id === m.gallery_category_id)
-                          ?.color || 'white',
+                        store.categories.find((c) => c.categoryId === m.galleryCategoryId)?.color ||
+                          'white',
                       )
                     "
                   >
-                    {{ m.gallery_category_name }}
+                    {{ m.galleryCategoryName }}
                   </span>
-                  <span v-else class="has-text-danger"
-                    >Missing (ID {{ m.gallery_category_id }})</span
-                  >
+                  <span v-else class="has-text-danger">Missing (ID {{ m.galleryCategoryId }})</span>
                 </td>
                 <td v-if="authenticated" class="has-text-right">
                   <AppTooltip label="Remove mapping">
@@ -351,7 +349,7 @@ onMounted(loadRules)
             <thead>
               <tr>
                 <th>Danbooru Tag</th>
-                <th />
+                <th><span class="is-sr-only">Maps to</span></th>
                 <th>Gallery Tag</th>
                 <th v-if="authenticated" class="col-actions is-wide has-text-right">Actions</th>
               </tr>
@@ -359,12 +357,12 @@ onMounted(loadRules)
             <tbody>
               <tr v-for="m in tagMappings" :key="m.id">
                 <td>
-                  <code>{{ m.danbooru_tag }}</code>
+                  <code>{{ m.danbooruTag }}</code>
                 </td>
                 <td class="has-text-centered has-text-grey">
                   <font-awesome-icon icon="fa-solid fa-arrow-right" />
                 </td>
-                <td>{{ m.gallery_tag }}</td>
+                <td>{{ m.galleryTag }}</td>
                 <td v-if="authenticated" class="has-text-right">
                   <div class="buttons are-small is-right">
                     <AppTooltip label="Edit mapping">
@@ -444,10 +442,10 @@ onMounted(loadRules)
                 <option value="">Select a category</option>
                 <option
                   v-for="cat in store.categories"
-                  :key="cat.category_id"
-                  :value="cat.category_id"
+                  :key="cat.categoryId"
+                  :value="cat.categoryId"
                 >
-                  {{ cat.category_name }}
+                  {{ cat.categoryName }}
                 </option>
               </select>
             </div>
@@ -532,8 +530,8 @@ onMounted(loadRules)
       >
         <p>
           Remove the mapping for Danbooru category
-          <strong>{{ deleteCatTarget?.danbooru_category_name }}</strong> (ID
-          {{ deleteCatTarget?.danbooru_category_id }})? Danbooru imports will no longer apply this
+          <strong>{{ deleteCatTarget?.danbooruCategoryName }}</strong> (ID
+          {{ deleteCatTarget?.danbooruCategoryId }})? Danbooru imports will no longer apply this
           category.
         </p>
 
@@ -559,8 +557,8 @@ onMounted(loadRules)
         @update:open="showDeleteTagModal = $event"
       >
         <p>
-          Remove the mapping <strong>{{ deleteTagTarget?.danbooru_tag }}</strong> →
-          <strong>{{ deleteTagTarget?.gallery_tag }}</strong>? Future imports of this Danbooru tag
+          Remove the mapping <strong>{{ deleteTagTarget?.danbooruTag }}</strong> →
+          <strong>{{ deleteTagTarget?.galleryTag }}</strong>? Future imports of this Danbooru tag
           will fall back to the default underscore-to-space conversion.
         </p>
 

@@ -1,10 +1,10 @@
 # Recorded API contract
 
-What the Slim backend returned, recorded for Phase 0 of
+What the Slim backend returned (API 4), recorded for Phase 0 of
 [docs/laravel-migration.md](../../../../docs/laravel-migration.md). The Laravel backend
-gives the same answers to the same requests, except where
-`tests/Feature/Contract/divergences.php` says it answers differently on purpose, and
-`tests/Feature/Contract/ContractTest.php` replays every case to keep it that way.
+gives the same answers to the same requests, once both are put in API 8's terms (below),
+except where `tests/Feature/Contract/divergences.php` says it answers differently on purpose,
+and `tests/Feature/Contract/ContractTest.php` replays every case to keep it that way.
 
 One JSON file per case, grouped by resource. `index.json` lists every case under its route
 in the plan's endpoint inventory, so each of the 43 routes can be checked for coverage. The
@@ -30,9 +30,11 @@ The fixture paths below are relative to `backend/`. The production schema was th
 
 Every case starts from a fresh copy of:
 
-- **Database:** `tests/Fixtures/schema.sql` (the production schema), then
-  `tests/Fixtures/contract.sql` (data only), plus one admin token inserted at the start of
-  the case. The comments in `contract.sql` say which rows exist for which case.
+- **Database:** the Slim app's production schema (`tests/Fixtures/slim-schema.sql` now),
+  then `tests/Fixtures/contract.sql` (data only), plus one admin token inserted at the start
+  of the case. The comments in `contract.sql` say which rows exist for which case. The replay
+  loads `contract.sql` onto the migrated schema (`schema.sql`); its times are RFC 3339 now,
+  the same instants the recordings' Unix seconds name.
 - **Files:** `tests/Fixtures/media/thumbs/` (the `@2x` thumbnails the duplicate scan
   compares), an empty `media/full/`, and `tests/Fixtures/dupes/dupes-2026-10-30.json`
   (an old scan report, dated before any scan a case runs).
@@ -102,6 +104,45 @@ Every case starts from a fresh copy of:
   `GET /api/tags` (tags group) before and after its steps. A `MISS` afterwards means the
   write invalidated that group, and a `HIT` means it didn't.
 
+## Replaying against API 8
+
+The recordings are API 4's. `Tests\Support\Contract\Api8` translates each step's request
+and recorded response into API 8's terms before the replay sends and compares them, by these
+rules, which apply to every step alike:
+
+- **camelCase.** JSON body keys, form fields, multipart field names (`fetch_tags` →
+  `fetchTags`) and query parameter names are sent camelCase, and the recorded response's
+  object keys are expected camelCase (`media_id_1` → `mediaId1`, `media_1` → `media1`).
+- **Listings.** `GET /api/media/page/{page}[/{perPage}]`, `/media/untagged/…` and
+  `/media/with-tags/{tags}/…` are sent as `GET /api/media` with `limit` (the recorded per-page
+  value, when given) and `offset` (`(page - 1) × perPage`, 40 a page when none is given), plus
+  `untagged=true` or `tags=` (the path segment decoded, then encoded as a query value, so
+  `c++` and `c%2B%2B` both search `c++`). A page that isn't a number is sent as the offset
+  itself. The recorded `total_pages` and `current_page` are dropped, and `X-Total-Count` is
+  expected to make that many pages of the recorded size (`<pages:N/L>`), where an empty
+  untagged or tag listing said 1 page.
+- **PATCH for PUT.** `PUT` on `/api/tags/{id}`, `/api/tag-categories/{id}` and
+  `/api/danbooru/tag-mappings/{id}` is sent as `PATCH`.
+- **Problem details.** A recorded `{ error, message }` is expected as
+  `{ type: "about:blank", title, status, detail: message, code: error }` with
+  `Content-Type: application/problem+json`, and its status moved where API 8 moved it:
+  422 for a failed validation (`InvalidInput`, `InvalidTagName`, `TagNameTooLong`,
+  `InvalidCategoryID`, `InvalidColor`, `NameTooLong`, `InvalidTagID`, `InvalidTagList`,
+  `CannotImplySelf`, `CannotMigrateToSelf`, `NoFilesUploaded`, `NoValidTagsSupplied`, and
+  `CategoryNotFound` for a mapping's gallery category), 409 for a conflict
+  (`TagAlreadyExists`, `NameTaken`, `DuplicateMapping`, `CategoryInUse`, `CycleDetected`).
+  The rate limiter's `retry_after` is left to `Retry-After`.
+- **Times.** A media item's `file_time`, recorded in Unix seconds, is expected as RFC 3339
+  in UTC (`fileTime: "2026-01-01T00:00:00Z"`).
+- **Totals.** `GET /api/tags` sends `X-Total-Count`, expected as the number of tags listed.
+- **Fields API 8 adds** where the recordings have none are ignored: a validation failure's
+  `errors` and a media page's `nextCursor`.
+
+A step these rules don't cover is a divergence, written in API 8's terms: a page of 0 or
+`abc`, and a per-page value outside 1–100, are 422 rather than API 4's 400 or a quiet
+clamp; malformed JSON is 400 `MalformedJson`; the Danbooru advice names the `GALLERY_`
+settings; and the cases in divergences.php's own list.
+
 ## Comparing
 
 Compare JSON bodies as decoded values: object key order doesn't matter, array order does.
@@ -111,7 +152,8 @@ These placeholders match any value of the stated kind:
 | --- | --- | --- |
 | `<token>` | login `token` | 64 lowercase hex characters |
 | `<seconds>` | `retry_after`, the `Retry-After` header, the scan's `execution_time` | a positive number |
-| `<now>` | `file_time` of an upload, a new report's `generated_at` | the current time (an int, or `Y-m-d H:i:s` in the server's zone) |
+| `<now>` | `file_time` of an upload, a new report's `generated_at` | the current time (an int, or a date string such as RFC 3339) |
+| `<pages:N/L>` | `X-Total-Count` of a translated listing | a total that makes N pages of L |
 | `dupes-<today>.json` | a new report's `report_file` | `dupes-` + today's date |
 
 `ssim` values come from decoding the WebP thumbnails, which can differ in the last digits

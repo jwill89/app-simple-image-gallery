@@ -15,7 +15,7 @@ import { useGalleryData } from '../composables/useGalleryData'
 import { useGalleryStore } from '../stores/gallery'
 import { useApi } from '../composables/useApi'
 import { endpoints } from '../api/endpoints'
-import type { MediaItem, MediaPage, MediaFeed } from '../types'
+import type { MediaItem, MediaPage } from '../types'
 import GalleryCard from '../components/GalleryCard.vue'
 import PaginationBar from '../components/PaginationBar.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
@@ -33,21 +33,18 @@ const props = defineProps<{
 // scroll position when returning from a media detail page).
 defineOptions({ name: 'GalleryView' })
 
-/** Build the media-listing path for a page + optional tag filter. */
-function listUrl(page: number, perPage: number, tags?: string): string {
-  if (tags === 'untagged') {
-    return endpoints.media.untagged(page, perPage)
-  }
-  if (tags) {
-    return endpoints.media.withTags(tags, page, perPage)
-  }
-  return endpoints.media.page(page, perPage)
-}
-
 const router = useRouter()
 const store = useGalleryStore()
 const api = useApi()
-const { items, totalPages, nextCursor, loading, loadFailed, fetchPage } = useGalleryData()
+const {
+  items,
+  total: listingTotal,
+  totalPages,
+  nextCursor,
+  loading,
+  loadFailed,
+  fetchPage,
+} = useGalleryData()
 
 const INFINITE_BATCH_SIZE = 40
 // How far beyond the viewport the bottom sentinel still counts as "reached".
@@ -86,7 +83,7 @@ let bootstrapTopLoad = false
 // number, so items added while you scroll don't repeat the ones above. The next
 // batch is asked for as soon as the one before it arrives: its thumbnails warm
 // while you scroll, and reaching the sentinel then waits on no round trip.
-let nextBatch: { url: string; data: Promise<MediaFeed | undefined> } | null = null
+let nextBatch: { url: string; data: Promise<MediaPage | undefined> } | null = null
 
 const displayItems = computed(() => (isInfiniteScroll.value ? accumulatedItems.value : items.value))
 
@@ -118,7 +115,7 @@ const headerMeta = computed(() => {
 const topItemIndex = ref(1)
 
 const statusPosition = computed(() => {
-  const known = props.tags ? totalPages.value * props.perPage : store.totalMedia
+  const known = props.tags ? listingTotal.value : store.totalMedia
   const total = known > 0 ? known.toLocaleString() : '?'
   return `${topItemIndex.value.toLocaleString()} of ${total}`
 })
@@ -141,11 +138,7 @@ function startPageFromPaged() {
 
 /** The infinite list's next batch: the items after `cursor`, in this listing. */
 function feedUrl(cursor: string): string {
-  return endpoints.media.feed({
-    cursor,
-    perPage: INFINITE_BATCH_SIZE,
-    ...(props.tags === 'untagged' ? { untagged: true } : { tags: props.tags }),
-  })
+  return endpoints.media.after(cursor, INFINITE_BATCH_SIZE, props.tags)
 }
 
 /** On a metered or slow connection, warming what comes next isn't worth the data. */
@@ -162,7 +155,7 @@ function prefetchNextBatch(cursor: string) {
     return
   }
   const url = feedUrl(cursor)
-  const data = api.get<MediaFeed>(url)
+  const data = api.get<MediaPage>(url)
   nextBatch = { url, data }
   data.then(
     (feed) => {
@@ -180,15 +173,15 @@ function prefetchNextBatch(cursor: string) {
 }
 
 /** The batch after `cursor`: the prefetched one if it was asked for already. */
-function fetchBatch(cursor: string): Promise<MediaFeed | undefined> {
+function fetchBatch(cursor: string): Promise<MediaPage | undefined> {
   const url = feedUrl(cursor)
   const pending = nextBatch?.url === url ? nextBatch.data : undefined
   nextBatch = null
-  return pending ?? api.get<MediaFeed>(url)
+  return pending ?? api.get<MediaPage>(url)
 }
 
 function updateStoreItemIds() {
-  store.lastViewedItemIds = displayItems.value.map((i) => i.media_id)
+  store.lastViewedItemIds = displayItems.value.map((i) => i.mediaId)
 }
 
 // The listings' version this view last loaded: when signing in or out, or
@@ -227,7 +220,7 @@ async function prefetchAdjacentPage(page: number, perPage: number, tags?: string
   }
 
   try {
-    const data = await api.get<MediaPage>(listUrl(page, perPage, tags))
+    const data = await api.get<MediaPage>(endpoints.media.page(page, perPage, tags))
     if (data?.items.length) {
       prefetchThumbnails(data.items)
     }
@@ -258,7 +251,7 @@ async function loadNextBatch() {
       const data = await fetchBatch(cursor)
       const newItems = data?.items ?? []
       accumulatedItems.value = [...accumulatedItems.value, ...newItems]
-      nextCursor.value = data?.next_cursor ?? null
+      nextCursor.value = data?.nextCursor ?? null
       if (nextCursor.value === null || newItems.length === 0) {
         allLoaded.value = true
       } else {
@@ -301,7 +294,9 @@ async function loadPrevBatch() {
   topLoading.value = true
   const prevPage = batchStartPage.value - 1
   try {
-    const data = await api.get<MediaPage>(listUrl(prevPage, INFINITE_BATCH_SIZE, props.tags))
+    const data = await api.get<MediaPage>(
+      endpoints.media.page(prevPage, INFINITE_BATCH_SIZE, props.tags),
+    )
     const prevItems = data?.items ?? []
     if (prevItems.length === 0) {
       batchStartPage.value = 1
@@ -632,7 +627,7 @@ function onCardClick(id: number) {
           <div ref="gridEl" class="media-grid">
             <GalleryCard
               v-for="item in displayItems"
-              :key="item.media_id"
+              :key="item.mediaId"
               :item="item"
               @click="onCardClick"
             />

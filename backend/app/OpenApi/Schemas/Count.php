@@ -6,12 +6,13 @@ namespace App\OpenApi\Schemas;
 
 use OpenApi\Spec as OAS;
 
-/**
- * A simple `{ count }` wrapper (e.g. GET /media/count). Doc-only schema.
- */
-#[OAS\Schema(component: 'Count', description: 'A count wrapper.')]
-class Count
-{
-    #[OAS\Property(schema: new OAS\Schema(type: 'integer'))]
-    public int $count = 0;
-}
+/** Response body: GET /media/count. Doc-only schema. */
+#[OAS\Schema(
+    component: 'Count',
+    description: 'How many media items the reader may see.',
+    required: ['count'],
+    properties: [
+        new OAS\Property(property: 'count', schema: new OAS\Schema(type: 'integer', description: 'The number of items, less any carrying a tag the account blocks.')),
+    ],
+)]
+final class Count {}

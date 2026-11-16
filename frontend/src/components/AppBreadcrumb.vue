@@ -84,7 +84,7 @@ const crumbs = computed<Crumb[]>(() => {
     list.push({ label: 'Tags', icon: 'fa-solid fa-tags', to: { name: 'tags' } })
     const tagId = Number(route.params.tagId)
     const tag = store.tagById(tagId)
-    list.push({ label: tag?.tag_name ?? `Tag #${tagId}`, icon: 'fa-solid fa-link' })
+    list.push({ label: tag?.tagName ?? `Tag #${tagId}`, icon: 'fa-solid fa-link' })
   } else if (name === 'favorites') {
     list.push({ label: 'Favorites', icon: 'fa-solid fa-heart' })
   } else if (name === 'upload') {

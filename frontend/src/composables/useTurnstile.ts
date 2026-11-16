@@ -3,6 +3,7 @@
  * (sign-in or sign-up, while the server checks for bots). The widget itself
  * is TurnstileWidget.vue.
  */
+import { cspNonce } from '../csp'
 
 interface TurnstileOptions {
   sitekey: string
@@ -39,6 +40,9 @@ export function loadTurnstile(): Promise<TurnstileApi> {
     const script = document.createElement('script')
     script.src = SCRIPT_URL
     script.async = true
+    // The page's nonce (vite.config.ts's html.cspNonce), which the Content-Security-
+    // Policy admits beside Turnstile's origin.
+    script.nonce = cspNonce()
     script.onload = () => {
       if (window.turnstile) {
         resolve(window.turnstile)

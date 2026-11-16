@@ -6,17 +6,15 @@ namespace App\OpenApi\Schemas;
 
 use OpenApi\Spec as OAS;
 
-/**
- * Result of migrating one tag into another (POST /tags/{tag_id}/migrate).
- * Doc-only schema.
- */
-#[OAS\Schema(component: 'MigrateResult', description: 'Outcome of a tag migration.')]
-class MigrateResult
-{
-    #[OAS\Property(schema: new OAS\Schema(type: 'boolean'))]
-    public bool $migrated = true;
-    #[OAS\Property(schema: new OAS\Schema(type: 'integer', description: 'The source tag (now deleted).'))]
-    public int $source_tag_id = 0;
-    #[OAS\Property(schema: new OAS\Schema(type: 'integer', description: 'The target tag that received the media.'))]
-    public int $target_tag_id = 0;
-}
+/** Response body: POST /tags/{tagId}/migrate. Doc-only schema. */
+#[OAS\Schema(
+    component: 'MigrateResult',
+    description: 'Outcome of a tag migration.',
+    required: ['migrated', 'sourceTagId', 'targetTagId'],
+    properties: [
+        new OAS\Property(property: 'migrated', schema: new OAS\Schema(type: 'boolean', description: 'Always true.')),
+        new OAS\Property(property: 'sourceTagId', schema: new OAS\Schema(type: 'integer', description: 'The tag whose media moved; it is kept, on no media.')),
+        new OAS\Property(property: 'targetTagId', schema: new OAS\Schema(type: 'integer', description: 'The tag that received the media.')),
+    ],
+)]
+final class MigrateResult {}

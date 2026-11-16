@@ -6,6 +6,7 @@ use App\Models\FavoriteList;
 use App\Models\Tag;
 use App\Models\TagCategory;
 use App\Models\User;
+use App\Support\Timestamp;
 use Tests\Support\TestBrowser;
 
 use function Pest\Laravel\travel;
@@ -30,10 +31,10 @@ function signedInBrowser(string $username, bool $remember = false, string $passw
 
 test('signing up makes an ordinary account with a Favorites list, and signs the browser in', function (): void {
     $browser = new TestBrowser();
-    $browser->send('POST', '/api/auth/register', ['username' => 'Reader', 'password' => 'long-enough', 'is_admin' => true])
+    $browser->send('POST', '/api/auth/register', ['username' => 'Reader', 'password' => 'long-enough', 'isAdmin' => true, 'is_admin' => true])
         ->assertCreated()
         ->assertJsonPath('user.username', 'Reader')
-        ->assertJsonPath('user.is_admin', false)
+        ->assertJsonPath('user.isAdmin', false)
         ->assertJsonMissingPath('token');
 
     $browser->send('GET', '/api/auth/session')->assertOk()->assertJsonPath('user.username', 'Reader');
@@ -60,24 +61,30 @@ test('a username is checked, and taken whatever its letter case', function (): v
     User::factory()->create(['username' => 'reader']);
     $register = static fn(array $body) => fromGallery()->postJson('/api/auth/register', $body);
 
-    $register(['username' => 'READER', 'password' => 'long-enough'])->assertStatus(409)->assertJson(['error' => 'UsernameTaken']);
-    $register(['username' => 'no spaces', 'password' => 'long-enough'])->assertStatus(400)->assertJson(['error' => 'InvalidUsername']);
-    $register(['username' => 'ab', 'password' => 'long-enough'])->assertStatus(400)->assertJson(['error' => 'InvalidUsername']);
-    $register(['username' => 'fine', 'password' => 'short'])->assertStatus(400)
-        ->assertExactJson(['error' => 'WeakPassword', 'message' => 'A password is at least 8 characters.', 'errors' => ['password' => ['A password is at least 8 characters.']]]);
+    $register(['username' => 'READER', 'password' => 'long-enough'])->assertStatus(409)->assertJson(['type' => problemType('UsernameTaken')]);
+    $register(['username' => 'no spaces', 'password' => 'long-enough'])->assertStatus(422)->assertJson(['type' => problemType('InvalidUsername')]);
+    $register(['username' => 'ab', 'password' => 'long-enough'])->assertStatus(422)->assertJson(['type' => problemType('InvalidUsername')]);
+    $register(['username' => 'fine', 'password' => 'short'])->assertStatus(422)
+        ->assertExactJson([
+            'type' => problemType('WeakPassword'),
+            'title' => 'Unprocessable Content',
+            'status' => 422,
+            'detail' => 'A password is at least 8 characters.',
+            'errors' => [['message' => 'A password is at least 8 characters.', 'location' => 'body.password']],
+        ]);
 });
 
 test('sign-up can be closed, and is limited to five accounts an hour per address', function (): void {
     config(['gallery.allow_signup' => false]);
     fromGallery()->postJson('/api/auth/register', ['username' => 'closed', 'password' => 'long-enough'])
-        ->assertStatus(403)->assertJson(['error' => 'SignupClosed']);
+        ->assertStatus(403)->assertJson(['type' => problemType('SignupClosed')]);
 
     config(['gallery.allow_signup' => true]);
     foreach (range(1, 5) as $n) {
         fromGallery()->postJson('/api/auth/register', ['username' => "reader{$n}", 'password' => 'long-enough'])->assertCreated();
     }
     fromGallery()->postJson('/api/auth/register', ['username' => 'reader6', 'password' => 'long-enough'])
-        ->assertStatus(429)->assertJson(['error' => 'TooManySignups'])->assertHeader('Retry-After');
+        ->assertStatus(429)->assertJson(['type' => problemType('TooManySignups')])->assertHeader('Retry-After');
 });
 
 test('login takes the username in any case, and doesn\'t say which half was wrong', function (): void {
@@ -85,13 +92,13 @@ test('login takes the username in any case, and doesn\'t say which half was wron
     $login = static fn(array $body) => fromGallery()->postJson('/api/auth/login', $body);
 
     $login(['username' => 'reader', 'password' => 'long-enough'])->assertOk()->assertExactJson(['user' => [
-        'id' => 1, 'username' => 'Reader', 'is_admin' => false, 'created_at' => User::query()->firstOrFail()->created_at?->toIso8601String(),
+        'id' => 1, 'username' => 'Reader', 'isAdmin' => false, 'createdAt' => Timestamp::of(User::query()->firstOrFail()->created_at ?? now()),
     ]]);
     $login(['username' => 'reader', 'password' => 'wrong-password'])->assertStatus(401)
-        ->assertExactJson(['error' => 'InvalidCredentials', 'message' => 'The username or password is incorrect.']);
+        ->assertJson(['type' => problemType('InvalidCredentials'), 'detail' => 'The username or password is incorrect.']);
     $login(['username' => 'nobody', 'password' => 'long-enough'])->assertStatus(401)
-        ->assertExactJson(['error' => 'InvalidCredentials', 'message' => 'The username or password is incorrect.']);
-    $login(['password' => 'long-enough'])->assertStatus(400)->assertJson(['error' => 'MissingCredentials']);
+        ->assertJson(['type' => problemType('InvalidCredentials'), 'detail' => 'The username or password is incorrect.']);
+    $login(['password' => 'long-enough'])->assertStatus(422)->assertJson(['type' => problemType('MissingCredentials')]);
 });
 
 test('ten logins are allowed in five minutes; the eleventh is refused even with the right password', function (): void {
@@ -101,7 +108,7 @@ test('ten logins are allowed in five minutes; the eleventh is refused even with 
     }
 
     fromGallery()->postJson('/api/auth/login', ['username' => 'reader', 'password' => 'long-enough'])
-        ->assertStatus(429)->assertJson(['error' => 'TooManyAttempts'])->assertHeader('Retry-After');
+        ->assertStatus(429)->assertJson(['type' => problemType('TooManyAttempts')])->assertHeader('Retry-After');
 });
 
 test('a browser stays signed in until it closes, or for 30 days with remember', function (): void {
@@ -145,14 +152,14 @@ test('signing in starts a new session, so one planted beforehand signs no one in
 test('the admin\'s routes refuse an ordinary account, before saying whether a record exists', function (): void {
     $reader = User::factory()->create();
 
-    asAccount($reader)->postJson('/api/tags', ['tag_name' => 'zebra'])->assertStatus(403)
-        ->assertExactJson(['error' => 'Forbidden', 'message' => 'This needs an admin account.']);
+    asAccount($reader)->postJson('/api/tags', ['tagName' => 'zebra'])->assertStatus(403)
+        ->assertJson(['type' => problemType('Forbidden'), 'detail' => 'This needs an admin account.']);
     asAccount($reader)->deleteJson('/api/tags/999')->assertStatus(403);
     asAccount($reader)->getJson('/api/users')->assertStatus(403);
-    fromGallery()->postJson('/api/tags', ['tag_name' => 'zebra'])->assertStatus(401);
+    fromGallery()->postJson('/api/tags', ['tagName' => 'zebra'])->assertStatus(401);
     // A new tag goes in the General category.
     TagCategory::factory()->create(['category_id' => 1]);
-    asAdmin()->postJson('/api/tags', ['tag_name' => 'zebra'])->assertCreated();
+    asAdmin()->postJson('/api/tags', ['tagName' => 'zebra'])->assertCreated();
 });
 
 test('changing a password needs the current one, keeps this browser signed in, and signs out every other', function (): void {
@@ -161,11 +168,11 @@ test('changing a password needs the current one, keeps this browser signed in, a
     $there = signedInBrowser('reader');
     $kept = signedInBrowser('reader', remember: true);
 
-    $here->send('PATCH', '/api/account/password', ['current_password' => 'not-it', 'password' => 'brand-new-one'])
-        ->assertStatus(403)->assertJson(['error' => 'IncorrectPassword']);
-    $here->send('PATCH', '/api/account/password', ['current_password' => 'long-enough', 'password' => 'short'])
-        ->assertStatus(400)->assertJson(['error' => 'WeakPassword']);
-    $here->send('PATCH', '/api/account/password', ['current_password' => 'long-enough', 'password' => 'brand-new-one'])
+    $here->send('PATCH', '/api/account/password', ['currentPassword' => 'not-it', 'password' => 'brand-new-one'])
+        ->assertStatus(403)->assertJson(['type' => problemType('IncorrectPassword')]);
+    $here->send('PATCH', '/api/account/password', ['currentPassword' => 'long-enough', 'password' => 'short'])
+        ->assertStatus(422)->assertJson(['type' => problemType('WeakPassword')]);
+    $here->send('PATCH', '/api/account/password', ['currentPassword' => 'long-enough', 'password' => 'brand-new-one'])
         ->assertNoContent();
 
     $here->send('GET', '/api/lists')->assertOk();
@@ -185,7 +192,7 @@ test('an account can delete itself, with what it kept; the last admin can\'t', f
     $user->blockedTags()->attach(Tag::factory()->create()->tag_id);
     $browser = signedInBrowser('reader', remember: true);
 
-    $browser->send('DELETE', '/api/account', ['password' => 'not-it'])->assertStatus(403)->assertJson(['error' => 'IncorrectPassword']);
+    $browser->send('DELETE', '/api/account', ['password' => 'not-it'])->assertStatus(403)->assertJson(['type' => problemType('IncorrectPassword')]);
     $browser->send('DELETE', '/api/account', ['password' => 'long-enough'])->assertNoContent();
     expect(User::query()->find($user->id))->toBeNull()
         ->and(FavoriteList::query()->where('user_id', $user->id)->exists())->toBeFalse()
@@ -195,7 +202,7 @@ test('an account can delete itself, with what it kept; the last admin can\'t', f
     $admin = adminUser();
     $admin->update(['password' => 'long-enough']);
     asAccount($admin)->deleteJson('/api/account', ['password' => 'long-enough'])
-        ->assertStatus(409)->assertJson(['error' => 'LastAdmin']);
+        ->assertStatus(409)->assertJson(['type' => problemType('LastAdmin')]);
 });
 
 test('an admin lists accounts, makes admins, sets passwords and deletes accounts', function (): void {
@@ -203,18 +210,18 @@ test('an admin lists accounts, makes admins, sets passwords and deletes accounts
     $readers = signedInBrowser('reader', remember: true);
 
     asAdmin()->getJson('/api/users')->assertOk()->assertJsonCount(2)->assertJsonPath('0.username', 'admin');
-    asAdmin()->patchJson("/api/users/{$reader->id}", ['is_admin' => true])->assertOk()->assertJsonPath('is_admin', true);
+    asAdmin()->patchJson("/api/users/{$reader->id}", ['isAdmin' => true])->assertOk()->assertJsonPath('isAdmin', true);
     asAdmin()->patchJson("/api/users/{$reader->id}", ['password' => 'reset-password'])->assertOk();
     $readers->send('GET', '/api/lists')->assertUnauthorized();
     $readers->restart();
     $readers->send('GET', '/api/auth/session')->assertExactJson(['user' => null]);
 
-    asAccount($reader->refresh())->patchJson('/api/users/' . adminUser()->id, ['is_admin' => false])
-        ->assertOk()->assertJsonPath('is_admin', false);
-    asAccount($reader)->patchJson("/api/users/{$reader->id}", ['is_admin' => false])
-        ->assertStatus(409)->assertJson(['error' => 'LastAdmin']);
+    asAccount($reader->refresh())->patchJson('/api/users/' . adminUser()->id, ['isAdmin' => false])
+        ->assertOk()->assertJsonPath('isAdmin', false);
+    asAccount($reader)->patchJson("/api/users/{$reader->id}", ['isAdmin' => false])
+        ->assertStatus(409)->assertJson(['type' => problemType('LastAdmin')]);
     asAccount($reader)->deleteJson('/api/users/' . adminUser()->id)->assertNoContent();
-    asAccount($reader)->deleteJson('/api/users/999')->assertNotFound()->assertJson(['error' => 'UserNotFound']);
+    asAccount($reader)->deleteJson('/api/users/999')->assertNotFound()->assertJson(['type' => problemType('UserNotFound')]);
 });
 
 test('an admin can\'t remove their own admin role or delete their own account, even with another admin there', function (): void {
@@ -222,20 +229,20 @@ test('an admin can\'t remove their own admin role or delete their own account, e
     $admin->update(['password' => 'long-enough']);
     $other = User::factory()->admin()->create(['username' => 'other']);
 
-    asAccount($admin)->patchJson("/api/users/{$admin->id}", ['is_admin' => false])
-        ->assertStatus(403)->assertJson(['error' => 'OwnAdminRole']);
+    asAccount($admin)->patchJson("/api/users/{$admin->id}", ['isAdmin' => false])
+        ->assertStatus(403)->assertJson(['type' => problemType('OwnAdminRole')]);
     asAccount($admin)->deleteJson("/api/users/{$admin->id}")
-        ->assertStatus(403)->assertJson(['error' => 'OwnAdminAccount']);
+        ->assertStatus(403)->assertJson(['type' => problemType('OwnAdminAccount')]);
     asAccount($admin)->deleteJson('/api/account', ['password' => 'long-enough'])
-        ->assertStatus(403)->assertJson(['error' => 'OwnAdminAccount']);
+        ->assertStatus(403)->assertJson(['type' => problemType('OwnAdminAccount')]);
     expect($admin->refresh()->is_admin)->toBeTrue();
 
     // Keeping the role, or changing what else an admin may on their own account, is still fine.
-    asAccount($admin)->patchJson("/api/users/{$admin->id}", ['is_admin' => true])->assertOk();
+    asAccount($admin)->patchJson("/api/users/{$admin->id}", ['isAdmin' => true])->assertOk();
     asAccount($admin)->patchJson("/api/users/{$admin->id}", ['password' => 'a-new-password'])->assertOk();
 
     // Another admin takes the role off; then the account may delete itself.
-    asAccount($other)->patchJson("/api/users/{$admin->id}", ['is_admin' => false])->assertOk()->assertJsonPath('is_admin', false);
+    asAccount($other)->patchJson("/api/users/{$admin->id}", ['isAdmin' => false])->assertOk()->assertJsonPath('isAdmin', false);
     asAccount($admin->refresh())->deleteJson('/api/account', ['password' => 'a-new-password'])->assertNoContent();
     expect(User::query()->find($admin->id))->toBeNull();
 });

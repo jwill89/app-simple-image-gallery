@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Timestamp;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -24,6 +25,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['name', 'query'])]
 class SavedSearch extends Model
 {
+    #[\Override]
+    protected $dateFormat = Timestamp::FORMAT;
+
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {

@@ -57,8 +57,8 @@ onMounted(async () => {
     void offerPasskeys()
   }
   const config = await auth.loadConfig().catch(() => null)
-  siteKey.value = config?.turnstile_site_key ?? null
-  signupOpen.value = config?.signup_open ?? false
+  siteKey.value = config?.turnstileSiteKey ?? null
+  signupOpen.value = config?.signupOpen ?? false
 })
 
 // The autofill offer waits for an answer until the page goes.
@@ -121,7 +121,7 @@ async function signIn() {
       username: username.value,
       password: password.value,
       remember: remember.value,
-      turnstile_token: turnstileToken.value || undefined,
+      turnstileToken: turnstileToken.value || undefined,
     })
     void router.replace(redirect.value)
   } catch (e) {

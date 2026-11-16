@@ -47,10 +47,15 @@ return [
             'lock_table' => env('DB_CACHE_LOCK_TABLE'),
         ],
 
+        // Every file and folder the store creates is given this mode, group-writable,
+        // so the queue worker (its own account, in the www-data group) and PHP-FPM
+        // (www-data) can each replace and remove what the other wrote. Folders get the
+        // same mode as files, so it keeps the execute bits.
         'file' => [
             'driver' => 'file',
             'path' => storage_path('framework/cache/data'),
             'lock_path' => storage_path('framework/cache/data'),
+            'permission' => 0o770,
         ],
 
         'memcached' => [

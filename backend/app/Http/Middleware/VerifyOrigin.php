@@ -38,7 +38,7 @@ final class VerifyOrigin
         };
 
         if ($claimed === null || !in_array($claimed, config()->array('gallery.allowed_origins'), true)) {
-            Log::warning('CSRF rejected', ['origin' => $origin, 'referer' => $referer]);
+            Log::info('CSRF rejected', ['origin' => $origin, 'referer' => $referer]);
 
             return ApiException::response('ForbiddenOrigin', 403, 'The request origin is not allowed.');
         }

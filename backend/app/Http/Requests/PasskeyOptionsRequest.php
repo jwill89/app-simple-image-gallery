@@ -24,6 +24,6 @@ final class PasskeyOptionsRequest extends ApiRequest
 
     protected function errorCodes(): array
     {
-        return ['password' => ['MissingCredentials', 400]];
+        return ['password' => ['MissingCredentials', 422]];
     }
 }

@@ -6,6 +6,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
+use App\OpenApi\ProblemJson;
+use App\Support\ContentSecurityPolicy;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\File;
@@ -34,7 +36,7 @@ final class SystemController extends Controller
     {
         return new JsonResponse([
             'version' => config()->string('gallery.version'),
-            'api_version' => config()->string('gallery.api_version'),
+            'apiVersion' => config()->string('gallery.api_version'),
         ]);
     }
 
@@ -50,8 +52,8 @@ final class SystemController extends Controller
         summary: 'The OpenAPI 3.1 specification',
         tags: ['System'],
         responses: [
-            new OAS\Response(response: 200, description: 'The OpenAPI document (JSON)'),
-            new OAS\Response(response: 404, description: 'Spec not generated'),
+            new OAS\Response(response: 200, description: 'The OpenAPI document', content: new OAS\MediaType\Json(schema: new OAS\Schema(type: 'object', description: 'An OpenAPI 3.1 document: this one.'))),
+            new OAS\Response(response: 404, description: 'SpecNotFound: the spec has not been generated', content: new ProblemJson()),
         ],
     )]
     public function openApi(): Response
@@ -68,12 +70,12 @@ final class SystemController extends Controller
     }
 
     /**
-     * GET /docs — The interactive API reference (Scalar), pointed at the spec.
+     * GET /docs — The interactive API reference (Swagger UI), pointed at the spec.
      */
     #[OAS\Operation\Get(
         path: '/docs',
         operationId: 'getApiDocs',
-        summary: 'Interactive API reference (Scalar)',
+        summary: 'Interactive API reference (Swagger UI)',
         tags: ['System'],
         responses: [
             new OAS\Response(response: 200, description: 'HTML documentation page'),
@@ -81,21 +83,29 @@ final class SystemController extends Controller
     )]
     public function docs(): Response
     {
+        // Swagger UI, from the files the front end's build copies to /api-docs/
+        // (frontend/vite.config.ts), under a policy that admits nothing else.
         $html = <<<'HTML'
             <!doctype html>
-            <html>
+            <html lang="en">
               <head>
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
+                <meta name="robots" content="noindex" />
                 <title>Gallery — API Reference</title>
+                <link rel="stylesheet" href="/api-docs/swagger-ui.css" />
               </head>
               <body>
-                <script id="api-reference" data-url="/api/openapi.json"></script>
-                <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+                <main id="reference"></main>
+                <script src="/api-docs/swagger-ui-bundle.js"></script>
+                <script src="/api-docs/reference.js"></script>
               </body>
             </html>
             HTML;
 
-        return new Response($html, 200, ['Content-Type' => 'text/html; charset=utf-8']);
+        $response = new Response($html, 200, ['Content-Type' => 'text/html; charset=utf-8']);
+        ContentSecurityPolicy::apply($response, ContentSecurityPolicy::apiReference());
+
+        return $response;
     }
 }

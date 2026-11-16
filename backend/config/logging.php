@@ -58,11 +58,15 @@ return [
             'ignore_exceptions' => false,
         ],
 
+        // The log files are group-writable, so the queue worker (its own account, in
+        // the www-data group) and PHP-FPM (www-data) both append to whichever one the
+        // other created.
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
+            'permission' => 0o664,
         ],
 
         'daily' => [
@@ -71,6 +75,7 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
+            'permission' => 0o664,
         ],
 
         'slack' => [

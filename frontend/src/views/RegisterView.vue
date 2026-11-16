@@ -61,8 +61,8 @@ if (auth.isSignedIn) {
 
 onMounted(async () => {
   const config = await auth.loadConfig().catch(() => null)
-  signupOpen.value = config?.signup_open ?? true
-  siteKey.value = config?.turnstile_site_key ?? null
+  signupOpen.value = config?.signupOpen ?? true
+  siteKey.value = config?.turnstileSiteKey ?? null
   loaded.value = true
 })
 
@@ -77,7 +77,7 @@ async function register() {
       username: username.value,
       password: password.value,
       remember: remember.value,
-      turnstile_token: turnstileToken.value || undefined,
+      turnstileToken: turnstileToken.value || undefined,
     })
     void router.replace(redirect.value)
   } catch (e) {
@@ -203,6 +203,7 @@ async function register() {
 
 <style scoped>
 .account-why {
+  max-width: 70ch;
   color: var(--text-2);
   font-size: var(--t-sm);
   margin-bottom: var(--sp-4);

@@ -12,7 +12,7 @@ namespace App\Services\Duplicates;
 final readonly class ScanSettings
 {
     /**
-     * Hamming cutoff (bits out of 64) when DUPLICATE_MAX_DISTANCE is unset.
+     * Hamming cutoff (bits out of 64) when GALLERY_DUPLICATE_MAX_DISTANCE is unset.
      * Re-saved and resized copies of gallery images landed 0-5 bits from their
      * originals (calibrated on this gallery's images); the region check, not
      * this, is what keeps variants out.
@@ -21,7 +21,7 @@ final readonly class ScanSettings
 
     /**
      * Region-difference ceiling (0-255 levels, see RegionDifference) when
-     * DUPLICATE_MAX_REGION_DIFF is unset. Calibrated on this gallery's images,
+     * GALLERY_DUPLICATE_MAX_REGION_DIFF is unset. Calibrated on this gallery's images,
      * re-saved copies scored at most 32.7 and the 26 variants dismissed in the
      * UI at least 40.9; this sits between.
      */

@@ -11,6 +11,7 @@ use App\Http\Requests\PasskeyOptionsRequest;
 use App\Http\Requests\PasskeyRequest;
 use App\Http\Resources\PasskeyResource;
 use App\Http\Resources\UserResource;
+use App\Models\Passkey;
 use App\Models\User;
 use App\Support\Login;
 use Illuminate\Http\JsonResponse;
@@ -23,8 +24,8 @@ use Laravel\Passkeys\Actions\GenerateRegistrationOptions;
 use Laravel\Passkeys\Actions\GenerateVerificationOptions;
 use Laravel\Passkeys\Actions\StorePasskey;
 use Laravel\Passkeys\Actions\VerifyPasskey;
-use Laravel\Passkeys\Passkey;
 use Laravel\Passkeys\Support\WebAuthn;
+use App\OpenApi\ProblemJson;
 use OpenApi\Spec as OAS;
 use Webauthn\Exception\WebauthnException;
 use Webauthn\PublicKeyCredentialCreationOptions;
@@ -79,21 +80,12 @@ final class PasskeyController extends Controller
         operationId: 'passkeySignIn',
         summary: 'Sign in with a passkey',
         tags: ['Auth'],
-        requestBody: new OAS\RequestBody(
-            required: true,
-            content: new OAS\MediaType\Json(
-                required: ['credential'],
-                properties: [
-                    new OAS\Property(property: 'credential', schema: new OAS\Schema(type: 'object', additionalProperties: true, description: 'The PublicKeyCredential navigator.credentials.get() gave, as its toJSON() writes it.')),
-                    new OAS\Property(property: 'remember', schema: new OAS\Schema(type: 'boolean', description: 'Keep this browser signed in for 30 days, not just until it closes.')),
-                ],
-            ),
-        ),
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/PasskeySignInBody')),
         responses: [
             new OAS\Response(response: 200, description: 'Signed in', content: new OAS\MediaType\Json(ref: '#/components/schemas/SignInResponse')),
-            new OAS\Response(response: 400, description: 'InvalidPasskey (the answer is unreadable), PasskeyExpired (no challenge waiting, or too old)', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 401, description: 'PasskeyNotAccepted', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 429, description: 'TooManyAttempts', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 401, description: 'PasskeyNotAccepted', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'InvalidPasskey (the answer is missing or unreadable), PasskeyExpired (no challenge waiting, or too old)', content: new ProblemJson()),
+            new OAS\Response(response: 429, description: 'TooManyAttempts', headers: [new OAS\Header(header: 'Retry-After', description: 'Seconds until another attempt is counted.', schema: new OAS\Schema(type: 'integer'))], content: new ProblemJson()),
         ],
     )]
     public function signIn(PasskeyRequest $request, VerifyPasskey $verify): JsonResponse
@@ -105,7 +97,7 @@ final class PasskeyController extends Controller
         try {
             $passkey = $verify($credential, WebAuthn::fromJson($options, PublicKeyCredentialRequestOptions::class));
         } catch (ValidationException|WebauthnException $e) {
-            Log::warning('Passkey login failed', ['ip' => $request->ip(), 'reason' => $e->getMessage()]);
+            Log::info('Passkey login failed', ['ip' => $request->ip(), 'reason' => $e->getMessage()]);
 
             throw new ApiException('PasskeyNotAccepted', 401, 'That passkey wasn\'t accepted. It may have been removed from its account.');
         }
@@ -148,14 +140,11 @@ final class PasskeyController extends Controller
         summary: 'Start adding a passkey',
         tags: ['Account'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        requestBody: new OAS\RequestBody(
-            required: true,
-            content: new OAS\MediaType\Json(required: ['password'], properties: [new OAS\Property(property: 'password', schema: new OAS\Schema(type: 'string'))]),
-        ),
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/PasswordBody')),
         responses: [
             new OAS\Response(response: 200, description: 'The options for navigator.credentials.create()', content: new OAS\MediaType\Json(ref: '#/components/schemas/PasskeyOptions')),
-            new OAS\Response(response: 400, description: 'MissingCredentials', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 403, description: 'IncorrectPassword', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'IncorrectPassword', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'MissingCredentials', content: new ProblemJson()),
         ],
     )]
     public function addOptions(PasskeyOptionsRequest $request, GenerateRegistrationOptions $generate): JsonResponse
@@ -180,19 +169,10 @@ final class PasskeyController extends Controller
         summary: 'Add a passkey',
         tags: ['Account'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        requestBody: new OAS\RequestBody(
-            required: true,
-            content: new OAS\MediaType\Json(
-                required: ['credential'],
-                properties: [
-                    new OAS\Property(property: 'credential', schema: new OAS\Schema(type: 'object', additionalProperties: true, description: 'The PublicKeyCredential navigator.credentials.create() gave, as its toJSON() writes it.')),
-                    new OAS\Property(property: 'name', schema: new OAS\Schema(type: 'string', maxLength: 64)),
-                ],
-            ),
-        ),
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/PasskeyAddBody')),
         responses: [
             new OAS\Response(response: 201, description: 'The passkey', content: new OAS\MediaType\Json(ref: '#/components/schemas/Passkey')),
-            new OAS\Response(response: 400, description: 'InvalidPasskey, InvalidPasskeyName, PasskeyExpired, PasskeyRejected (its answer didn\'t check out, or it is already added)', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 422, description: 'InvalidPasskey, InvalidPasskeyName, PasskeyExpired, PasskeyRejected (its answer didn\'t check out, or it is already added)', content: new ProblemJson()),
         ],
     )]
     public function store(PasskeyRequest $request, StorePasskey $store): JsonResponse
@@ -205,9 +185,9 @@ final class PasskeyController extends Controller
         try {
             $passkey = $store($user, $name !== '' ? $name : 'Passkey', $credential, WebAuthn::fromJson($options, PublicKeyCredentialCreationOptions::class));
         } catch (ValidationException|WebauthnException $e) {
-            Log::warning('Passkey not added', ['user_id' => $user->id, 'reason' => $e->getMessage()]);
+            Log::info('Passkey not added', ['user_id' => $user->id, 'reason' => $e->getMessage()]);
 
-            throw new ApiException('PasskeyRejected', 400, 'The passkey could not be added. It may be added already; otherwise, please try again.');
+            throw new ApiException('PasskeyRejected', 422, 'The passkey could not be added. It may be added already; otherwise, please try again.');
         }
         if ($name === '' && is_string($passkey->authenticator)) {
             $passkey->update(['name' => $passkey->authenticator]);
@@ -218,23 +198,20 @@ final class PasskeyController extends Controller
     }
 
     /**
-     * PATCH /account/passkeys/{passkey_id} — Rename a passkey. Body: { name }.
+     * PATCH /account/passkeys/{passkeyId} — Rename a passkey. Body: { name }.
      */
     #[OAS\Operation\Patch(
-        path: '/account/passkeys/{passkey_id}',
+        path: '/account/passkeys/{passkeyId}',
         operationId: 'renamePasskey',
         summary: 'Rename a passkey',
         tags: ['Account'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        parameters: [new OAS\Parameter(name: 'passkey_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
-        requestBody: new OAS\RequestBody(
-            required: true,
-            content: new OAS\MediaType\Json(required: ['name'], properties: [new OAS\Property(property: 'name', schema: new OAS\Schema(type: 'string', maxLength: 64))]),
-        ),
+        parameters: [new OAS\Parameter(name: 'passkeyId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/PasskeyNameBody')),
         responses: [
             new OAS\Response(response: 200, description: 'The passkey', content: new OAS\MediaType\Json(ref: '#/components/schemas/Passkey')),
-            new OAS\Response(response: 400, description: 'InvalidPasskeyName', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 404, description: 'PasskeyNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'PasskeyNotFound', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'InvalidPasskeyName', content: new ProblemJson()),
         ],
     )]
     public function update(PasskeyNameRequest $request, Passkey $passkey): PasskeyResource
@@ -245,20 +222,20 @@ final class PasskeyController extends Controller
     }
 
     /**
-     * DELETE /account/passkeys/{passkey_id} — Remove a passkey: it no longer
+     * DELETE /account/passkeys/{passkeyId} — Remove a passkey: it no longer
      * signs anyone in (the browser or password manager still lists it until
      * it is deleted there).
      */
     #[OAS\Operation\Delete(
-        path: '/account/passkeys/{passkey_id}',
+        path: '/account/passkeys/{passkeyId}',
         operationId: 'deletePasskey',
         summary: 'Remove a passkey',
         tags: ['Account'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        parameters: [new OAS\Parameter(name: 'passkey_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        parameters: [new OAS\Parameter(name: 'passkeyId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Removed'),
-            new OAS\Response(response: 404, description: 'PasskeyNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'PasskeyNotFound', content: new ProblemJson()),
         ],
     )]
     public function destroy(Request $request, Passkey $passkey): Response
@@ -278,7 +255,7 @@ final class PasskeyController extends Controller
     /**
      * A ceremony's options, out of the session for good: a challenge is
      * answered once. Missing, too old, or made for another account, the
-     * browser has to start again (400 PasskeyExpired).
+     * browser has to start again (422 PasskeyExpired).
      */
     private static function take(Request $request, string $key, ?int $userId): string
     {
@@ -289,7 +266,7 @@ final class PasskeyController extends Controller
             && is_int($kept['at'] ?? null)
             && $kept['at'] >= now()->getTimestamp() - self::CHALLENGE_LIFETIME;
 
-        return $fresh ? $kept['options'] : throw new ApiException('PasskeyExpired', 400, 'The passkey request expired. Please try again.');
+        return $fresh ? $kept['options'] : throw new ApiException('PasskeyExpired', 422, 'The passkey request expired. Please try again.');
     }
 
     /** The passkey, if it is the signed-in account's; someone else's is as missing as a deleted one. */

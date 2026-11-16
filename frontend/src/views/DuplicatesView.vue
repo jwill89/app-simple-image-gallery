@@ -85,9 +85,9 @@ async function deleteSelected() {
 
   try {
     const ids = Array.from(selectedMedia.value)
-    const result = await api.post<BulkDeleteResult>(endpoints.media.bulkDelete, { media_ids: ids })
+    const result = await api.post<BulkDeleteResult>(endpoints.media.bulkDelete, { mediaIds: ids })
     toastStore.success(
-      `${result?.total_deleted ?? 0} media item(s) removed from the database.`,
+      `${result?.totalDeleted ?? 0} media item(s) removed from the database.`,
       4000,
       'Media Deleted',
     )
@@ -106,13 +106,13 @@ async function deleteSelected() {
 }
 
 async function dismissPair(match: DuplicateMatch) {
-  const pairKey = `${match.media_1.media_id}:${match.media_2.media_id}`
+  const pairKey = `${match.media1.mediaId}:${match.media2.mediaId}`
   dismissing.value = pairKey
 
   try {
     await api.post(endpoints.duplicates.dismissals, {
-      media_id_1: match.media_1.media_id,
-      media_id_2: match.media_2.media_id,
+      mediaId1: match.media1.mediaId,
+      mediaId2: match.media2.mediaId,
     })
     toastStore.success('This pair will no longer appear in future reports.', 4000, 'Pair Dismissed')
 
@@ -120,12 +120,9 @@ async function dismissPair(match: DuplicateMatch) {
     if (report.value) {
       report.value.matches = report.value.matches.filter(
         (m) =>
-          !(
-            m.media_1.media_id === match.media_1.media_id &&
-            m.media_2.media_id === match.media_2.media_id
-          ),
+          !(m.media1.mediaId === match.media1.mediaId && m.media2.mediaId === match.media2.mediaId),
       )
-      report.value.duplicates_found = report.value.matches.length
+      report.value.duplicatesFound = report.value.matches.length
     }
   } catch (e) {
     toastStore.error(getErrorMessage(e, 'Could not dismiss this pair.'), 6000, 'Dismiss Failed')
@@ -155,7 +152,7 @@ function selectAll() {
   const newSet = new Set<number>()
   // Select the second image from each pair (likely the duplicate)
   for (const match of report.value.matches) {
-    newSet.add(match.media_2.media_id)
+    newSet.add(match.media2.mediaId)
   }
   selectedMedia.value = newSet
 }
@@ -206,7 +203,7 @@ watch(authenticated, (isAdmin) => {
   <section class="section">
     <div class="container">
       <SignInGate admin>
-        <PageHeader title="Duplicates" :meta="report ? `${report.duplicates_found} pairs` : ''">
+        <PageHeader title="Duplicates" :meta="report ? `${report.duplicatesFound} pairs` : ''">
           <template #actions>
             <button
               type="button"
@@ -257,10 +254,10 @@ watch(authenticated, (isAdmin) => {
         <template v-else>
           <StatRow
             :stats="[
-              { label: 'Report file', value: report.report_file },
-              { label: 'Generated', value: report.generated_at || 'Unknown' },
-              { label: 'Images compared', value: report.images_compared?.toLocaleString() || '—' },
-              { label: 'Duplicates found', value: report.duplicates_found },
+              { label: 'Report file', value: report.reportFile },
+              { label: 'Generated', value: report.generatedAt || 'Unknown' },
+              { label: 'Images compared', value: report.imagesCompared?.toLocaleString() || '—' },
+              { label: 'Duplicates found', value: report.duplicatesFound },
             ]"
           />
 
@@ -285,7 +282,7 @@ watch(authenticated, (isAdmin) => {
             v-if="report.matches.length === 0"
             icon="fa-solid fa-circle-check"
             title="No duplicate pairs in the latest report."
-            :hint="`Scanned ${report.images_compared?.toLocaleString() || '—'} images.`"
+            :hint="`Scanned ${report.imagesCompared?.toLocaleString() || '—'} images.`"
           />
 
           <!-- Duplicate Pairs -->
@@ -296,18 +293,18 @@ watch(authenticated, (isAdmin) => {
               <div class="column is-6">
                 <div
                   class="card"
-                  :class="{ 'has-background-danger-light': isSelected(match.media_1.media_id) }"
+                  :class="{ 'has-background-danger-light': isSelected(match.media1.mediaId) }"
                 >
                   <div
                     class="card-content has-text-centered has-background-grey-darker dupe-image-container"
                   >
                     <a
-                      :href="fullUrl(match.media_1.file_name)"
+                      :href="fullUrl(match.media1.fileName)"
                       target="_blank"
-                      :aria-label="`Open media #${match.media_1.media_id} full size`"
+                      :aria-label="`Open media #${match.media1.mediaId} full size`"
                     >
                       <img
-                        :src="fullUrl(match.media_1.file_name)"
+                        :src="fullUrl(match.media1.fileName)"
                         alt=""
                         :class="['dupe-image', { 'thumb-blur': store.blurThumbnails }]"
                         loading="lazy"
@@ -319,20 +316,20 @@ watch(authenticated, (isAdmin) => {
                       <label class="checkbox">
                         <input
                           type="checkbox"
-                          :checked="isSelected(match.media_1.media_id)"
-                          @change="toggleSelect(match.media_1.media_id)"
+                          :checked="isSelected(match.media1.mediaId)"
+                          @change="toggleSelect(match.media1.mediaId)"
                         />
                         &nbsp;Select
                       </label>
                     </div>
                     <div class="card-footer-item">
-                      <span class="is-size-7">ID: {{ match.media_1.media_id }}</span>
+                      <span class="is-size-7">ID: {{ match.media1.mediaId }}</span>
                     </div>
                     <a
                       class="card-footer-item"
-                      :href="fullUrl(match.media_1.file_name)"
+                      :href="fullUrl(match.media1.fileName)"
                       target="_blank"
-                      :aria-label="`Open media #${match.media_1.media_id} full size`"
+                      :aria-label="`Open media #${match.media1.mediaId} full size`"
                     >
                       <span class="icon has-text-info-dark"
                         ><font-awesome-icon icon="fa-solid fa-up-right-from-square"
@@ -346,18 +343,18 @@ watch(authenticated, (isAdmin) => {
               <div class="column is-6">
                 <div
                   class="card"
-                  :class="{ 'has-background-danger-light': isSelected(match.media_2.media_id) }"
+                  :class="{ 'has-background-danger-light': isSelected(match.media2.mediaId) }"
                 >
                   <div
                     class="card-content has-text-centered has-background-grey-darker dupe-image-container"
                   >
                     <a
-                      :href="fullUrl(match.media_2.file_name)"
+                      :href="fullUrl(match.media2.fileName)"
                       target="_blank"
-                      :aria-label="`Open media #${match.media_2.media_id} full size`"
+                      :aria-label="`Open media #${match.media2.mediaId} full size`"
                     >
                       <img
-                        :src="fullUrl(match.media_2.file_name)"
+                        :src="fullUrl(match.media2.fileName)"
                         alt=""
                         :class="['dupe-image', { 'thumb-blur': store.blurThumbnails }]"
                         loading="lazy"
@@ -369,20 +366,20 @@ watch(authenticated, (isAdmin) => {
                       <label class="checkbox">
                         <input
                           type="checkbox"
-                          :checked="isSelected(match.media_2.media_id)"
-                          @change="toggleSelect(match.media_2.media_id)"
+                          :checked="isSelected(match.media2.mediaId)"
+                          @change="toggleSelect(match.media2.mediaId)"
                         />
                         &nbsp;Select
                       </label>
                     </div>
                     <div class="card-footer-item">
-                      <span class="is-size-7">ID: {{ match.media_2.media_id }}</span>
+                      <span class="is-size-7">ID: {{ match.media2.mediaId }}</span>
                     </div>
                     <a
                       class="card-footer-item"
-                      :href="fullUrl(match.media_2.file_name)"
+                      :href="fullUrl(match.media2.fileName)"
                       target="_blank"
-                      :aria-label="`Open media #${match.media_2.media_id} full size`"
+                      :aria-label="`Open media #${match.media2.mediaId} full size`"
                     >
                       <span class="icon has-text-info-dark"
                         ><font-awesome-icon icon="fa-solid fa-up-right-from-square"
@@ -417,7 +414,7 @@ watch(authenticated, (isAdmin) => {
                     class="button is-warning is-outlined"
                     :class="{
                       'is-loading':
-                        dismissing === `${match.media_1.media_id}:${match.media_2.media_id}`,
+                        dismissing === `${match.media1.mediaId}:${match.media2.mediaId}`,
                     }"
                     :disabled="dismissing !== null"
                     title="Mark as not a duplicate — hides this pair from future reports"

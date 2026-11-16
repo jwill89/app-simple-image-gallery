@@ -8,6 +8,7 @@ import { useToastStore } from '../stores/toast'
 import { useAuthStore } from '../stores/auth'
 import { useAccountStore } from '../stores/account'
 import { endpoints } from '../api/endpoints'
+import { pageSize } from '../constants/paging'
 import type { Media, SavedSearch } from '../types'
 import { ToolbarRoot, ToolbarButton, Toggle } from 'reka-ui'
 import TagSearchInput from './TagSearchInput.vue'
@@ -15,6 +16,7 @@ import AppMenu from './AppMenu.vue'
 import AppMenuItem from './AppMenuItem.vue'
 import AppTooltip from './AppTooltip.vue'
 import AppDialog from './AppDialog.vue'
+import ThemeMenu from './ThemeMenu.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -150,7 +152,7 @@ async function navigateRandom() {
 
     // Clear gallery context so arrow keys are disabled for random access
     store.lastViewedItemIds = []
-    void router.push({ name: 'media-random', params: { id: item.media_id } })
+    void router.push({ name: 'media-random', params: { id: item.mediaId } })
   } catch {
     toastStore.error('Could not load a random media item. Please try again.', 6000, 'Random Failed')
   }
@@ -276,7 +278,7 @@ router.afterEach((to) => {
     // `0` in the URL is not a page size: infinite scroll lives in the store, and
     // `0` exists only as the select's sentinel. Falling back to 40 keeps the
     // select from rendering blank.
-    perPage.value = isNaN(pp) || pp < 1 ? 40 : pp
+    perPage.value = pageSize(pp)
   }
 })
 </script>
@@ -311,6 +313,7 @@ router.afterEach((to) => {
           :href="mediaHref"
           class="navbar-item"
           :class="{ 'is-selected': isMediaActive }"
+          :aria-current="isMediaActive ? 'page' : undefined"
           @click.prevent="navigateMedia"
         >
           <span class="icon"><font-awesome-icon icon="fa-solid fa-images" /></span>
@@ -336,6 +339,7 @@ router.afterEach((to) => {
           :href="tagsHref"
           class="navbar-item"
           :class="{ 'is-selected': isTagsActive }"
+          :aria-current="isTagsActive ? 'page' : undefined"
           @click.prevent="navigateTags"
         >
           <span class="icon"><font-awesome-icon icon="fa-solid fa-tags" /></span>
@@ -346,6 +350,7 @@ router.afterEach((to) => {
           :href="favoritesHref"
           class="navbar-item"
           :class="{ 'is-selected': isFavoritesActive }"
+          :aria-current="isFavoritesActive ? 'page' : undefined"
           @click.prevent="navigateFavorites"
         >
           <span class="icon"><font-awesome-icon icon="fa-solid fa-heart" /></span>
@@ -418,7 +423,7 @@ router.afterEach((to) => {
           <template #trigger><font-awesome-icon icon="fa-solid fa-bookmark" /></template>
           <AppMenuItem
             v-for="search in account.searches"
-            :key="search.search_id"
+            :key="search.searchId"
             icon="fa-solid fa-magnifying-glass"
             @select="runSearch(search)"
           >
@@ -428,6 +433,10 @@ router.afterEach((to) => {
             Save this search…
           </AppMenuItem>
         </AppMenu>
+      </div>
+
+      <div class="navbar-item">
+        <ThemeMenu />
       </div>
 
       <div class="navbar-item">
@@ -507,6 +516,13 @@ router.afterEach((to) => {
 .nav-search {
   min-width: 0;
   flex: 1 1 auto;
+}
+
+/* The search's own control shrinks with the bar, so the buttons beside it
+   keep their room rather than sliding over it. */
+.nav-search .field.has-addons > .control:first-child {
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .nav-toggle {

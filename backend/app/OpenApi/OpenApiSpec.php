@@ -13,25 +13,38 @@ use OpenApi\Spec as OAS;
  * `#[OA\*]` attributes (info, server, security scheme, tag groups) that
  * swagger-php merges into the generated `openapi.json`. Per-endpoint
  * operations live on the controllers; per-model schemas live on the API
- * resources, and the other response shapes in Schemas/.
+ * resources, request bodies in Bodies/, and the other response shapes in
+ * Schemas/.
  */
 #[OAS\Info(
     version: self::API_VERSION,
     title: 'Gallery API',
     description: <<<'MD'
-        Internal HTTP API for the self-hosted media gallery — a **hybrid REST-RPC**
-        interface served under the `/api` base path. All responses are JSON.
+        HTTP API for the self-hosted media gallery, served under the `/api` base
+        path. Bodies are JSON (an upload is `multipart/form-data`), and every JSON
+        field and query parameter is camelCase.
 
         **Conventions**
-        - Reads return `200` with the resource or collection.
+        - Reads return `200` with the resource or collection. A paged list takes
+          `limit` (at most 100) and `offset` and sends its size in `X-Total-Count`;
+          `GET /media` also pages by `cursor`, from the `nextCursor` each page carries.
         - Creates return `201` with the created resource.
-        - Updates (`PUT`/`PATCH`) return `200` with the updated resource.
+        - Updates are `PATCH` and change only the fields sent; they return `200`
+          with the updated resource. A `PUT` with no body adds something to a set
+          (a list item, a blocked tag).
         - Deletes return `204` with no body.
         - Non-CRUD actions (login, migrate, scan, bulk operations) are `POST`
           verbs that return `200` with a small result object.
-        - Errors return `{ "error": "<MachineCode>", "message": "<human text>" }`
-          with a `4xx`/`5xx` status. `error` is a stable PascalCase code safe to
-          branch on; `message` is for display and may change.
+        - A trailing slash is ignored: `/api/tags/` is `/api/tags`.
+        - Timestamps are RFC 3339 in UTC, to the second (`2026-11-07T09:18:09Z`).
+        - Errors are RFC 9457 problem details (`application/problem+json`):
+          `{ "type", "title", "status", "detail" }`, where `type` is a tag URI
+          ending in a stable PascalCase name to branch on
+          (`tag:gallery.mathdad.me,2026:MediaNotFound`) and `detail` is for
+          display. A failed validation is `422` and adds `errors`, one
+          `{ "message", "location" }` per broken field (`body.tagName`,
+          `query.limit`). Malformed JSON is `400`; a rate limit is `429` with
+          `Retry-After`.
 
         **Auth** — a session cookie, set by `POST /auth/login`, `POST /auth/register`
         or `POST /auth/passkey`, which the browser sends with every request. It is
@@ -63,8 +76,8 @@ final class OpenApiSpec
 {
     /**
      * The HTTP API contract version (SemVer), served by GET /api/version as
-     * `api_version`. It moves only when the API surface changes, never with
+     * `apiVersion`. It moves only when the API surface changes, never with
      * an application release.
      */
-    public const string API_VERSION = '7.1.0';
+    public const string API_VERSION = '8.0.0';
 }

@@ -11,7 +11,7 @@ final class PasswordChangeRequest extends ApiRequest
     public function rules(): array
     {
         return [
-            'current_password' => ['required', 'string'],
+            'currentPassword' => ['required', 'string'],
             'password' => ['required', 'string', ...RegisterRequest::passwordRules()],
         ];
     }
@@ -20,7 +20,7 @@ final class PasswordChangeRequest extends ApiRequest
     public function messages(): array
     {
         return [
-            'current_password' => 'Your current password is required.',
+            'currentPassword' => 'Your current password is required.',
             'password' => 'A password is at least 8 characters.',
             'password.max' => 'A password is at most 200 characters.',
         ];
@@ -28,6 +28,6 @@ final class PasswordChangeRequest extends ApiRequest
 
     protected function errorCodes(): array
     {
-        return ['current_password' => ['MissingCredentials', 400], 'password' => ['WeakPassword', 400]];
+        return ['currentPassword' => ['MissingCredentials', 422], 'password' => ['WeakPassword', 422]];
     }
 }

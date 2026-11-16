@@ -1,22 +1,56 @@
 # The gallery's queue worker: ingested files, Danbooru imports and rebuilt thumbnails,
-# fingerprints and metadata. Every deploy (scripts/deploy.ps1) fills in __WEB_ROOT__
-# from its settings and installs the unit where it differs, and restarts the worker on
-# the new code.
+# fingerprints and metadata. Every deploy (scripts/deploy.ps1) fills in the web root and
+# the worker's account from its settings, installs the unit where it differs, and restarts
+# the worker on the new code.
+#
+# The worker runs as its own account, whose primary group is www-data: what it writes is
+# the group's, so PHP-FPM (www-data) reads and writes it too. The folders it shares with
+# PHP-FPM are www-data's, setgid and group-writable, and the app makes its cache and log
+# files group-writable whichever side creates them (config/cache.php, config/logging.php).
 
 [Unit]
 Description=Gallery queue worker
 After=network.target
 
 [Service]
-# www-data owns the thumbnails and the media the worker writes, and what Apache serves.
-User=www-data
+User=__SERVICE_USER__
 Group=www-data
 WorkingDirectory=__WEB_ROOT__
+ExecStart=/usr/bin/php artisan queue:work --tries=3 --max-time=3600
 # --max-time ends the worker after an hour, so a slow leak can't build up. It exits
 # with status 0, which only Restart=always starts again.
-ExecStart=/usr/bin/php artisan queue:work --tries=3 --max-time=3600
 Restart=always
 RestartSec=5
+# Background work, ffmpeg included, yields to the site's requests.
+Nice=19
+CPUSchedulingPolicy=idle
+IOSchedulingClass=idle
+# Files 664 and folders 775: group-writable, so PHP-FPM can replace and remove them.
+UMask=0002
+
+# The standard hardening for a service unit. The worker writes the app's storage/
+# (cache and logs), the database's folder (SQLite's -wal and -shm beside it) and the
+# media folder (the ingest folder at its top, full/ and thumbs/).
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=__WEB_ROOT__/storage __WEB_ROOT__/db __WEB_ROOT__/media
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallFilter=@system-service
+SystemCallArchitectures=native
+CapabilityBoundingSet=
 
 [Install]
 WantedBy=multi-user.target

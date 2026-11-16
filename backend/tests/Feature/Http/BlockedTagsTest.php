@@ -24,11 +24,11 @@ function blockedTagsScene(): array
     $user = User::factory()->create();
     $spiders = Tag::factory()->create(['tag_name' => 'spiders']);
     $cats = Tag::factory()->create(['tag_name' => 'cats']);
-    $shown = Media::factory()->create(['file_time' => 200]);
+    $shown = Media::factory()->create(['file_time' => '2026-01-03T00:00:00Z']);
     $shown->attachTags([$cats->tag_id]);
-    $hidden = Media::factory()->create(['file_time' => 100]);
+    $hidden = Media::factory()->create(['file_time' => '2026-01-02T00:00:00Z']);
     $hidden->attachTags([$spiders->tag_id, $cats->tag_id]);
-    $untagged = Media::factory()->create(['file_time' => 50]);
+    $untagged = Media::factory()->create(['file_time' => '2026-01-01T00:00:00Z']);
 
     return ['user' => $user, 'spiders' => $spiders, 'shown' => $shown, 'hidden' => $hidden, 'untagged' => $untagged];
 }
@@ -41,7 +41,7 @@ function blockedTagsScene(): array
  */
 function mediaIdsIn(TestResponse $response, string $path = 'items'): array
 {
-    return array_values(array_map(static fn(array $item): int => (int) $item['media_id'], (array) $response->assertOk()->json($path)));
+    return array_values(array_map(static fn(array $item): int => (int) $item['mediaId'], (array) $response->assertOk()->json($path)));
 }
 
 test('blocking a tag is listed, and doing it twice changes nothing', function (): void {
@@ -49,10 +49,10 @@ test('blocking a tag is listed, and doing it twice changes nothing', function ()
 
     asAccount($reader)->putJson("/api/account/blocked-tags/{$spiders->tag_id}")->assertNoContent();
     asAccount($reader)->putJson("/api/account/blocked-tags/{$spiders->tag_id}")->assertNoContent();
-    asAccount($reader)->putJson('/api/account/blocked-tags/999')->assertNotFound()->assertJson(['error' => 'TagNotFound']);
+    asAccount($reader)->putJson('/api/account/blocked-tags/999')->assertNotFound()->assertJson(['type' => problemType('TagNotFound')]);
 
     asAccount($reader)->getJson('/api/account/blocked-tags')->assertOk()
-        ->assertExactJson([['tag_id' => $spiders->tag_id, 'category_id' => $spiders->category_id, 'tag_name' => 'spiders']]);
+        ->assertExactJson([['tagId' => $spiders->tag_id, 'categoryId' => $spiders->category_id, 'tagName' => 'spiders']]);
 
     asAccount($reader)->deleteJson("/api/account/blocked-tags/{$spiders->tag_id}")->assertNoContent();
     asAccount($reader)->getJson('/api/account/blocked-tags')->assertExactJson([]);
@@ -62,39 +62,40 @@ test('every listing leaves out what the account blocks, and only for that accoun
     ['user' => $reader, 'spiders' => $spiders, 'shown' => $shown, 'hidden' => $hidden, 'untagged' => $untagged] = blockedTagsScene();
 
     // Read once signed out first, so a cached answer would show if keys were shared.
-    expect(mediaIdsIn(signedOut()->getJson('/api/media/page/1/40')))->toBe([$shown->media_id, $hidden->media_id, $untagged->media_id]);
+    expect(mediaIdsIn(signedOut()->getJson('/api/media')))->toBe([$shown->media_id, $hidden->media_id, $untagged->media_id]);
     asAccount($reader)->putJson("/api/account/blocked-tags/{$spiders->tag_id}")->assertNoContent();
     $as = static fn(string $path): TestResponse => asAccount($reader)->getJson($path);
 
-    expect(mediaIdsIn($as('/api/media/page/1/40')))->toBe([$shown->media_id, $untagged->media_id])
-        ->and(mediaIdsIn($as('/api/media/with-tags/cats/1/40')))->toBe([$shown->media_id])
-        ->and(mediaIdsIn($as('/api/media?per_page=40')))->toBe([$shown->media_id, $untagged->media_id])
-        ->and(mediaIdsIn($as('/api/media?per_page=40&tags=cats')))->toBe([$shown->media_id])
-        ->and(mediaIdsIn($as('/api/media/untagged/1/40')))->toBe([$untagged->media_id])
+    expect(mediaIdsIn($as('/api/media')))->toBe([$shown->media_id, $untagged->media_id])
+        ->and($as('/api/media')->headers->get('X-Total-Count'))->toBe('2')
+        ->and(mediaIdsIn($as('/api/media?tags=cats')))->toBe([$shown->media_id])
+        ->and(mediaIdsIn($as('/api/media?limit=1')))->toBe([$shown->media_id])
+        ->and(mediaIdsIn($as('/api/media?limit=40&cursor=' . urlencode((string) $as('/api/media?limit=1')->json('nextCursor')))))->toBe([$untagged->media_id])
+        ->and(mediaIdsIn($as('/api/media?untagged=true')))->toBe([$untagged->media_id])
         ->and($as('/api/media/count')->json('count'))->toBe(2)
         ->and(mediaIdsIn(asAccount($reader)->postJson('/api/media/by-ids', ['ids' => [$shown->media_id, $hidden->media_id]]), '*'))
         ->toBe([$shown->media_id]);
     foreach (range(1, 10) as $ignored) {
-        expect($as('/api/media/random')->json('media_id'))->not->toBe($hidden->media_id);
+        expect($as('/api/media/random')->json('mediaId'))->not->toBe($hidden->media_id);
     }
 
     // The item itself still answers; the app asks before showing it.
     $as("/api/media/{$hidden->media_id}")->assertOk();
 
     // Others see everything still.
-    expect(mediaIdsIn(signedOut()->getJson('/api/media/page/1/40')))->toHaveCount(3)
+    expect(mediaIdsIn(signedOut()->getJson('/api/media')))->toHaveCount(3)
         ->and(signedOut()->getJson('/api/media/count')->json('count'))->toBe(3)
-        ->and(mediaIdsIn(asAccount()->getJson('/api/media/page/1/40')))->toHaveCount(3);
+        ->and(mediaIdsIn(asAccount()->getJson('/api/media')))->toHaveCount(3);
 });
 
 test('unblocking shows the media again at once, though the listing was cached', function (): void {
     ['user' => $reader, 'spiders' => $spiders] = blockedTagsScene();
 
     asAccount($reader)->putJson("/api/account/blocked-tags/{$spiders->tag_id}")->assertNoContent();
-    expect(mediaIdsIn(asAccount($reader)->getJson('/api/media/page/1/40')))->toHaveCount(2);
+    expect(mediaIdsIn(asAccount($reader)->getJson('/api/media')))->toHaveCount(2);
 
     asAccount($reader)->deleteJson("/api/account/blocked-tags/{$spiders->tag_id}")->assertNoContent();
-    expect(mediaIdsIn(asAccount($reader)->getJson('/api/media/page/1/40')))->toHaveCount(3);
+    expect(mediaIdsIn(asAccount($reader)->getJson('/api/media')))->toHaveCount(3);
 });
 
 test('when the only media left is blocked, a random pick finds nothing', function (): void {
@@ -103,8 +104,8 @@ test('when the only media left is blocked, a random pick finds nothing', functio
     $untagged->delete();
     asAccount($reader)->putJson("/api/account/blocked-tags/{$spiders->tag_id}")->assertNoContent();
 
-    asAccount($reader)->getJson('/api/media/random')->assertNotFound()->assertJson(['error' => 'MediaNotFound']);
-    signedOut()->getJson('/api/media/random')->assertOk()->assertJsonPath('media_id', $hidden->media_id);
+    asAccount($reader)->getJson('/api/media/random')->assertNotFound()->assertJson(['type' => problemType('MediaNotFound')]);
+    signedOut()->getJson('/api/media/random')->assertOk()->assertJsonPath('mediaId', $hidden->media_id);
 });
 
 test('a browser signed in as the account hides it too, and one signed out doesn\'t', function (): void {
@@ -113,10 +114,10 @@ test('a browser signed in as the account hides it too, and one signed out doesn\
     $reader->blockedTags()->attach($spiders->tag_id);
 
     $browser = new TestBrowser();
-    expect(mediaIdsIn($browser->send('GET', '/api/media/page/1/40')))->toHaveCount(3);
+    expect(mediaIdsIn($browser->send('GET', '/api/media')))->toHaveCount(3);
     $browser->send('POST', '/api/auth/login', ['username' => $reader->username, 'password' => 'long-enough'])->assertOk();
-    expect(mediaIdsIn($browser->send('GET', '/api/media/page/1/40')))->toHaveCount(2);
+    expect(mediaIdsIn($browser->send('GET', '/api/media')))->toHaveCount(2);
     $browser->send('POST', '/api/media/by-ids', ['ids' => [$hidden->media_id]])->assertOk()->assertJsonCount(0);
     $browser->send('DELETE', '/api/auth/session')->assertNoContent();
-    expect(mediaIdsIn($browser->send('GET', '/api/media/page/1/40')))->toHaveCount(3);
+    expect(mediaIdsIn($browser->send('GET', '/api/media')))->toHaveCount(3);
 });

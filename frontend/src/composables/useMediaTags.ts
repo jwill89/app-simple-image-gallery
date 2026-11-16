@@ -40,7 +40,7 @@ export function useMediaTags() {
 
   async function addTags(mediaId: number, tagIds: number[]) {
     try {
-      const updatedTags = await api.patch<Tag[]>(endpoints.media.tags(mediaId), { tag_ids: tagIds })
+      const updatedTags = await api.patch<Tag[]>(endpoints.media.tags(mediaId), { tagIds })
       tags.value = updatedTags ?? []
       // What it implies came along: remembered, so chips can name them.
       store.rememberTags(tags.value)

@@ -12,11 +12,11 @@ import {
 import { useGalleryStore, type TagCategory } from '../stores/gallery'
 
 const category = (over: Partial<TagCategory> = {}): TagCategory => ({
-  category_id: 1,
-  category_name: 'Character',
+  categoryId: 1,
+  categoryName: 'Character',
   color: 'teal',
   description: '',
-  sort_order: 0,
+  sortOrder: 0,
   ...over,
 })
 
@@ -55,7 +55,7 @@ describe('categories helpers', () => {
 
   it('looks up a category class, text class and name from the store', () => {
     const store = useGalleryStore()
-    store.categories = [category({ category_id: 1, category_name: 'Character', color: 'teal' })]
+    store.categories = [category({ categoryId: 1, categoryName: 'Character', color: 'teal' })]
 
     expect(getCategoryClassById(1)).toBe('tag--teal')
     expect(getCategoryClassByName('Character')).toBe('tag--teal')

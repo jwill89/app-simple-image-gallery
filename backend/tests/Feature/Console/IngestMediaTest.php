@@ -66,7 +66,7 @@ test('new files are added with their type, time, hash, fingerprint and metadata,
     expect(Media::query()->orderBy('media_id')->pluck('file_name')->all())->toBe(['moving.gif', 'still.gif', 'tiny.png'])
         ->and($named('tiny.png')->only(['media_type', 'file_time', 'hash', 'bits_fingerprint', 'width', 'height', 'duration', 'file_size']))->toBe([
             'media_type' => 'image',
-            'file_time' => 1767225600,
+            'file_time' => '2026-01-01T00:00:00Z',
             'hash' => md5_file(ContractFixture::path('uploads/tiny.png')),
             // The fingerprint the contract recording media/upload holds for the same file.
             'bits_fingerprint' => '1101111110010111011110010111100101111101011101110110011101110111',

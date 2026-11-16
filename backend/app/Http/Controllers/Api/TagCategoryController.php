@@ -12,6 +12,7 @@ use App\Models\TagCategory;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use App\OpenApi\ProblemJson;
 use OpenApi\Spec as OAS;
 
 /**
@@ -39,7 +40,7 @@ final class TagCategoryController extends Controller
 
     /**
      * POST /tag-categories — Create a tag category. Returns the created category.
-     * Body: { category_name, color?, description?, sort_order? }
+     * Body: { categoryName, color, description?, sortOrder? }
      */
     #[OAS\Operation\Post(
         path: '/tag-categories',
@@ -47,18 +48,12 @@ final class TagCategoryController extends Controller
         summary: 'Create a tag category',
         tags: ['Tag Categories'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(
-            required: ['category_name'],
-            properties: [
-                new OAS\Property(property: 'category_name', schema: new OAS\Schema(type: 'string')),
-                new OAS\Property(property: 'color', schema: new OAS\Schema(type: 'string')),
-                new OAS\Property(property: 'description', schema: new OAS\Schema(type: 'string')),
-                new OAS\Property(property: 'sort_order', schema: new OAS\Schema(type: 'integer')),
-            ],
-        )),
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/TagCategoryCreateBody')),
         responses: [
             new OAS\Response(response: 201, description: 'The created category', content: new OAS\MediaType\Json(ref: '#/components/schemas/TagCategory')),
-            new OAS\Response(response: 400, description: 'Validation error', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'Forbidden (not an admin)', content: new ProblemJson()),
+            new OAS\Response(response: 409, description: 'NameTaken', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'InvalidInput, NameTooLong, InvalidColor', content: new ProblemJson()),
         ],
     )]
     public function store(TagCategoryRequest $request): TagCategoryResource
@@ -71,29 +66,23 @@ final class TagCategoryController extends Controller
     }
 
     /**
-     * PUT|PATCH /tag-categories/{category_id} — Update a tag category: the
+     * PATCH /tag-categories/{categoryId} — Update a tag category: the
      * fields sent, the rest as they are. Returns the updated category.
      */
     #[OAS\Operation\Patch(
-        path: '/tag-categories/{category_id}',
+        path: '/tag-categories/{categoryId}',
         operationId: 'updateTagCategory',
         summary: 'Update a tag category (the fields given)',
-        description: 'PUT is accepted too, and also leaves out fields as they are.',
         tags: ['Tag Categories'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        parameters: [new OAS\Parameter(name: 'category_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
-        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(
-            properties: [
-                new OAS\Property(property: 'category_name', schema: new OAS\Schema(type: 'string')),
-                new OAS\Property(property: 'color', schema: new OAS\Schema(type: 'string')),
-                new OAS\Property(property: 'description', schema: new OAS\Schema(type: 'string')),
-                new OAS\Property(property: 'sort_order', schema: new OAS\Schema(type: 'integer')),
-            ],
-        )),
+        parameters: [new OAS\Parameter(name: 'categoryId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/TagCategoryUpdateBody')),
         responses: [
             new OAS\Response(response: 200, description: 'The updated category', content: new OAS\MediaType\Json(ref: '#/components/schemas/TagCategory')),
-            new OAS\Response(response: 400, description: 'NameTooLong / NameTaken / InvalidColor', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 404, description: 'CategoryNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'Forbidden (not an admin)', content: new ProblemJson()),
+            new OAS\Response(response: 404, description: 'CategoryNotFound', content: new ProblemJson()),
+            new OAS\Response(response: 409, description: 'NameTaken', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'InvalidInput, NameTooLong, InvalidColor', content: new ProblemJson()),
         ],
     )]
     public function update(TagCategoryRequest $request, TagCategory $category): TagCategoryResource
@@ -106,19 +95,20 @@ final class TagCategoryController extends Controller
     }
 
     /**
-     * DELETE /tag-categories/{category_id} — Delete a category that has no tags.
+     * DELETE /tag-categories/{categoryId} — Delete a category that has no tags.
      */
     #[OAS\Operation\Delete(
-        path: '/tag-categories/{category_id}',
+        path: '/tag-categories/{categoryId}',
         operationId: 'deleteTagCategory',
         summary: 'Delete a tag category',
         tags: ['Tag Categories'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        parameters: [new OAS\Parameter(name: 'category_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        parameters: [new OAS\Parameter(name: 'categoryId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Deleted'),
-            new OAS\Response(response: 400, description: 'CategoryInUse', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 404, description: 'CategoryNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'Forbidden (not an admin)', content: new ProblemJson()),
+            new OAS\Response(response: 404, description: 'CategoryNotFound', content: new ProblemJson()),
+            new OAS\Response(response: 409, description: 'CategoryInUse', content: new ProblemJson()),
         ],
     )]
     public function destroy(TagCategory $category): Response
@@ -127,7 +117,7 @@ final class TagCategoryController extends Controller
         if ($tagCount > 0) {
             throw new ApiException(
                 'CategoryInUse',
-                400,
+                409,
                 "Cannot delete \"{$category->category_name}\" because {$tagCount} tag(s) belong to it. Reassign them first.",
             );
         }

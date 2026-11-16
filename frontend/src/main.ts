@@ -1,3 +1,4 @@
+import './theme' // the reader's colour scheme, on <html> before the app mounts
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
@@ -8,6 +9,7 @@ import './fontawesome' // the icon register (adds every icon the gallery uses to
 
 import 'bulma/css/bulma.min.css'
 import '@fortawesome/fontawesome-svg-core/styles.css'
+import './tokens.css'
 import './style.css'
 
 const pinia = createPinia()

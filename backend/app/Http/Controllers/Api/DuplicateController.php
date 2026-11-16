@@ -10,11 +10,13 @@ use App\Models\DismissedDuplicate;
 use App\Models\Media;
 use App\Services\Duplicates\DuplicateScanner;
 use App\Services\Duplicates\ScanSettings;
+use App\Support\Timestamp;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use JsonException;
+use App\OpenApi\ProblemJson;
 use OpenApi\Spec as OAS;
 use Throwable;
 
@@ -35,7 +37,8 @@ final class DuplicateController extends Controller
         tags: ['Duplicates'],
         responses: [
             new OAS\Response(response: 200, description: 'The report', content: new OAS\MediaType\Json(ref: '#/components/schemas/DuplicateReport')),
-            new OAS\Response(response: 404, description: 'NoReportsFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'NoDupesDirectory, NoReportsFound', content: new ProblemJson()),
+            new OAS\Response(response: 500, description: 'InvalidReport', content: new ProblemJson()),
         ],
     )]
     public function report(): JsonResponse
@@ -77,8 +80,8 @@ final class DuplicateController extends Controller
             $second = $media->get($id2);
             if ($first !== null && $second !== null) {
                 $matches[] = [
-                    'media_1' => self::summary($first),
-                    'media_2' => self::summary($second),
+                    'media1' => self::summary($first),
+                    'media2' => self::summary($second),
                     'distance' => $distance,
                     'ssim' => $ssim,
                 ];
@@ -86,10 +89,10 @@ final class DuplicateController extends Controller
         }
 
         return new JsonResponse([
-            'report_file' => basename($latest),
-            'generated_at' => $data['generated_at'] ?? null,
-            'images_compared' => $data['images_compared'] ?? null,
-            'duplicates_found' => count($matches),
+            'reportFile' => basename($latest),
+            'generatedAt' => $data['generated_at'] ?? null,
+            'imagesCompared' => $data['images_compared'] ?? null,
+            'duplicatesFound' => count($matches),
             'matches' => $matches,
         ]);
     }
@@ -106,7 +109,8 @@ final class DuplicateController extends Controller
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         responses: [
             new OAS\Response(response: 200, description: 'Scan stats', content: new OAS\MediaType\Json(ref: '#/components/schemas/ScanResult')),
-            new OAS\Response(response: 500, description: 'ScanFailed', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'Forbidden (not an admin)', content: new ProblemJson()),
+            new OAS\Response(response: 500, description: 'ScanFailed', content: new ProblemJson()),
         ],
     )]
     public function scan(DuplicateScanner $scanner): JsonResponse
@@ -125,16 +129,16 @@ final class DuplicateController extends Controller
         return new JsonResponse([
             'success' => true,
             'message' => 'Scan completed successfully.',
-            'images_compared' => $result['images_compared'],
-            'lsh_candidates' => $result['lsh_candidates'],
-            'duplicates_found' => $result['duplicates_found'],
-            'execution_time' => $result['execution_time_seconds'],
+            'imagesCompared' => $result['images_compared'],
+            'lshCandidates' => $result['lsh_candidates'],
+            'duplicatesFound' => $result['duplicates_found'],
+            'executionTime' => $result['execution_time_seconds'],
         ]);
     }
 
     /**
      * POST /duplicates/dismissals — Dismiss a pair of media items as not-duplicates.
-     * Body: { media_id_1, media_id_2 }.
+     * Body: { mediaId1, mediaId2 }.
      */
     #[OAS\Operation\Post(
         path: '/duplicates/dismissals',
@@ -142,40 +146,40 @@ final class DuplicateController extends Controller
         summary: 'Dismiss a duplicate pair',
         tags: ['Duplicates'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(
-            required: ['media_id_1', 'media_id_2'],
-            properties: [
-                new OAS\Property(property: 'media_id_1', schema: new OAS\Schema(type: 'integer')),
-                new OAS\Property(property: 'media_id_2', schema: new OAS\Schema(type: 'integer')),
-            ],
-        )),
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/DismissalBody')),
         responses: [
             new OAS\Response(response: 201, description: 'Dismissed', content: new OAS\MediaType\Json(ref: '#/components/schemas/DismissResult')),
-            new OAS\Response(response: 400, description: 'InvalidInput', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'Forbidden (not an admin)', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'InvalidInput, MediaNotFound (an id with no item)', content: new ProblemJson()),
         ],
     )]
     public function dismiss(Request $request): JsonResponse
     {
-        $id1 = $request->integer('media_id_1');
-        $id2 = $request->integer('media_id_2');
+        $id1 = $request->integer('mediaId1');
+        $id2 = $request->integer('mediaId2');
         if ($id1 <= 0 || $id2 <= 0 || $id1 === $id2) {
-            throw new ApiException('InvalidInput', 400, 'Two different, valid media IDs are required.');
+            throw self::invalid('InvalidInput', 'Two different, valid media IDs are required.');
         }
         if (Media::query()->whereKey([$id1, $id2])->count() !== 2) {
-            throw new ApiException('MediaNotFound', 404, 'One or both media items could not be found.');
+            throw self::invalid('MediaNotFound', 'One or both media items could not be found.');
         }
 
         // Dismissing a pair again is not an error.
         $pair = ['media_id_1' => min($id1, $id2), 'media_id_2' => max($id1, $id2)];
-        DismissedDuplicate::query()->insertOrIgnore([...$pair, 'dismissed_at' => now()->getTimestamp()]);
+        DismissedDuplicate::query()->insertOrIgnore([...$pair, 'dismissed_at' => Timestamp::now()]);
         Log::info('Duplicate pair dismissed', $pair);
 
-        return new JsonResponse(['dismissed' => true, ...$pair], 201);
+        return new JsonResponse(['dismissed' => true, 'mediaId1' => $pair['media_id_1'], 'mediaId2' => $pair['media_id_2']], 201);
     }
 
-    /** @return array{media_id: int, file_name: string, hash: string} */
+    /** @return array{mediaId: int, fileName: string, hash: string} */
     private static function summary(Media $media): array
     {
-        return ['media_id' => $media->media_id, 'file_name' => $media->file_name, 'hash' => $media->hash];
+        return ['mediaId' => $media->media_id, 'fileName' => $media->file_name, 'hash' => $media->hash];
+    }
+
+    private static function invalid(string $code, string $message): ApiException
+    {
+        return new ApiException($code, 422, $message, [], [['message' => $message, 'location' => 'body.mediaId1']]);
     }
 }

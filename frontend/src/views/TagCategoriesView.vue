@@ -61,7 +61,7 @@ function openNewModal() {
   formColor.value = 'neutral'
   formDescription.value = ''
   formSortOrder.value =
-    categories.value.length > 0 ? Math.max(...categories.value.map((c) => c.sort_order)) + 1 : 0
+    categories.value.length > 0 ? Math.max(...categories.value.map((c) => c.sortOrder ?? 0)) + 1 : 0
   formHelp.value = ''
   formHelpClass.value = ''
   showModal.value = true
@@ -69,11 +69,11 @@ function openNewModal() {
 
 function openEditModal(cat: TagCategory) {
   formMode.value = 'edit'
-  formId.value = cat.category_id
-  formName.value = cat.category_name
-  formColor.value = cat.color
-  formDescription.value = cat.description
-  formSortOrder.value = cat.sort_order
+  formId.value = cat.categoryId
+  formName.value = cat.categoryName
+  formColor.value = cat.color ?? 'neutral'
+  formDescription.value = cat.description ?? ''
+  formSortOrder.value = cat.sortOrder ?? 0
   formHelp.value = ''
   formHelpClass.value = ''
   showModal.value = true
@@ -93,10 +93,10 @@ async function submitForm() {
   formLoading.value = true
   try {
     const payload = {
-      category_name: formName.value.trim(),
+      categoryName: formName.value.trim(),
       color: formColor.value,
       description: formDescription.value.trim(),
-      sort_order: formSortOrder.value,
+      sortOrder: formSortOrder.value,
     }
 
     if (formMode.value === 'edit') {
@@ -127,7 +127,7 @@ async function confirmDelete() {
   }
   deleteLoading.value = true
   try {
-    await api.del(endpoints.tagCategories.byId(deleteTarget.value.category_id))
+    await api.del(endpoints.tagCategories.byId(deleteTarget.value.categoryId))
     await loadCategories()
     showDeleteModal.value = false
     void store.refreshTags()
@@ -187,12 +187,12 @@ onMounted(loadCategories)
               </tr>
             </thead>
             <tbody>
-              <tr v-for="cat in categories" :key="cat.category_id">
-                <td>{{ cat.category_id }}</td>
-                <td>{{ cat.sort_order }}</td>
+              <tr v-for="cat in categories" :key="cat.categoryId">
+                <td>{{ cat.categoryId }}</td>
+                <td>{{ cat.sortOrder }}</td>
                 <td>
                   <span class="tag is-medium" :class="colorToTagClass(cat.color)">{{
-                    cat.category_name
+                    cat.categoryName
                   }}</span>
                 </td>
                 <td>{{ cat.description }}</td>
@@ -324,7 +324,7 @@ onMounted(loadCategories)
       >
         <p>
           Are you sure you want to delete the
-          <strong>{{ deleteTarget?.category_name }}</strong> category?
+          <strong>{{ deleteTarget?.categoryName }}</strong> category?
         </p>
         <p class="has-text-danger mt-2">
           <span class="icon"><font-awesome-icon icon="fa-solid fa-triangle-exclamation" /></span>
@@ -374,5 +374,16 @@ onMounted(loadCategories)
   border-color: var(--text-1);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-1) 50%, transparent);
   transform: scale(1.08);
+}
+
+/* The picked swatch keeps its larger size; nothing grows on hover. */
+@media (prefers-reduced-motion: reduce) {
+  .color-swatch {
+    transition: none;
+  }
+
+  .color-swatch:hover:not(.is-selected-swatch) {
+    transform: none;
+  }
 }
 </style>

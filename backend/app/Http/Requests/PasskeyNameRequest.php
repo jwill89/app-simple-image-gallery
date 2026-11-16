@@ -24,6 +24,6 @@ final class PasskeyNameRequest extends ApiRequest
 
     protected function errorCodes(): array
     {
-        return ['name' => ['InvalidPasskeyName', 400]];
+        return ['name' => ['InvalidPasskeyName', 422]];
     }
 }

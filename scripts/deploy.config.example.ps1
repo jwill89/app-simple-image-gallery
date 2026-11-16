@@ -7,6 +7,7 @@
 #   1. the script -parameter (e.g. -VpsHost, -WebRoot)
 #   2. the environment variable (e.g. $env:DEPLOY_VPS_HOST, $env:DEPLOY_WEB_ROOT)
 #   3. the $Deploy* value below (this file's copy)
+#   4. the script's default, for the two settings that have one (left empty here)
 #
 # Keeping these here (not in the tracked deploy.ps1) means the repo never reveals
 # the host, SSH user, key path, or filesystem layout.
@@ -23,3 +24,10 @@ $DeployWebRoot = "<laravel-app-folder-on-host>"     # e.g. /var/www/gallery.exam
 $DeployCertName = "<certificate-folder-name>"       # e.g. example.com
 # The address Apache shows on its error pages (ServerAdmin in the vhost).
 $DeployServerAdmin = "<admin-email-address>"        # e.g. webmaster@example.com
+# The queue worker's own account on the host: a locked system account whose primary group
+# is www-data (docs/ops.md, Host setup).
+$DeployServiceUser = "<service-user>"               # e.g. example-queue
+# The site's public host name, which the vhost serves and is named after. Empty: gallery.mathdad.me.
+$DeployServerName = ""
+# The site's address as visitors reach it, which the smoke check fetches. Empty: https://<ServerName>.
+$DeploySiteUrl = ""

@@ -62,28 +62,28 @@ function findCategory(predicate: (c: TagCategory) => boolean): TagCategory | und
  * Get the tag class for a given category ID.
  */
 export function getCategoryClassById(categoryId: number): string {
-  const cat = findCategory((c) => c.category_id === categoryId)
+  const cat = findCategory((c) => c.categoryId === categoryId)
   return colorToTagClass(cat?.color)
 }
 
 /** The name of the category with this ID, or '' when there is none. */
 export function getCategoryNameById(categoryId: number): string {
-  return findCategory((c) => c.category_id === categoryId)?.category_name ?? ''
+  return findCategory((c) => c.categoryId === categoryId)?.categoryName ?? ''
 }
 
 /**
  * Get the text class for a given category ID.
  */
 export function getTextClassById(categoryId: number): string {
-  const cat = findCategory((c) => c.category_id === categoryId)
+  const cat = findCategory((c) => c.categoryId === categoryId)
   return colorToTextClass(cat?.color)
 }
 
 /**
  * Get the tag class for a given category name. A null/unknown name yields the
- * default class (category_name can be null on tags whose category was removed).
+ * default class (categoryName can be null on tags whose category was removed).
  */
 export function getCategoryClassByName(categoryName: string | null | undefined): string {
-  const cat = findCategory((c) => c.category_name === categoryName)
+  const cat = findCategory((c) => c.categoryName === categoryName)
   return colorToTagClass(cat?.color)
 }

@@ -15,9 +15,9 @@ final class DanbooruCategoryMappingRequest extends ApiRequest
     {
         return [
             // Danbooru numbers its categories from 0 (General).
-            'danbooru_category_id' => ['required', 'integer', 'min:0'],
-            'danbooru_category_name' => ['required', 'string'],
-            'gallery_category_id' => ['required', 'integer', 'min:1', Rule::exists(TagCategory::class, 'category_id')],
+            'danbooruCategoryId' => ['required', 'integer', 'min:0'],
+            'danbooruCategoryName' => ['required', 'string', 'max:50'],
+            'galleryCategoryId' => ['required', 'integer', 'min:1', Rule::exists(TagCategory::class, 'category_id')],
         ];
     }
 
@@ -25,10 +25,11 @@ final class DanbooruCategoryMappingRequest extends ApiRequest
     public function messages(): array
     {
         return [
-            'danbooru_category_id' => 'Danbooru category ID must be a non-negative integer.',
-            'danbooru_category_name' => 'Danbooru category name is required.',
-            'gallery_category_id' => 'A valid gallery category must be selected.',
-            'gallery_category_id.exists' => 'The selected gallery category does not exist.',
+            'danbooruCategoryId' => 'Danbooru category ID must be a non-negative integer.',
+            'danbooruCategoryName' => 'Danbooru category name is required.',
+            'danbooruCategoryName.max' => 'Danbooru category name is at most 50 characters.',
+            'galleryCategoryId' => 'A valid gallery category must be selected.',
+            'galleryCategoryId.exists' => 'The selected gallery category does not exist.',
         ];
     }
 
@@ -36,19 +37,19 @@ final class DanbooruCategoryMappingRequest extends ApiRequest
     public function mapping(): array
     {
         return [
-            'danbooru_category_id' => $this->integer('danbooru_category_id'),
-            'danbooru_category_name' => $this->string('danbooru_category_name')->toString(),
-            'gallery_category_id' => $this->integer('gallery_category_id'),
+            'danbooru_category_id' => $this->integer('danbooruCategoryId'),
+            'danbooru_category_name' => $this->string('danbooruCategoryName')->toString(),
+            'gallery_category_id' => $this->integer('galleryCategoryId'),
         ];
     }
 
     protected function errorCodes(): array
     {
-        return ['gallery_category_id.exists' => ['CategoryNotFound', 404]];
+        return ['galleryCategoryId.exists' => ['CategoryNotFound', 422]];
     }
 
     protected function prepareForValidation(): void
     {
-        $this->trimFields('danbooru_category_name');
+        $this->trimFields('danbooruCategoryName');
     }
 }

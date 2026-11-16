@@ -21,7 +21,12 @@ use Illuminate\Support\Facades\File;
 /**
  * An image or a video (animated GIFs count as video). Its file lives under
  * media/full/ and its thumbnails under media/thumbs/; width, height, duration
- * and file_size are read from the file at ingest.
+ * and file_size are read from the file at ingest. file_time is a timestamp in
+ * the stored form (App\Support\Timestamp), kept as that text: the listings
+ * order by it and their cursors compare it as text.
+ *
+ * @property int $media_id
+ * @property string $file_time
  */
 #[Table(name: 'media', key: 'media_id', timestamps: false)]
 #[Fillable(['media_type', 'file_name', 'file_time', 'hash', 'bits_fingerprint', 'width', 'height', 'duration', 'file_size'])]
@@ -254,7 +259,6 @@ class Media extends Model
     protected function casts(): array
     {
         return [
-            'file_time' => 'integer',
             'width' => 'integer',
             'height' => 'integer',
             'duration' => 'float',

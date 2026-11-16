@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use App\OpenApi\ProblemJson;
 use OpenApi\Spec as OAS;
 
 /**
@@ -58,17 +59,14 @@ final class AuthController extends Controller
         summary: 'Sign-up and login settings',
         tags: ['Auth'],
         responses: [
-            new OAS\Response(response: 200, description: 'The settings', content: new OAS\MediaType\Json(properties: [
-                new OAS\Property(property: 'signup_open', schema: new OAS\Schema(type: 'boolean')),
-                new OAS\Property(property: 'turnstile_site_key', schema: new OAS\Schema(type: 'string', nullable: true)),
-            ])),
+            new OAS\Response(response: 200, description: 'The settings', content: new OAS\MediaType\Json(ref: '#/components/schemas/AuthConfig')),
         ],
     )]
     public function config(): JsonResponse
     {
         return new JsonResponse([
-            'signup_open' => config()->boolean('gallery.allow_signup'),
-            'turnstile_site_key' => Turnstile::siteKey(),
+            'signupOpen' => config()->boolean('gallery.allow_signup'),
+            'turnstileSiteKey' => Turnstile::siteKey(),
         ]);
     }
 
@@ -94,32 +92,21 @@ final class AuthController extends Controller
 
     /**
      * POST /auth/register — Create an account and sign this browser in as it.
-     * Body: { username, password, remember?, turnstile_token? }.
+     * Body: { username, password, remember?, turnstileToken? }.
      */
     #[OAS\Operation\Post(
         path: '/auth/register',
         operationId: 'register',
         summary: 'Create an account',
         tags: ['Auth'],
-        requestBody: new OAS\RequestBody(
-            required: true,
-            content: new OAS\MediaType\Json(
-                required: ['username', 'password'],
-                properties: [
-                    new OAS\Property(property: 'username', schema: new OAS\Schema(type: 'string', maxLength: 32, minLength: 3, pattern: '^[A-Za-z0-9._-]{3,32}$')),
-                    new OAS\Property(property: 'password', schema: new OAS\Schema(type: 'string', maxLength: 200, minLength: 8)),
-                    new OAS\Property(property: 'remember', schema: new OAS\Schema(type: 'boolean', description: 'Keep this browser signed in for 30 days, not just until it closes.')),
-                    new OAS\Property(property: 'turnstile_token', schema: new OAS\Schema(type: 'string', description: 'The Turnstile widget\'s token (action "register"), when GET /auth/config gives a site key.')),
-                ],
-            ),
-        ),
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/RegisterBody')),
         responses: [
             new OAS\Response(response: 201, description: 'The account, signed in', content: new OAS\MediaType\Json(ref: '#/components/schemas/SignInResponse')),
-            new OAS\Response(response: 400, description: 'InvalidUsername, WeakPassword, CaptchaRequired', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 403, description: 'SignupClosed, CaptchaFailed', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 409, description: 'UsernameTaken', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 429, description: 'TooManySignups', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 503, description: 'CaptchaUnavailable', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'SignupClosed, CaptchaRequired, CaptchaFailed', content: new ProblemJson()),
+            new OAS\Response(response: 409, description: 'UsernameTaken', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'InvalidUsername, WeakPassword', content: new ProblemJson()),
+            new OAS\Response(response: 429, description: 'TooManySignups', headers: [new OAS\Header(header: 'Retry-After', description: 'Seconds until another sign-up is counted.', schema: new OAS\Schema(type: 'integer'))], content: new ProblemJson()),
+            new OAS\Response(response: 503, description: 'CaptchaUnavailable', content: new ProblemJson()),
         ],
     )]
     public function register(RegisterRequest $request): JsonResponse
@@ -152,32 +139,21 @@ final class AuthController extends Controller
 
     /**
      * POST /auth/login — Sign this browser in with a username and password.
-     * Body: { username, password, remember?, turnstile_token? }.
+     * Body: { username, password, remember?, turnstileToken? }.
      */
     #[OAS\Operation\Post(
         path: '/auth/login',
         operationId: 'login',
         summary: 'Log in',
         tags: ['Auth'],
-        requestBody: new OAS\RequestBody(
-            required: true,
-            content: new OAS\MediaType\Json(
-                required: ['username', 'password'],
-                properties: [
-                    new OAS\Property(property: 'username', schema: new OAS\Schema(type: 'string')),
-                    new OAS\Property(property: 'password', schema: new OAS\Schema(type: 'string')),
-                    new OAS\Property(property: 'remember', schema: new OAS\Schema(type: 'boolean', description: 'Keep this browser signed in for 30 days, not just until it closes.')),
-                    new OAS\Property(property: 'turnstile_token', schema: new OAS\Schema(type: 'string', description: 'The Turnstile widget\'s token (action "login"), when GET /auth/config gives a site key.')),
-                ],
-            ),
-        ),
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/LoginBody')),
         responses: [
             new OAS\Response(response: 200, description: 'Signed in', content: new OAS\MediaType\Json(ref: '#/components/schemas/SignInResponse')),
-            new OAS\Response(response: 400, description: 'MissingCredentials, CaptchaRequired', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 401, description: 'InvalidCredentials', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 403, description: 'CaptchaFailed', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 429, description: 'TooManyAttempts', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 503, description: 'CaptchaUnavailable', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 401, description: 'InvalidCredentials', content: new ProblemJson()),
+            new OAS\Response(response: 403, description: 'CaptchaRequired, CaptchaFailed', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'MissingCredentials', content: new ProblemJson()),
+            new OAS\Response(response: 429, description: 'TooManyAttempts', headers: [new OAS\Header(header: 'Retry-After', description: 'Seconds until another attempt is counted.', schema: new OAS\Schema(type: 'integer'))], content: new ProblemJson()),
+            new OAS\Response(response: 503, description: 'CaptchaUnavailable', content: new ProblemJson()),
         ],
     )]
     public function login(LoginRequest $request): JsonResponse
@@ -191,7 +167,7 @@ final class AuthController extends Controller
         $password = $request->string('password')->toString();
         $user = User::query()->where('username', $request->string('username')->toString())->first();
         if (!Hash::check($password, $user->password ?? self::unknownAccountHash()) || $user === null) {
-            Log::warning('Login failed', ['ip' => $request->ip()]);
+            Log::info('Login failed', ['ip' => $request->ip()]);
 
             throw new ApiException('InvalidCredentials', 401, 'The username or password is incorrect.');
         }
@@ -219,7 +195,7 @@ final class AuthController extends Controller
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         responses: [
             new OAS\Response(response: 204, description: 'Signed out'),
-            new OAS\Response(response: 401, description: 'Unauthorized', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 401, description: 'Unauthorized', content: new ProblemJson()),
         ],
     )]
     public function logout(Request $request): Response
@@ -238,7 +214,7 @@ final class AuthController extends Controller
     {
         $throttleKey = 'login:' . ClientAddress::key($request);
         if (RateLimiter::tooManyAttempts($throttleKey, self::LOGIN_ATTEMPTS)) {
-            Log::warning('Login rate limit exceeded', ['ip' => $request->ip()]);
+            Log::info('Login rate limit exceeded', ['ip' => $request->ip()]);
 
             throw new ApiException('TooManyAttempts', 429, 'Too many login attempts. Please wait a few minutes and try again.', [
                 'Retry-After' => (string) RateLimiter::availableIn($throttleKey),
@@ -262,7 +238,7 @@ final class AuthController extends Controller
 
     private static function turnstileToken(Request $request): ?string
     {
-        $token = $request->input('turnstile_token');
+        $token = $request->input('turnstileToken');
 
         return is_string($token) ? $token : null;
     }

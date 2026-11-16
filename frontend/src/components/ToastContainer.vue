@@ -7,8 +7,10 @@ import { useToastStore, type ToastAction } from '../stores/toast'
  *
  * The Pinia store owns queueing, timeouts and the undo action; this component
  * only presents them. Reka brings swipe-to-dismiss, per-severity `aria-live`
- * politeness (errors assertive, everything else polite), pause on hover/focus,
- * and a keyboard route into the toast region via F8.
+ * politeness (errors assertive, everything else polite), and a keyboard route
+ * into the toast region via F8. It pauses the toasts while the pointer or focus
+ * is in the region, or the window is in the background, and the store holds
+ * each toast's close timer while it is paused.
  *
  * Severity is a stripe drawn from the same `--success`/`--danger`/`--warning`/
  * `--info` tokens everything else uses, so a success toast is the same green as
@@ -43,6 +45,8 @@ function runAction(id: number, action: ToastAction) {
       :data-severity="severity(toast.type)"
       :type="toast.type === 'danger' ? 'foreground' : 'background'"
       :duration="Infinity"
+      @pause="toastStore.pause(toast.id)"
+      @resume="toastStore.resume(toast.id)"
       @update:open="(open: boolean) => !open && toastStore.remove(toast.id)"
     >
       <span class="toast-icon"><font-awesome-icon :icon="iconMap[toast.type]" /></span>

@@ -8,6 +8,7 @@ use App\Models\DanbooruCategoryMapping;
 use App\Models\DanbooruTagMapping;
 use App\Models\FavoriteList;
 use App\Models\Media;
+use App\Models\Passkey;
 use App\Models\SavedSearch;
 use App\Models\Tag;
 use App\Models\TagCategory;
@@ -20,22 +21,22 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Laravel\Passkeys\Passkey;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
 /**
- * Every failure under /api answered as `{ error, message }`, never Laravel's
- * HTML or `{ message }` pages: an unknown path is 404 NotFound, a path id with
- * no record behind it 404 with the resource's own code (MediaNotFound, …), a
- * known path with the wrong method 405 MethodNotAllowed (with Allow), a write
- * the browser doesn't mark same-origin 403 ForbiddenOrigin (as VerifyOrigin
- * answers one from an origin it doesn't allow), and anything uncaught 500
- * ServerError. Errors the app raises itself are
- * ApiExceptions, which render themselves, and responses already built (the
- * rate limiters') pass through.
+ * Every failure under /api answered as problem details (ApiException), never
+ * Laravel's HTML or `{ message }` pages, whatever the request accepts: an
+ * unknown path is 404 NotFound, a path id with no record behind it 404 with the
+ * resource's own code (MediaNotFound, …), a known path with the wrong method
+ * 405 MethodNotAllowed (with Allow), a write the browser doesn't mark
+ * same-origin 403 ForbiddenOrigin (as VerifyOrigin answers one from an origin
+ * it doesn't allow), a failed validation 422 InvalidInput, and anything
+ * uncaught 500 ServerError. Errors the app raises itself are ApiExceptions,
+ * which render themselves, and a response built already (the rate limiters')
+ * passes through.
  */
 final class ApiExceptionRenderer
 {
@@ -47,10 +48,20 @@ final class ApiExceptionRenderer
 
         return match (true) {
             $e instanceof AuthenticationException => ApiException::response('Unauthorized', 401, 'Authentication is required. Please log in and try again.'),
-            $e instanceof ValidationException => ApiException::response('InvalidInput', 400, $e->validator->errors()->first()),
+            $e instanceof ValidationException => self::invalid($e),
             $e instanceof HttpExceptionInterface => $this->httpError($e, $request),
             default => ApiException::response('ServerError', 500, 'Something went wrong on the server. Please try again.'),
         };
+    }
+
+    private static function invalid(ValidationException $e): JsonResponse
+    {
+        $errors = [];
+        foreach ($e->validator->errors()->toArray() as $field => $messages) {
+            $errors[] = ['message' => (string) ($messages[0] ?? ''), 'location' => 'body.' . $field];
+        }
+
+        return ApiException::response('InvalidInput', 422, $e->validator->errors()->first(), [], $errors);
     }
 
     private function httpError(HttpExceptionInterface $e, Request $request): JsonResponse

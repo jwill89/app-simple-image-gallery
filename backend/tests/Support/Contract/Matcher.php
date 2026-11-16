@@ -7,7 +7,8 @@ namespace Tests\Support\Contract;
 /**
  * Recorded values against actual ones, with the placeholders in the
  * recordings' README: <token>, <seconds>, <now> and dupes-<today>.json match
- * any value of their kind, and ssim compares to three decimal places.
+ * any value of their kind, <pages:N/L> any total that L to a page makes N
+ * pages of, and ssim compares to three decimal places.
  * Objects compare without regard to key order, arrays in order.
  */
 final class Matcher
@@ -16,6 +17,12 @@ final class Matcher
     {
         if ($expected === '<seconds>') {
             return $actual !== null && ctype_digit($actual) && (int) $actual > 0;
+        }
+        // An API 4 page count, against API 8's total: the untagged and tag
+        // listings said 1 page where there were none.
+        if ($expected !== null && preg_match('#^<pages:(\d+)/(\d+)>$#', $expected, $pages) === 1) {
+            return $actual !== null && ctype_digit($actual)
+                && ((int) ceil((int) $actual / (int) $pages[2]) === (int) $pages[1] || ((int) $pages[1] === 1 && $actual === '0'));
         }
 
         return $expected === $actual;

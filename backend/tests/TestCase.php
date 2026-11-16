@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Testing\TestResponse;
 use Override;
 use Symfony\Component\HttpFoundation\Response;
+use Tests\Support\OpenApiResponses;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -15,7 +16,8 @@ abstract class TestCase extends BaseTestCase
      * Each request to the real server starts with nothing but the session its
      * cookie names. A test's requests share one app, whose session store keeps
      * the last request's data and merges the next one's into it, so a sign-in
-     * would leak into every later request; it is emptied first.
+     * would leak into every later request; it is emptied first. A 2xx answer
+     * from /api is checked against the OpenAPI document (OpenApiResponses).
      *
      * @param array<mixed> $parameters
      * @param array<mixed> $cookies
@@ -30,6 +32,13 @@ abstract class TestCase extends BaseTestCase
             $this->app->make('session.store')->flush();
         }
 
-        return parent::call($method, $uri, $parameters, $cookies, $files, $server, $content);
+        $response = parent::call($method, $uri, $parameters, $cookies, $files, $server, $content);
+
+        $path = (string) parse_url((string) $uri, PHP_URL_PATH);
+        if (preg_match('#^/api(/|$)#', $path) === 1) {
+            OpenApiResponses::check($method, $path, $response->baseResponse);
+        }
+
+        return $response;
     }
 }

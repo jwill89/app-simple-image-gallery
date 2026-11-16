@@ -45,7 +45,7 @@ function replace(user: User) {
 
 async function setAdmin(user: User, isAdmin: boolean) {
   try {
-    const updated = await api.patch<User>(endpoints.users.byId(user.id), { is_admin: isAdmin })
+    const updated = await api.patch<User>(endpoints.users.byId(user.id), { isAdmin })
     if (updated) {
       replace(updated)
     }
@@ -109,7 +109,7 @@ async function deleteUser() {
 }
 
 function joined(user: User): string {
-  return new Date(user.created_at).toLocaleDateString()
+  return user.createdAt === null ? 'unknown' : new Date(user.createdAt).toLocaleDateString()
 }
 </script>
 
@@ -135,16 +135,16 @@ function joined(user: User): string {
                   {{ user.username }}
                   <span v-if="isYou(user)" class="tag is-small ml-1">you</span>
                 </td>
-                <td>{{ user.is_admin ? 'Admin' : 'Member' }}</td>
+                <td>{{ user.isAdmin ? 'Admin' : 'Member' }}</td>
                 <td>{{ joined(user) }}</td>
                 <td class="actions">
                   <button
                     v-if="!isYou(user)"
                     type="button"
                     class="button is-small"
-                    @click="setAdmin(user, !user.is_admin)"
+                    @click="setAdmin(user, !user.isAdmin)"
                   >
-                    {{ user.is_admin ? 'Remove admin' : 'Make admin' }}
+                    {{ user.isAdmin ? 'Remove admin' : 'Make admin' }}
                   </button>
                   <button type="button" class="button is-small" @click="askPassword(user)">
                     Set password

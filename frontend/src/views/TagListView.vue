@@ -5,11 +5,10 @@ import { useTagSearch } from '../composables/useTagSearch'
 import { useGalleryStore } from '../stores/gallery'
 import { useToastStore } from '../stores/toast'
 import { endpoints } from '../api/endpoints'
-import type { Tag, TagListItem, TagListPage } from '../types'
+import type { Tag } from '../types'
 import {
   getTextClassById,
   getCategoryClassById,
-  getCategoryClassByName,
   getCategoryNameById,
 } from '../constants/categories'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
@@ -32,16 +31,19 @@ const auth = useAuthStore()
 // Editing is an admin's.
 const authenticated = computed(() => auth.isAdmin)
 
+/** A row of the list: a tag with its counts (GET /tags?include=counts). */
+type CountedTag = Tag & { mediaCount: number; implicationCount: number }
+
 // One page of the list, searched, sorted and paged by the server: the gallery
 // has thousands of tags, too many to fetch whole and sort here.
-const pagedTags = ref<TagListItem[]>([])
+const pagedTags = ref<CountedTag[]>([])
 const totalTags = ref(0)
 const totalPages = ref(1)
 const loading = ref(false)
 const searchQuery = ref('')
 // Default to most-used first — more useful on a management view than the
 // symbols-first alphabetical order.
-const sortKey = ref<'tag_name' | 'category_name' | 'media_count'>('media_count')
+const sortKey = ref<'tagName' | 'categoryName' | 'mediaCount'>('mediaCount')
 const sortAsc = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(25)
@@ -51,13 +53,13 @@ const showFormModal = ref(false)
 const formMode = ref<'new' | 'edit'>('new')
 const formTagName = ref('')
 const formCategoryId = ref<number | string>('')
-const formEditTag = ref<TagListItem | null>(null)
+const formEditTag = ref<CountedTag | null>(null)
 const formHelp = ref('')
 const formHelpClass = ref('')
 
 // Migrate modal state
 const showMigrateModal = ref(false)
-const migrateSourceTag = ref<TagListItem | null>(null)
+const migrateSourceTag = ref<CountedTag | null>(null)
 const migrateTargetSearch = ref('')
 const migrateTargetId = ref<number | null>(null)
 const migrateHelp = ref('')
@@ -66,7 +68,7 @@ const migrateLoading = ref(false)
 
 // Delete modal state
 const showDeleteModal = ref(false)
-const deleteTargetTag = ref<TagListItem | null>(null)
+const deleteTargetTag = ref<CountedTag | null>(null)
 const deleteMigrateFirst = ref(false)
 const deleteMigrateTargetSearch = ref('')
 const deleteMigrateTargetId = ref<number | null>(null)
@@ -75,10 +77,10 @@ const deleteHelpClass = ref('')
 const deleteLoading = ref(false)
 
 const migrateTargetOptions = useTagSearch(migrateTargetSearch, () =>
-  migrateSourceTag.value ? [migrateSourceTag.value.tag_id] : [],
+  migrateSourceTag.value ? [migrateSourceTag.value.tagId] : [],
 )
 const deleteMigrateTargetOptions = useTagSearch(deleteMigrateTargetSearch, () =>
-  deleteTargetTag.value ? [deleteTargetTag.value.tag_id] : [],
+  deleteTargetTag.value ? [deleteTargetTag.value.tagId] : [],
 )
 
 function toggleSort(key: typeof sortKey.value) {
@@ -115,21 +117,26 @@ async function loadTags(showSpinner = true) {
   // Only the latest request's answer counts; an earlier one may arrive later.
   const seq = ++loadSeq
   try {
-    const page = await api.get<TagListPage>(
-      endpoints.tags.display({
-        page: currentPage.value,
-        perPage: pageSize.value,
-        search: searchQuery.value.trim(),
+    const { data, total } = await api.getPage<Tag[]>(
+      endpoints.tags.list({
+        filter: searchQuery.value.trim(),
         sort: sortKey.value,
         direction: sortAsc.value ? 'asc' : 'desc',
+        limit: pageSize.value,
+        offset: (currentPage.value - 1) * pageSize.value,
+        include: 'counts',
       }),
     )
     if (seq !== loadSeq) {
       return
     }
-    pagedTags.value = page?.items ?? []
-    totalTags.value = page?.total ?? 0
-    totalPages.value = page?.total_pages ?? 1
+    pagedTags.value = (data ?? []).map((tag) => ({
+      ...tag,
+      mediaCount: tag.mediaCount ?? 0,
+      implicationCount: tag.implicationCount ?? 0,
+    }))
+    totalTags.value = total ?? pagedTags.value.length
+    totalPages.value = Math.max(1, Math.ceil(totalTags.value / pageSize.value))
     // Past the end (the last tag on the last page went): show the new last page.
     if (currentPage.value > totalPages.value) {
       currentPage.value = totalPages.value
@@ -168,12 +175,12 @@ function openNewTagModal() {
   showFormModal.value = true
 }
 
-function editTag(tag: TagListItem) {
+function editTag(tag: CountedTag) {
   formMode.value = 'edit'
   formEditTag.value = tag
-  formTagName.value = tag.tag_name
-  formCategoryId.value = tag.category_id
-  formHelp.value = `Editing: ${tag.tag_name}`
+  formTagName.value = tag.tagName
+  formCategoryId.value = tag.categoryId
+  formHelp.value = `Editing: ${tag.tagName}`
   formHelpClass.value = 'is-warning'
   showFormModal.value = true
 }
@@ -193,13 +200,13 @@ function closeModal() {
 }
 
 /** An edit sends only what changed; a field left out stays as it is. */
-function changedFields(tag: TagListItem): { tag_name?: string; category_id?: number } {
-  const changes: { tag_name?: string; category_id?: number } = {}
-  if (formTagName.value !== tag.tag_name) {
-    changes.tag_name = formTagName.value
+function changedFields(tag: CountedTag): { tagName?: string; categoryId?: number } {
+  const changes: { tagName?: string; categoryId?: number } = {}
+  if (formTagName.value !== tag.tagName) {
+    changes.tagName = formTagName.value
   }
-  if (Number(formCategoryId.value) !== tag.category_id) {
-    changes.category_id = Number(formCategoryId.value)
+  if (Number(formCategoryId.value) !== tag.categoryId) {
+    changes.categoryId = Number(formCategoryId.value)
   }
   return changes
 }
@@ -224,12 +231,12 @@ async function submitForm() {
     if (formMode.value === 'edit' && formEditTag.value !== null) {
       const changes = changedFields(formEditTag.value)
       if (Object.keys(changes).length > 0) {
-        await api.patch<Tag>(endpoints.tags.byId(formEditTag.value.tag_id), changes)
+        await api.patch<Tag>(endpoints.tags.byId(formEditTag.value.tagId), changes)
       }
     } else {
       await api.post<Tag>(endpoints.tags.create, {
-        tag_name: formTagName.value,
-        category_id: Number(formCategoryId.value),
+        tagName: formTagName.value,
+        categoryId: Number(formCategoryId.value),
       })
     }
     closeModal()
@@ -238,8 +245,8 @@ async function submitForm() {
   } catch (e) {
     // The server says which field it refused (a taken name, say) and why.
     formHelp.value =
-      getFieldError(e, 'tag_name') ||
-      getFieldError(e, 'category_id') ||
+      getFieldError(e, 'tagName') ||
+      getFieldError(e, 'categoryId') ||
       getErrorMessage(e, 'Error saving tag.')
     formHelpClass.value = 'is-danger'
   }
@@ -266,7 +273,7 @@ async function checkTagName() {
     return
   }
   try {
-    const found = (await api.get<Tag[]>(endpoints.tags.byNames([name]))) ?? []
+    const found = (await api.get<Tag[]>(endpoints.tags.list({ names: [name] }))) ?? []
     if (seq !== tagNameSeq || formMode.value === 'edit') {
       return
     }
@@ -290,7 +297,7 @@ onBeforeUnmount(() => {
   clearTimeout(tagNameTimer)
 })
 
-function openMigrateModal(tag: TagListItem) {
+function openMigrateModal(tag: CountedTag) {
   migrateSourceTag.value = tag
   migrateTargetSearch.value = ''
   migrateTargetId.value = null
@@ -305,8 +312,8 @@ function closeMigrateModal() {
 }
 
 function selectMigrateTarget(tag: Tag) {
-  migrateTargetId.value = tag.tag_id
-  migrateTargetSearch.value = tag.tag_name
+  migrateTargetId.value = tag.tagId
+  migrateTargetSearch.value = tag.tagName
 }
 
 async function submitMigrate() {
@@ -318,8 +325,8 @@ async function submitMigrate() {
 
   migrateLoading.value = true
   try {
-    await api.post(endpoints.tags.migrate(migrateSourceTag.value.tag_id), {
-      target_tag_id: migrateTargetId.value,
+    await api.post(endpoints.tags.migrate(migrateSourceTag.value.tagId), {
+      targetTagId: migrateTargetId.value,
     })
     closeMigrateModal()
     await loadTags(false)
@@ -332,7 +339,7 @@ async function submitMigrate() {
   }
 }
 
-function openDeleteModal(tag: TagListItem) {
+function openDeleteModal(tag: CountedTag) {
   deleteTargetTag.value = tag
   deleteMigrateFirst.value = false
   deleteMigrateTargetSearch.value = ''
@@ -348,8 +355,8 @@ function closeDeleteModal() {
 }
 
 function selectDeleteMigrateTarget(tag: Tag) {
-  deleteMigrateTargetId.value = tag.tag_id
-  deleteMigrateTargetSearch.value = tag.tag_name
+  deleteMigrateTargetId.value = tag.tagId
+  deleteMigrateTargetSearch.value = tag.tagName
 }
 
 async function submitDelete() {
@@ -368,8 +375,8 @@ async function submitDelete() {
     const migrateToId = deleteMigrateFirst.value ? deleteMigrateTargetId.value : 0
     await api.del(
       migrateToId
-        ? endpoints.tags.deleteMigrateTo(deleteTargetTag.value.tag_id, migrateToId)
-        : endpoints.tags.byId(deleteTargetTag.value.tag_id),
+        ? endpoints.tags.deleteMigrateTo(deleteTargetTag.value.tagId, migrateToId)
+        : endpoints.tags.byId(deleteTargetTag.value.tagId),
     )
     closeDeleteModal()
     await loadTags(false)
@@ -443,19 +450,19 @@ onMounted(() => {
           <table class="table is-striped is-hoverable is-fullwidth">
             <thead>
               <tr>
-                <th :aria-sort="ariaSort('tag_name')">
-                  <button type="button" class="sort-header" @click="toggleSort('tag_name')">
-                    Tag <font-awesome-icon :icon="sortIcon('tag_name')" />
+                <th :aria-sort="ariaSort('tagName')">
+                  <button type="button" class="sort-header" @click="toggleSort('tagName')">
+                    Tag <font-awesome-icon :icon="sortIcon('tagName')" />
                   </button>
                 </th>
-                <th :aria-sort="ariaSort('category_name')">
-                  <button type="button" class="sort-header" @click="toggleSort('category_name')">
-                    Category <font-awesome-icon :icon="sortIcon('category_name')" />
+                <th :aria-sort="ariaSort('categoryName')">
+                  <button type="button" class="sort-header" @click="toggleSort('categoryName')">
+                    Category <font-awesome-icon :icon="sortIcon('categoryName')" />
                   </button>
                 </th>
-                <th :aria-sort="ariaSort('media_count')">
-                  <button type="button" class="sort-header" @click="toggleSort('media_count')">
-                    Media <font-awesome-icon :icon="sortIcon('media_count')" />
+                <th :aria-sort="ariaSort('mediaCount')">
+                  <button type="button" class="sort-header" @click="toggleSort('mediaCount')">
+                    Media <font-awesome-icon :icon="sortIcon('mediaCount')" />
                   </button>
                 </th>
                 <th>Implies</th>
@@ -463,39 +470,41 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="tag in pagedTags" :key="tag.tag_id">
+              <tr v-for="tag in pagedTags" :key="tag.tagId">
                 <td>
-                  <span class="tag is-medium" :class="getCategoryClassByName(tag.category_name)">
-                    {{ tag.tag_name }}
+                  <span class="tag is-medium" :class="getCategoryClassById(tag.categoryId)">
+                    {{ tag.tagName }}
                   </span>
                 </td>
                 <td>
-                  <span class="has-text-weight-semibold">{{ tag.category_name }}</span>
+                  <span class="has-text-weight-semibold">{{
+                    getCategoryNameById(tag.categoryId)
+                  }}</span>
                 </td>
                 <td>
                   <router-link
-                    v-if="tag.media_count > 0"
+                    v-if="tag.mediaCount > 0"
                     class="has-text-link"
                     :to="{
                       name: 'media-with-tags',
-                      params: { page: 1, perPage: 40, tags: tag.tag_name },
+                      params: { page: 1, perPage: 40, tags: tag.tagName },
                     }"
                   >
-                    {{ tag.media_count }}
+                    {{ tag.mediaCount }}
                   </router-link>
                   <span v-else>0</span>
                 </td>
                 <td>
                   <router-link
-                    v-if="tag.implication_count > 0"
-                    :to="{ name: 'tag-implications', params: { tagId: tag.tag_id } }"
+                    v-if="tag.implicationCount > 0"
+                    :to="{ name: 'tag-implications', params: { tagId: tag.tagId } }"
                     class="has-text-link"
                   >
-                    {{ tag.implication_count }}
+                    {{ tag.implicationCount }}
                   </router-link>
                   <router-link
                     v-else
-                    :to="{ name: 'tag-implications', params: { tagId: tag.tag_id } }"
+                    :to="{ name: 'tag-implications', params: { tagId: tag.tagId } }"
                     class="has-text-grey-light"
                   >
                     0
@@ -505,7 +514,7 @@ onMounted(() => {
                      rows those would be 75 saturated chips, making the
                      least-used control the loudest thing on the page. -->
                 <td v-if="authenticated" class="row-actions">
-                  <AppMenu :label="`Actions for ${tag.tag_name}`">
+                  <AppMenu :label="`Actions for ${tag.tagName}`">
                     <AppMenuItem icon="fa-solid fa-pen" @select="editTag(tag)">Edit</AppMenuItem>
                     <AppMenuItem
                       icon="fa-solid fa-arrow-right-arrow-left"
@@ -530,27 +539,27 @@ onMounted(() => {
              its buttons vertically — 242px off the right edge, where you can't
              see the thing setting the row height. -->
         <ul class="tag-list">
-          <li v-for="tag in pagedTags" :key="tag.tag_id" class="tag-list-row">
+          <li v-for="tag in pagedTags" :key="tag.tagId" class="tag-list-row">
             <div class="tag-list-main">
-              <span class="tag" :class="getCategoryClassByName(tag.category_name)">
-                {{ tag.tag_name }}
+              <span class="tag" :class="getCategoryClassById(tag.categoryId)">
+                {{ tag.tagName }}
               </span>
               <span class="tag-list-meta">
-                {{ tag.category_name }} ·
+                {{ getCategoryNameById(tag.categoryId) }} ·
                 <router-link
                   :to="{
                     name: 'media-with-tags',
-                    params: { page: 1, perPage: 40, tags: tag.tag_name },
+                    params: { page: 1, perPage: 40, tags: tag.tagName },
                   }"
-                  >{{ tag.media_count.toLocaleString() }} media</router-link
+                  >{{ tag.mediaCount.toLocaleString() }} media</router-link
                 >
                 ·
-                <router-link :to="{ name: 'tag-implications', params: { tagId: tag.tag_id } }"
-                  >{{ tag.implication_count }} implies</router-link
+                <router-link :to="{ name: 'tag-implications', params: { tagId: tag.tagId } }"
+                  >{{ tag.implicationCount }} implies</router-link
                 >
               </span>
             </div>
-            <AppMenu v-if="authenticated" :label="`Actions for ${tag.tag_name}`">
+            <AppMenu v-if="authenticated" :label="`Actions for ${tag.tagName}`">
               <AppMenuItem icon="fa-solid fa-pen" @select="editTag(tag)">Edit</AppMenuItem>
               <AppMenuItem icon="fa-solid fa-arrow-right-arrow-left" @select="openMigrateModal(tag)"
                 >Migrate…</AppMenuItem
@@ -608,10 +617,10 @@ onMounted(() => {
                 <option value="">Select a Category</option>
                 <option
                   v-for="cat in store.categories"
-                  :key="cat.category_id"
-                  :value="cat.category_id"
+                  :key="cat.categoryId"
+                  :value="cat.categoryId"
                 >
-                  {{ cat.category_name }}
+                  {{ cat.categoryName }}
                 </option>
               </select>
             </div>
@@ -633,7 +642,7 @@ onMounted(() => {
       >
         <p class="mb-4">
           Migrate all items tagged with
-          <strong>{{ migrateSourceTag?.tag_name }}</strong>
+          <strong>{{ migrateSourceTag?.tagName }}</strong>
           to another tag. Items that already have the target tag will simply have the source tag
           removed.
         </p>
@@ -651,15 +660,15 @@ onMounted(() => {
           <div v-if="migrateTargetOptions.length > 0" class="dropdown-list">
             <button
               v-for="t in migrateTargetOptions"
-              :key="t.tag_id"
+              :key="t.tagId"
               class="dropdown-item"
-              :class="{ 'is-active': migrateTargetId === t.tag_id }"
+              :class="{ 'is-active': migrateTargetId === t.tagId }"
               type="button"
               @click="selectMigrateTarget(t)"
             >
-              <span :class="getTextClassById(t.category_id)">{{ t.tag_name }}</span>
-              <span class="tag is-small ml-2" :class="getCategoryClassById(t.category_id)">{{
-                getCategoryNameById(t.category_id)
+              <span :class="getTextClassById(t.categoryId)">{{ t.tagName }}</span>
+              <span class="tag is-small ml-2" :class="getCategoryClassById(t.categoryId)">{{
+                getCategoryNameById(t.categoryId)
               }}</span>
             </button>
           </div>
@@ -689,7 +698,7 @@ onMounted(() => {
       >
         <p class="mb-4">
           Are you sure you want to delete
-          <strong>{{ deleteTargetTag?.tag_name }}</strong>? This will remove the tag from all items.
+          <strong>{{ deleteTargetTag?.tagName }}</strong>? This will remove the tag from all items.
         </p>
         <div class="field">
           <label class="checkbox">
@@ -711,15 +720,15 @@ onMounted(() => {
           <div v-if="deleteMigrateTargetOptions.length > 0" class="dropdown-list">
             <button
               v-for="t in deleteMigrateTargetOptions"
-              :key="t.tag_id"
+              :key="t.tagId"
               class="dropdown-item"
-              :class="{ 'is-active': deleteMigrateTargetId === t.tag_id }"
+              :class="{ 'is-active': deleteMigrateTargetId === t.tagId }"
               type="button"
               @click="selectDeleteMigrateTarget(t)"
             >
-              <span :class="getTextClassById(t.category_id)">{{ t.tag_name }}</span>
-              <span class="tag is-small ml-2" :class="getCategoryClassById(t.category_id)">{{
-                getCategoryNameById(t.category_id)
+              <span :class="getTextClassById(t.categoryId)">{{ t.tagName }}</span>
+              <span class="tag is-small ml-2" :class="getCategoryClassById(t.categoryId)">{{
+                getCategoryNameById(t.categoryId)
               }}</span>
             </button>
           </div>

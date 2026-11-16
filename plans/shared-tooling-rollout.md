@@ -2,6 +2,8 @@
 
 The passages of shared-tooling's cross-project plan (`PLAN.md` at v2.6.0) that name this project, moved here word for word on 2026-11-10 when shared-tooling became project-agnostic. The portfolio-wide rest is in `PLAN.md` beside the project folders.
 
+Rollout complete, 2026-11-16.
+
 ## Decisions so far
 
 The standardization work starts from these, so it doesn't reopen them. All were decided on November 5, 2026.
@@ -102,8 +104,8 @@ Most gaps are missing CI, Dependabot and post-deploy checks. The riskiest were t
 
 3. **Gather the standards into `standards/` in this repo** (github.com/jwill89/shared-tooling, public). Claude Code sorts each rule as shared, project-only or conflicting and brings you the conflicts. It comes after the rollouts of Senpan, Marxbot and TarotGen.io (decided 2026-11-06), which take their CLAUDE.md pointer then.
    - Where a decision changes how an existing project works, the change is that project's own follow-up:
-     - **Simple Image Gallery**: RFC 9457 errors, 422 (no longer overriding Laravel), `PUT` as a full replacement, camelCase JSON, trailing slashes accepted, a CSP with `frame-ancestors 'none'`, a 404 for missing static files, and `color-named` back on.
-     - Done in 7.2.0 and 7.3.0 (2026-11-11): the Apache vhost (one file, shipped by the module, which retires certbot's -le-ssl site), the queue unit and the scheduler's cron file are templates in `deploy/` that every deploy installs; sessions are rows of the SQLite database under the hash of their id, and the cookie is `__Host-` prefixed on https; passwords are argon2id and rehashed at sign-in; limits count an IPv6 client by its /64; an admin can't remove their own role or delete their own account. Left from the sign-in rules: the remember token is stored as issued; the queue unit has no hardening block or memory cap.
+     - **Simple Image Gallery**: RFC 9457 errors, 422 (no longer overriding Laravel), `PUT` as a full replacement, camelCase JSON, trailing slashes accepted, a CSP with `frame-ancestors 'none'`, a 404 for missing static files, and `color-named` back on. Done in 8.0.0 (2026-11-16), with the partial `PUT`s dropped for `PATCH`, query-string paging, RFC 3339 times, the theme switch and the hardened queue worker.
+     - Done in 7.2.0 and 7.3.0 (2026-11-11): the Apache vhost (one file, shipped by the module, which retires certbot's -le-ssl site), the queue unit and the scheduler's cron file are templates in `deploy/` that every deploy installs; sessions are rows of the SQLite database under the hash of their id, and the cookie is `__Host-` prefixed on https; passwords are argon2id and rehashed at sign-in; limits count an IPv6 client by its /64; an admin can't remove their own role or delete their own account. Left from the sign-in rules: the remember token is stored as issued (a departure with its reason in AGENTS.md); the queue unit was hardened in 8.0.0, and its memory cap waits on a measured peak.
 
 <!-- -->
 

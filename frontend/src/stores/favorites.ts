@@ -4,6 +4,7 @@ import { useApi, getErrorMessage } from '../composables/useApi'
 import { endpoints } from '../api/endpoints'
 import type { FavoriteList } from '../types'
 import { useToastStore } from './toast'
+import { readPreference, writePreference } from '../storage'
 
 const STORAGE_KEY = 'gallery_favorites'
 
@@ -11,8 +12,8 @@ const STORAGE_KEY = 'gallery_favorites'
 const IMPORT_BATCH = 2000
 
 function loadFromStorage(): Set<number> {
+  const raw = readPreference(STORAGE_KEY)
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const arr: unknown = JSON.parse(raw)
       if (Array.isArray(arr)) {
@@ -26,7 +27,7 @@ function loadFromStorage(): Set<number> {
 }
 
 function saveToStorage(ids: Set<number>): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([...ids]))
+  writePreference(STORAGE_KEY, JSON.stringify([...ids]))
 }
 
 /**
@@ -52,7 +53,7 @@ export const useFavoritesStore = defineStore('favorites', () => {
   const isAccount = computed(() => signedInState.value)
   const ids = computed(() => (signedInState.value ? accountIds.value : localIds.value))
   const count = computed(() => ids.value.size)
-  const defaultList = computed(() => lists.value.find((l) => l.is_default) ?? null)
+  const defaultList = computed(() => lists.value.find((l) => l.isDefault) ?? null)
 
   function isFavorite(mediaId: number): boolean {
     return ids.value.has(mediaId)
@@ -70,7 +71,7 @@ export const useFavoritesStore = defineStore('favorites', () => {
 
   function adjustCount(listId: number, by: number): void {
     lists.value = lists.value.map((l) =>
-      l.list_id === listId ? { ...l, media_count: Math.max(0, l.media_count + by) } : l,
+      l.listId === listId ? { ...l, mediaCount: Math.max(0, l.mediaCount + by) } : l,
     )
   }
 
@@ -82,13 +83,13 @@ export const useFavoritesStore = defineStore('favorites', () => {
     }
     const list = defaultList.value
     if (list) {
-      await setInList(list.list_id, mediaId, !accountIds.value.has(mediaId))
+      await setInList(list.listId, mediaId, !accountIds.value.has(mediaId))
     }
   }
 
   /** Put media in a list or take it out; shown at once, undone if the server refuses. */
   async function setInList(listId: number, mediaId: number, present: boolean): Promise<void> {
-    const isDefault = listId === defaultList.value?.list_id
+    const isDefault = listId === defaultList.value?.listId
     if (isDefault) {
       accountIds.value = withId(accountIds.value, mediaId, present)
     }
@@ -120,8 +121,8 @@ export const useFavoritesStore = defineStore('favorites', () => {
     if (local.length > 0) {
       let added = 0
       for (let i = 0; i < local.length; i += IMPORT_BATCH) {
-        const result = await api.post<{ added: number }>(endpoints.lists.media(list.list_id), {
-          media_ids: local.slice(i, i + IMPORT_BATCH),
+        const result = await api.post<{ added: number }>(endpoints.lists.media(list.listId), {
+          mediaIds: local.slice(i, i + IMPORT_BATCH),
         })
         added += result?.added ?? 0
       }
@@ -135,7 +136,7 @@ export const useFavoritesStore = defineStore('favorites', () => {
         await reloadLists()
       }
     }
-    accountIds.value = new Set((await api.get<number[]>(endpoints.lists.ids(list.list_id))) ?? [])
+    accountIds.value = new Set((await api.get<number[]>(endpoints.lists.ids(list.listId))) ?? [])
   }
 
   function signedOut(): void {
@@ -159,13 +160,13 @@ export const useFavoritesStore = defineStore('favorites', () => {
   async function renameList(listId: number, name: string): Promise<void> {
     const list = await api.patch<FavoriteList>(endpoints.lists.byId(listId), { name })
     if (list) {
-      lists.value = lists.value.map((l) => (l.list_id === listId ? list : l))
+      lists.value = lists.value.map((l) => (l.listId === listId ? list : l))
     }
   }
 
   async function deleteList(listId: number): Promise<void> {
     await api.del(endpoints.lists.byId(listId))
-    lists.value = lists.value.filter((l) => l.list_id !== listId)
+    lists.value = lists.value.filter((l) => l.listId !== listId)
   }
 
   /** Signed out: drop favorites whose media no longer exists. */

@@ -13,7 +13,7 @@ final class FavoriteListRequest extends ApiRequest
     /** @return array<string, list<mixed>> */
     public function rules(): array
     {
-        $list = $this->route('list_id');
+        $list = $this->route('listId');
 
         return [
             'name' => [
@@ -38,7 +38,7 @@ final class FavoriteListRequest extends ApiRequest
 
     protected function errorCodes(): array
     {
-        return ['name' => ['InvalidListName', 400], 'name.unique' => ['ListExists', 409]];
+        return ['name' => ['InvalidListName', 422], 'name.unique' => ['ListExists', 409]];
     }
 
     protected function prepareForValidation(): void

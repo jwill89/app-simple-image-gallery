@@ -13,7 +13,7 @@ export interface Credentials {
   username: string
   password: string
   remember: boolean
-  turnstile_token?: string
+  turnstileToken?: string
 }
 
 /**
@@ -29,7 +29,7 @@ export const useAuthStore = defineStore('auth', () => {
   const config = ref<AuthConfig | null>(null)
 
   const isSignedIn = computed(() => user.value !== null)
-  const isAdmin = computed(() => user.value?.is_admin === true)
+  const isAdmin = computed(() => user.value?.isAdmin === true)
 
   whenUnauthorized(sessionEnded)
 
@@ -49,8 +49,8 @@ export const useAuthStore = defineStore('auth', () => {
   /** Whether sign-up is open, and Turnstile's site key: asked once. */
   async function loadConfig(): Promise<AuthConfig> {
     config.value ??= (await api.get<AuthConfig>(endpoints.auth.config)) ?? {
-      signup_open: false,
-      turnstile_site_key: null,
+      signupOpen: false,
+      turnstileSiteKey: null,
     }
     return config.value
   }

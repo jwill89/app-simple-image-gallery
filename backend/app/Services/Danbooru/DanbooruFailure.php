@@ -45,7 +45,7 @@ enum DanbooruFailure
             self::Auth => new ApiException(
                 'DanbooruAuthFailed',
                 500,
-                'Danbooru rejected the request. Check DANBOORU_LOGIN and DANBOORU_API_KEY '
+                'Danbooru rejected the request. Check GALLERY_DANBOORU_LOGIN and GALLERY_DANBOORU_API_KEY '
                 . 'in the server .env, and the IP allowlist on the API key — keys are '
                 . 'revoked when the account password changes, and a new outbound address '
                 . '(enabling IPv6 gives the server one) is refused until it is allowlisted.',
@@ -74,7 +74,7 @@ enum DanbooruFailure
     private static function unblockAdvice(?string $ray): string
     {
         if (config()->string('gallery.danbooru.user_id') === '') {
-            return 'Set DANBOORU_USER_ID in the server .env to the account\'s numeric user ID, '
+            return 'Set GALLERY_DANBOORU_USER_ID in the server .env to the account\'s numeric user ID, '
                 . 'which Danbooru asks API clients to name in their User-Agent.';
         }
 

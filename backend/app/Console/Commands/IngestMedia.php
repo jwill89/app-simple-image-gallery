@@ -27,7 +27,7 @@ final class IngestMedia extends Command
     {
         $importTags = (bool) $this->option('import-tags');
         if ($importTags && !DanbooruTagger::isConfigured()) {
-            $this->error('Danbooru credentials are not configured: set DANBOORU_LOGIN and DANBOORU_API_KEY.');
+            $this->error('Danbooru credentials are not configured: set GALLERY_DANBOORU_LOGIN and GALLERY_DANBOORU_API_KEY.');
 
             return self::FAILURE;
         }

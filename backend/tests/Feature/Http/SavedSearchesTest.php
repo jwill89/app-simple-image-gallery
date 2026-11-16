@@ -10,7 +10,7 @@ test('a search is saved, listed by name, renamed and deleted', function (): void
     $reader = User::factory()->create();
 
     $id = asAccount($reader)->postJson('/api/saved-searches', ['name' => ' Cats ', 'query' => 'cat,-dog'])
-        ->assertCreated()->assertJsonPath('name', 'Cats')->assertJsonPath('query', 'cat,-dog')->json('search_id');
+        ->assertCreated()->assertJsonPath('name', 'Cats')->assertJsonPath('query', 'cat,-dog')->json('searchId');
     asAccount($reader)->postJson('/api/saved-searches', ['name' => 'Arrivals', 'query' => 'untagged'])->assertCreated();
 
     asAccount($reader)->getJson('/api/saved-searches')->assertOk()
@@ -29,12 +29,13 @@ test('a search needs a name and a query, and its name is the account\'s alone', 
     asAccount($reader)->postJson('/api/saved-searches', ['name' => 'Cats', 'query' => 'cat'])->assertCreated();
 
     asAccount($reader)->postJson('/api/saved-searches', ['name' => 'CATS', 'query' => 'cat'])
-        ->assertStatus(409)->assertJson(['error' => 'SearchExists']);
+        ->assertStatus(409)->assertJson(['type' => problemType('SearchExists')]);
     asAccount($reader)->postJson('/api/saved-searches', ['name' => '', 'query' => ''])
-        ->assertStatus(400)->assertJson(['error' => 'InvalidSearchName'])
-        ->assertJsonStructure(['errors' => ['name', 'query']]);
+        ->assertStatus(422)->assertJson(['type' => problemType('InvalidSearchName')])
+        ->assertJsonPath('errors.0.location', 'body.name')
+        ->assertJsonPath('errors.1.location', 'body.query');
     asAccount($reader)->postJson('/api/saved-searches', ['name' => 'Long', 'query' => str_repeat('x', 501)])
-        ->assertStatus(400)->assertJson(['error' => 'InvalidQuery']);
+        ->assertStatus(422)->assertJson(['type' => problemType('InvalidQuery')]);
 
     asAccount()->postJson('/api/saved-searches', ['name' => 'Cats', 'query' => 'cat'])->assertCreated();
 });
@@ -44,7 +45,7 @@ test('someone else\'s search is as missing as a deleted one', function (): void 
     $search = User::factory()->create()->savedSearches()->create(['name' => 'Theirs', 'query' => 'cat']);
 
     asAccount($reader)->patchJson("/api/saved-searches/{$search->search_id}", ['name' => 'Mine'])
-        ->assertNotFound()->assertJson(['error' => 'SearchNotFound']);
+        ->assertNotFound()->assertJson(['type' => problemType('SearchNotFound')]);
     asAccount($reader)->deleteJson("/api/saved-searches/{$search->search_id}")->assertNotFound();
-    asAccount($reader)->deleteJson('/api/saved-searches/999')->assertNotFound()->assertJson(['error' => 'SearchNotFound']);
+    asAccount($reader)->deleteJson('/api/saved-searches/999')->assertNotFound()->assertJson(['type' => problemType('SearchNotFound')]);
 });

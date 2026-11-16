@@ -53,7 +53,7 @@ function uploadTinyPng(bool $fetchTags): TestResponse
 
     return asAdmin()->post('/api/media', [
         'files' => [new UploadedFile($copy, 'tiny.png', 'image/png', null, true)],
-        ...($fetchTags ? ['fetch_tags' => '1'] : []),
+        ...($fetchTags ? ['fetchTags' => '1'] : []),
     ]);
 }
 
@@ -64,20 +64,20 @@ test('an upload adds the file and queues its thumbnails and its Danbooru lookup'
 
     $id = $response->json('results.0.id');
     expect($response->json())->toBe([
-        'results' => [['file_name' => 'tiny.png', 'status' => 'success', 'id' => $id, 'hash' => md5_file(ContractFixture::path('uploads/tiny.png')), 'tags_status' => 'queued']],
-        'total_uploaded' => 1,
-        'total_duplicates' => 0,
-        'total_failed' => 0,
+        'results' => [['fileName' => 'tiny.png', 'status' => 'success', 'id' => $id, 'hash' => md5_file(ContractFixture::path('uploads/tiny.png')), 'tagsStatus' => 'queued']],
+        'totalUploaded' => 1,
+        'totalDuplicates' => 0,
+        'totalFailed' => 0,
     ]);
     Queue::assertPushed(RebuildFromFile::class, static fn(RebuildFromFile $job): bool => $job->media->media_id === $id && $job->derivative === MediaDerivative::Thumbnails);
     Queue::assertPushed(ImportDanbooruTags::class, static fn(ImportDanbooruTags $job): bool => $job->media->media_id === $id);
-    getJson("/api/media/tag-imports?ids={$id}")->assertOk()->assertExactJson([['media_id' => $id, 'status' => 'queued', 'tags_applied' => 0, 'error' => null]]);
+    getJson("/api/media/tag-imports?ids={$id}")->assertOk()->assertExactJson([['mediaId' => $id, 'status' => 'queued', 'tagsApplied' => 0, 'error' => null]]);
 });
 
 test('without fetch_tags no lookup is queued', function (): void {
     Queue::fake();
 
-    uploadTinyPng(fetchTags: false)->assertCreated()->assertJsonMissingPath('results.0.tags_status');
+    uploadTinyPng(fetchTags: false)->assertCreated()->assertJsonMissingPath('results.0.tagsStatus');
 
     Queue::assertPushed(RebuildFromFile::class);
     Queue::assertNotPushed(ImportDanbooruTags::class);
@@ -89,7 +89,7 @@ test('asked for tags with Danbooru not set up, the file says so', function (): v
 
     uploadTinyPng(fetchTags: true)->assertCreated()
         ->assertJsonPath('results.0.status', 'success')
-        ->assertJsonPath('results.0.tags_error', 'Danbooru is not set up on the server (DANBOORU_LOGIN and DANBOORU_API_KEY).');
+        ->assertJsonPath('results.0.tagsError', 'Danbooru is not set up on the server (GALLERY_DANBOORU_LOGIN and GALLERY_DANBOORU_API_KEY).');
 
     Queue::assertNotPushed(ImportDanbooruTags::class);
 });
@@ -103,10 +103,10 @@ test('tag-imports reports a lookup that applied tags, and one that found no post
 
     $statuses = getJson('/api/media/tag-imports?ids=1,3,4')->assertOk()->json();
 
-    expect($statuses[0])->toMatchArray(['media_id' => 1, 'status' => 'applied'])
-        ->and($statuses[0]['tags_applied'])->toBeGreaterThan(0)
-        ->and($statuses[1])->toBe(['media_id' => 3, 'status' => 'not_found', 'tags_applied' => 0, 'error' => null])
-        ->and($statuses[2])->toBe(['media_id' => 4, 'status' => 'none', 'tags_applied' => 0, 'error' => null]);
+    expect($statuses[0])->toMatchArray(['mediaId' => 1, 'status' => 'applied'])
+        ->and($statuses[0]['tagsApplied'])->toBeGreaterThan(0)
+        ->and($statuses[1])->toBe(['mediaId' => 3, 'status' => 'not_found', 'tagsApplied' => 0, 'error' => null])
+        ->and($statuses[2])->toBe(['mediaId' => 4, 'status' => 'none', 'tagsApplied' => 0, 'error' => null]);
 });
 
 test('tag-imports reports a failed lookup with its reason', function (): void {
@@ -116,11 +116,11 @@ test('tag-imports reports a failed lookup with its reason', function (): void {
     new ImportDanbooruTags(Media::query()->findOrFail(2))->handle(app(DanbooruTagger::class), app(TagImports::class));
 
     $status = getJson('/api/media/tag-imports?ids=2')->assertOk()->json('0');
-    expect($status)->toMatchArray(['media_id' => 2, 'status' => 'failed', 'tags_applied' => 0])
+    expect($status)->toMatchArray(['mediaId' => 2, 'status' => 'failed', 'tagsApplied' => 0])
         ->and($status['error'])->toContain('Cloudflare Ray ID abc123-EWR');
 });
 
 test('tag-imports needs ids', function (): void {
-    getJson('/api/media/tag-imports')->assertStatus(400)->assertJson(['error' => 'InvalidInput']);
-    getJson('/api/media/tag-imports?ids=abc')->assertStatus(400);
+    getJson('/api/media/tag-imports')->assertStatus(422)->assertJson(['type' => problemType('InvalidInput')]);
+    getJson('/api/media/tag-imports?ids=abc')->assertStatus(422);
 });

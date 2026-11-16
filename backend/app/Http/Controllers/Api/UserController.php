@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use App\OpenApi\ProblemJson;
 use OpenApi\Spec as OAS;
 
 /**
@@ -34,7 +35,7 @@ final class UserController extends Controller
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         responses: [
             new OAS\Response(response: 200, description: 'The accounts', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/User'))),
-            new OAS\Response(response: 403, description: 'Forbidden', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'Forbidden (not an admin)', content: new ProblemJson()),
         ],
     )]
     public function index(): AnonymousResourceCollection
@@ -43,34 +44,28 @@ final class UserController extends Controller
     }
 
     /**
-     * PATCH /users/{user_id} — Make an account an admin or not, or set its
+     * PATCH /users/{userId} — Make an account an admin or not, or set its
      * password (which signs it out everywhere).
      */
     #[OAS\Operation\Patch(
-        path: '/users/{user_id}',
+        path: '/users/{userId}',
         operationId: 'updateUser',
         summary: 'Change an account',
         tags: ['Users'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        parameters: [new OAS\Parameter(name: 'user_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
-        requestBody: new OAS\RequestBody(
-            required: true,
-            content: new OAS\MediaType\Json(properties: [
-                new OAS\Property(property: 'is_admin', schema: new OAS\Schema(type: 'boolean')),
-                new OAS\Property(property: 'password', schema: new OAS\Schema(type: 'string', maxLength: 200, minLength: 8)),
-            ]),
-        ),
+        parameters: [new OAS\Parameter(name: 'userId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/UserUpdateBody')),
         responses: [
             new OAS\Response(response: 200, description: 'The account', content: new OAS\MediaType\Json(ref: '#/components/schemas/User')),
-            new OAS\Response(response: 400, description: 'WeakPassword', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 403, description: 'Forbidden (not an admin), OwnAdminRole (an admin can\'t remove their own admin role)', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 404, description: 'UserNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 409, description: 'LastAdmin', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'Forbidden (not an admin), OwnAdminRole (an admin can\'t remove their own admin role)', content: new ProblemJson()),
+            new OAS\Response(response: 404, description: 'UserNotFound', content: new ProblemJson()),
+            new OAS\Response(response: 409, description: 'LastAdmin', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'InvalidInput, WeakPassword', content: new ProblemJson()),
         ],
     )]
     public function update(UserUpdateRequest $request, User $user): UserResource
     {
-        if ($request->has('is_admin') && !$request->boolean('is_admin')) {
+        if ($request->has('isAdmin') && !$request->boolean('isAdmin')) {
             if ($user->isLastAdmin()) {
                 throw new ApiException('LastAdmin', 409, 'The last admin can\'t stop being one. Make another admin first.');
             }
@@ -79,8 +74,8 @@ final class UserController extends Controller
             }
         }
 
-        if ($request->has('is_admin')) {
-            $user->is_admin = $request->boolean('is_admin');
+        if ($request->has('isAdmin')) {
+            $user->is_admin = $request->boolean('isAdmin');
         }
         $user->save();
         if ($request->has('password')) {
@@ -92,21 +87,21 @@ final class UserController extends Controller
     }
 
     /**
-     * DELETE /users/{user_id} — Delete an account, with its lists, blocked
+     * DELETE /users/{userId} — Delete an account, with its lists, blocked
      * tags and saved searches.
      */
     #[OAS\Operation\Delete(
-        path: '/users/{user_id}',
+        path: '/users/{userId}',
         operationId: 'deleteUser',
         summary: 'Delete an account',
         tags: ['Users'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        parameters: [new OAS\Parameter(name: 'user_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        parameters: [new OAS\Parameter(name: 'userId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Deleted'),
-            new OAS\Response(response: 403, description: 'Forbidden (not an admin), OwnAdminAccount (an admin can\'t delete their own account)', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 404, description: 'UserNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 409, description: 'LastAdmin', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'Forbidden (not an admin), OwnAdminAccount (an admin can\'t delete their own account)', content: new ProblemJson()),
+            new OAS\Response(response: 404, description: 'UserNotFound', content: new ProblemJson()),
+            new OAS\Response(response: 409, description: 'LastAdmin', content: new ProblemJson()),
         ],
     )]
     public function destroy(Request $request, User $user): Response

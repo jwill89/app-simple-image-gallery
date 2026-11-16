@@ -32,7 +32,7 @@ const selectedIds = computed({
         if (!tag) {
           return undefined
         }
-        return negated ? -tag.tag_id : tag.tag_id
+        return negated ? -tag.tagId : tag.tagId
       })
       .filter((id): id is number => id !== undefined)
   },
@@ -44,7 +44,7 @@ const selectedIds = computed({
         if (!tag) {
           return undefined
         }
-        return negated ? `-${tag.tag_name}` : tag.tag_name
+        return negated ? `-${tag.tagName}` : tag.tagName
       })
       .filter((name): name is string => name !== undefined)
     emit('update:modelValue', names)
@@ -90,5 +90,12 @@ const hasSelectedTags = computed(() => props.modelValue.length > 0)
 .tag-search-container {
   min-width: 280px;
   max-width: 400px;
+}
+
+/* On a phone the navbar's controls share one row with it, so it gives way. */
+@media screen and (width <= 640px) {
+  .tag-search-container {
+    min-width: 0;
+  }
 }
 </style>

@@ -135,7 +135,7 @@ const selectedTagObjects = computed<SelectedTag[]>(() =>
 )
 
 function onSelectTag(tag: Tag) {
-  const id = negating.value ? -tag.tag_id : tag.tag_id
+  const id = negating.value ? -tag.tagId : tag.tagId
   emit('update:modelValue', [...props.modelValue, id])
   searchTerm.value = ''
 }
@@ -181,7 +181,7 @@ function onBackspace() {
         <!-- `model-value` is pinned to null on purpose. Selection lives in this
              component's own signed-ID array (negatives = excluded), so if the
              root were allowed to hold a selection the input would render the
-             raw tag_id next to the chip. The filter text is bound on
+             raw tagId next to the chip. The filter text is bound on
              ComboboxInput — ComboboxRoot has no `searchTerm` prop in Reka 2.x. -->
         <ComboboxRoot
           ref="combobox"
@@ -198,26 +198,24 @@ function onBackspace() {
             <!-- eslint-disable-next-line vuejs-accessibility/no-static-element-interactions -- right-click is only a shortcut; the keyboard route is the leading `-` -->
             <span
               v-for="tag in selectedTagObjects"
-              :key="tag.tag_id"
+              :key="tag.tagId"
               class="tag"
               :class="
-                tag.negated
-                  ? ['tag--neutral', 'tag-negated']
-                  : getCategoryClassById(tag.category_id)
+                tag.negated ? ['tag--neutral', 'tag-negated'] : getCategoryClassById(tag.categoryId)
               "
               :title="
                 tag.negated
-                  ? `Excluding: ${tag.tag_name} (right-click to include)`
-                  : `Including: ${tag.tag_name} (right-click to exclude)`
+                  ? `Excluding: ${tag.tagName} (right-click to include)`
+                  : `Including: ${tag.tagName} (right-click to exclude)`
               "
-              @contextmenu.prevent="toggleNegate(tag.negated ? -tag.tag_id : tag.tag_id)"
+              @contextmenu.prevent="toggleNegate(tag.negated ? -tag.tagId : tag.tagId)"
             >
-              <template v-if="tag.negated">-</template>{{ tag.tag_name }}
+              <template v-if="tag.negated">-</template>{{ tag.tagName }}
               <button
                 type="button"
                 class="delete is-small"
-                :aria-label="`Remove ${tag.tag_name}`"
-                @click.stop="removeTag(tag.negated ? -tag.tag_id : tag.tag_id)"
+                :aria-label="`Remove ${tag.tagName}`"
+                @click.stop="removeTag(tag.negated ? -tag.tagId : tag.tagId)"
               />
             </span>
 
@@ -239,13 +237,13 @@ function onBackspace() {
               <ComboboxViewport>
                 <ComboboxItem
                   v-for="tag in filteredTags"
-                  :key="tag.tag_id"
+                  :key="tag.tagId"
                   class="tag-dropdown-item"
-                  :value="tag.tag_id"
+                  :value="tag.tagId"
                   @select="onSelectTag(tag)"
                 >
-                  <span class="tag is-small" :class="getCategoryClassById(tag.category_id)">
-                    {{ tag.tag_name }}
+                  <span class="tag is-small" :class="getCategoryClassById(tag.categoryId)">
+                    {{ tag.tagName }}
                   </span>
                 </ComboboxItem>
 

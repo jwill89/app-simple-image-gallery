@@ -29,9 +29,9 @@ const store = useGalleryStore()
     </p>
 
     <dl class="legend-list">
-      <div v-for="cat in store.categories" :key="cat.category_id" class="legend-row">
+      <div v-for="cat in store.categories" :key="cat.categoryId" class="legend-row">
         <dt>
-          <span class="tag" :class="colorToTagClass(cat.color)">{{ cat.category_name }}</span>
+          <span class="tag" :class="colorToTagClass(cat.color)">{{ cat.categoryName }}</span>
         </dt>
         <dd>{{ cat.description }}</dd>
       </div>

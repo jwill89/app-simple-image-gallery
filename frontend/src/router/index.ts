@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteLocationNormalized } from 'vue-router'
 import { useGalleryStore } from '../stores/gallery'
+import { pageSize } from '../constants/paging'
 
 /**
  * Which navbar controls a route supports.
@@ -41,7 +42,7 @@ const router = createRouter({
         const pp = Number(route.params.perPage)
         return {
           page: Number(route.params.page) || 1,
-          perPage: isNaN(pp) || pp < 1 ? 40 : pp,
+          perPage: pageSize(pp),
         }
       },
     },
@@ -54,7 +55,7 @@ const router = createRouter({
         const pp = Number(route.params.perPage)
         return {
           page: Number(route.params.page) || 1,
-          perPage: isNaN(pp) || pp < 1 ? 40 : pp,
+          perPage: pageSize(pp),
           tags: route.params.tags as string,
         }
       },
@@ -154,6 +155,18 @@ const router = createRouter({
       component: () => import('../views/UsersView.vue'),
     },
     {
+      path: '/privacy',
+      name: 'privacy',
+      meta: { title: 'Privacy' },
+      component: () => import('../views/PrivacyView.vue'),
+    },
+    {
+      path: '/accessibility',
+      name: 'accessibility',
+      meta: { title: 'Accessibility' },
+      component: () => import('../views/AccessibilityView.vue'),
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       meta: { title: 'Not Found' },
@@ -181,7 +194,7 @@ const router = createRouter({
 // Set document title from route meta
 router.afterEach((to) => {
   // `meta.title` is typed by the RouteMeta declaration above, so no cast.
-  document.title = to.meta.title ? `Gallery - ${to.meta.title}` : 'Gallery'
+  document.title = to.meta.title ? `${to.meta.title} - Gallery` : 'Gallery'
 })
 
 export default router

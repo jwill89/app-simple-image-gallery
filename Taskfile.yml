@@ -72,14 +72,11 @@ tasks:
       - npm run test:e2e
 
   lint:
-    desc: Lint, format-check, and statically analyse everything
+    desc: Lint, format-check and statically analyse the backend, the frontend and the scripts
     cmds:
       - task: lint:backend
       - task: lint:frontend
       - task: lint:scripts
-      - task: shared:lint:md
-      - task: shared:repo:check
-      - task: shared:version:check
 
   lint:backend:
     dir: backend
@@ -110,17 +107,35 @@ tasks:
       - cd frontend && npm audit --audit-level=high --omit=dev
       - task: shared:vuln
 
-  check:
-    desc: Lint, audit, test, and build, as CI does (CI also checks the generated files are current)
+  test:coverage:
+    desc: Run the backend's Pest tests and the frontend's Vitest tests, each held to the coverage floor CI holds
     cmds:
-      # The steps that don't depend on each other run at once, each line prefixed with
-      # its task; the ones that need them follow, in order.
-      - task --parallel --output prefixed lint vuln test
+      - cd backend && composer test:coverage
+      - cd frontend && npm run test:coverage
+
+  generate:check:
+    desc: Fail if the committed OpenAPI document or the frontend's API types differ from what the code makes
+    cmds:
+      - cd backend && composer docs:check
+      - cd frontend && npm run gen:check
+
+  # The specs' tsconfig.vitest.json and their type-check, as web.yml runs them.
+  web:specs:
+    cmds:
+      - task: shared:web:specs
+        vars: { DIR: frontend }
+
+  check:
+    desc: Everything CI runs, so a green check means a green CI
+    cmds:
+      # The checks that don't depend on each other run at once, each line prefixed with
+      # its task; the build and the end-to-end run follow, in order.
+      - task --parallel --output prefixed lint shared:docs:check web:specs test:coverage generate:check vuln
       - task: build
       - task: test:e2e
 
   push:
-    desc: Take the in-range updates Dependabot would open, scan for advisories, run task check, then push (-- -Yes, -SkipUpdates, -SkipCheck)
+    desc: Take the in-range updates Dependabot would open, push, and follow CI to its verdict (-- -Yes, -SkipUpdates, -NoWait); run task check first
     interactive: true
     cmds:
       - task: shared:push

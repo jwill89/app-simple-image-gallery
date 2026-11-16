@@ -40,6 +40,28 @@ final class ResponseCache
         return JsonResponse::fromJsonString($json, 200, ['X-Cache' => 'MISS']);
     }
 
+    /**
+     * remember() for a page of a longer list: the generator gives the page's
+     * body and how many items the whole list holds, which goes out as
+     * X-Total-Count and is cached with the body.
+     *
+     * @param Closure(): array{0: mixed, 1: int} $generate
+     */
+    public function rememberPage(CacheGroup $group, string $key, int $ttl, Closure $generate): JsonResponse
+    {
+        $cacheKey = 'response:' . $group->value . ':v' . $this->version($group) . ':page:' . md5($key);
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached) && is_string($cached['json'] ?? null) && is_int($cached['total'] ?? null)) {
+            return JsonResponse::fromJsonString($cached['json'], 200, ['X-Cache' => 'HIT', 'X-Total-Count' => (string) $cached['total']]);
+        }
+
+        [$body, $total] = $generate();
+        $json = json_encode($body, JSON_THROW_ON_ERROR);
+        Cache::put($cacheKey, ['json' => $json, 'total' => $total], $ttl);
+
+        return JsonResponse::fromJsonString($json, 200, ['X-Cache' => 'MISS', 'X-Total-Count' => (string) $total]);
+    }
+
     /** Invalidate every cached response in these groups. */
     public function bump(CacheGroup ...$groups): void
     {

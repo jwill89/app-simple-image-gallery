@@ -2,14 +2,16 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import { useApi } from '../composables/useApi'
 import { endpoints } from '../api/endpoints'
+import { readPreference, writePreference } from '../storage'
+import { MAX_PAGE_SIZE } from '../constants/paging'
 import type { Tag, TagCategory, Count } from '../types'
 
 // Domain types are generated from the OpenAPI spec — re-export the ones used
 // across the app so they can be imported from this store too.
 export type { Tag, TagCategory, MediaItem } from '../types'
 
-/** The most tags one ?ids= or ?names= lookup asks for (the API's limit). */
-const LOOKUP_BATCH = 200
+/** The most tags one ?ids= or ?names= lookup asks for: a page of GET /tags. */
+const LOOKUP_BATCH = MAX_PAGE_SIZE
 
 export const useGalleryStore = defineStore('gallery', () => {
   const api = useApi()
@@ -24,8 +26,8 @@ export const useGalleryStore = defineStore('gallery', () => {
   const knownTags = ref(new Map<number, Tag>())
   const categories = ref<TagCategory[]>([])
   const totalMedia = ref(0)
-  const blurThumbnails = ref(localStorage.getItem('blurThumbnails') === 'true')
-  const infiniteScroll = ref(localStorage.getItem('infiniteScroll') === 'true')
+  const blurThumbnails = ref(readPreference('blurThumbnails') === 'true')
+  const infiniteScroll = ref(readPreference('infiniteScroll') === 'true')
   const loading = ref(false)
   const error = ref<string | null>(null)
   const initialized = ref(false)
@@ -49,12 +51,12 @@ export const useGalleryStore = defineStore('gallery', () => {
 
   // Persist blur preference
   watch(blurThumbnails, (val) => {
-    localStorage.setItem('blurThumbnails', String(val))
+    writePreference('blurThumbnails', String(val))
   })
 
   // Persist infinite-scroll preference
   watch(infiniteScroll, (val) => {
-    localStorage.setItem('infiniteScroll', String(val))
+    writePreference('infiniteScroll', String(val))
   })
 
   // Actions
@@ -80,11 +82,11 @@ export const useGalleryStore = defineStore('gallery', () => {
 
   function rememberTags(tags: readonly Tag[]) {
     for (const tag of tags) {
-      const known = knownTags.value.get(tag.tag_id)
+      const known = knownTags.value.get(tag.tagId)
       // A tag already known as it is stays put: replacing it with an equal
       // copy would wake everything that reads the map, for nothing.
-      if (known?.tag_name !== tag.tag_name || known.category_id !== tag.category_id) {
-        knownTags.value.set(tag.tag_id, tag)
+      if (known?.tagName !== tag.tagName || known.categoryId !== tag.categoryId) {
+        knownTags.value.set(tag.tagId, tag)
       }
     }
   }
@@ -97,7 +99,7 @@ export const useGalleryStore = defineStore('gallery', () => {
   function tagByName(name: string): Tag | undefined {
     const wanted = name.toLowerCase()
     for (const tag of knownTags.value.values()) {
-      if (tag.tag_name.toLowerCase() === wanted) {
+      if (tag.tagName.toLowerCase() === wanted) {
         return tag
       }
     }
@@ -106,7 +108,7 @@ export const useGalleryStore = defineStore('gallery', () => {
 
   /** The best matches for a name (exact, then prefix, then containing), remembered. */
   async function searchTags(term: string, exclude: readonly number[] = [], limit = 20) {
-    const tags = (await api.get<Tag[]>(endpoints.tags.search(term, limit, exclude))) ?? []
+    const tags = (await api.get<Tag[]>(endpoints.tags.list({ search: term, limit, exclude }))) ?? []
     rememberTags(tags)
     return tags
   }
@@ -116,7 +118,9 @@ export const useGalleryStore = defineStore('gallery', () => {
     const missing = [...new Set(ids)].filter((id) => !knownTags.value.has(id))
     for (let i = 0; i < missing.length; i += LOOKUP_BATCH) {
       rememberTags(
-        (await api.get<Tag[]>(endpoints.tags.byIds(missing.slice(i, i + LOOKUP_BATCH)))) ?? [],
+        (await api.get<Tag[]>(
+          endpoints.tags.list({ ids: missing.slice(i, i + LOOKUP_BATCH), limit: LOOKUP_BATCH }),
+        )) ?? [],
       )
     }
   }
@@ -126,7 +130,9 @@ export const useGalleryStore = defineStore('gallery', () => {
     const missing = [...new Set(names)].filter((name) => tagByName(name) === undefined)
     for (let i = 0; i < missing.length; i += LOOKUP_BATCH) {
       rememberTags(
-        (await api.get<Tag[]>(endpoints.tags.byNames(missing.slice(i, i + LOOKUP_BATCH)))) ?? [],
+        (await api.get<Tag[]>(
+          endpoints.tags.list({ names: missing.slice(i, i + LOOKUP_BATCH), limit: LOOKUP_BATCH }),
+        )) ?? [],
       )
     }
   }
@@ -141,7 +147,12 @@ export const useGalleryStore = defineStore('gallery', () => {
       const [cats, ...batches] = await Promise.all([
         api.get<TagCategory[]>(endpoints.tagCategories.list),
         ...Array.from({ length: Math.ceil(ids.length / LOOKUP_BATCH) }, (_, n) =>
-          api.get<Tag[]>(endpoints.tags.byIds(ids.slice(n * LOOKUP_BATCH, (n + 1) * LOOKUP_BATCH))),
+          api.get<Tag[]>(
+            endpoints.tags.list({
+              ids: ids.slice(n * LOOKUP_BATCH, (n + 1) * LOOKUP_BATCH),
+              limit: LOOKUP_BATCH,
+            }),
+          ),
         ),
       ])
       categories.value = cats ?? []

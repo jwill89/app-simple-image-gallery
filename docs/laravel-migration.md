@@ -5,6 +5,10 @@ Nov 2, 2026 · @MathDad
 Move the Gallery's Slim 4 backend to Laravel without changing its API contract, so the Vue front end
 ships unchanged.
 
+This is the history of that move, as it was done. The API has changed since: API 8 (the gallery's
+8.0.0) took camelCase JSON, problem details errors, query-string paging and RFC 3339 times, and
+AGENTS.md describes it as it is now.
+
 ## Finish line
 
 The migration is done when Laravel serves the same API, the front end hasn't changed, and the site
@@ -311,13 +315,13 @@ health check passes.
 
 How it went (2026-11-03), and where it differs from the Deployment section:
 
-- **Backed up first.** `/var/www/gallery-backups/20261103-042056/` (since moved to
-  `/var/www/gallery.mathdad.me/backups/`) holds the database (`VACUUM INTO`, integrity checked), the
+- **Backed up first.** `<old backups folder>/20261103-042056/` (since moved to
+  `<web root>/backups/`) holds the database (`VACUUM INTO`, integrity checked), the
   Slim webroot as a tarball, the media as hard links, and both gallery vhost files.
 - **The data stayed where it was.** Laravel's `.env` points `DB_DATABASE`, `GALLERY_MEDIA_PATH` and
   `GALLERY_DUPES_PATH` at the Slim webroot's `db/`, `media/` and `dupes/`, so not one of the Slim
   app's files changed. Going back was the vhost change alone, and both apps read the same data. The
-  app ran from `/var/www/gallery-app/` until Phase 8 moved it into the domain folder, around the
+  app ran from `<old app folder>/` until Phase 8 moved it into the domain folder, around the
   data.
 - **A preview port, not a subdomain.** Before the switch the Laravel app was served on
   `127.0.0.1:8088`, reachable only from the droplet, so no DNS record or certificate was needed. It
@@ -362,9 +366,9 @@ How it went (2026-11-03), and where it differs from the Deployment section:
 
 ### Phase 8: Clean up
 
-- Put the whole gallery in its domain folder, `/var/www/gallery.mathdad.me/`, with the Slim app kept
+- Put the whole gallery in its domain folder, `<web root>/`, with the Slim app kept
   in it as the rollback copy until it is deleted. (This replaced the plan's separate
-  `/var/www/gallery-data/`: every folder in `/var/www` is named for its domain.)
+  `<data folder>/`: every site's folder on the droplet is named for its domain.)
 - Move the contract fixtures the Laravel tests read into `backend/tests/`, then delete
   `backend-old/`.
 - After a week live, add a migration that drops `auth_tokens`, `rate_limits` and `phinx_migrations`.
@@ -384,9 +388,9 @@ Progress:
   replay cover what they checked.
 - A checkout may still hold the Slim app's untracked files in `backend-old/` (`.env`, a database
   copy, `vendor/`). The root `.gitignore` ignores the whole folder so they can't be committed.
-- **Everything is in `/var/www/gallery.mathdad.me/`** (2026-11-03), laid out as in Deployment below.
-  The Laravel app moved in from `/var/www/gallery-app/`, the Slim code moved out of the folder's
-  root into `slim-rollback/`, and the backups moved in from `/var/www/gallery-backups/`. The data
+- **Everything is in `<web root>/`** (2026-11-03), laid out as in Deployment below.
+  The Laravel app moved in from `<old app folder>/`, the Slim code moved out of the folder's
+  root into `slim-rollback/`, and the backups moved in from `<old backups folder>/`. The data
   didn't move, so the `.env` paths didn't change. A script did it in one pass on the droplet:
   - It checked first that nothing would clash and that the queue was empty.
   - It snapshotted the database, then moved the folders, with a link at the old path until the
@@ -414,26 +418,24 @@ Progress:
   changed to use what Laravel offers. What changed and why is under API 5 below. The API version is
   `5.0.0`; the replay pins `api_version` to `4.0.0`, as it pins the app version, since the
   recordings were made against API 4.
-- Still to do, after a week live (from about 2026-11-10): delete `slim-rollback/` from the droplet
-  (with `backups/rollback-vhosts/`, and the rollback steps in `backups/ROLLBACK.txt`), and add a
-  migration that drops `auth_tokens`, `rate_limits` and `phinx_migrations`. That finishes Phase 8.
+- **The Slim tables go in 8.0.0** (2026-11-15): a migration drops `auth_tokens`, `rate_limits` and `phinx_migrations` where they exist. `slim-rollback/` and `backups/rollback-vhosts/` were deleted from the droplet on 2026-11-16, so the steps back in `backups/ROLLBACK.txt` no longer apply. That finishes Phase 8.
 
 ## Deployment
 
 Laravel replaces the flat webroot with an app folder whose `public/` is the document root.
-Everything for the gallery lives in its domain folder, as every site in `/var/www` does, and only
+Everything for the gallery lives in its domain folder, as every site on the droplet does, and only
 `public/` is served.
 
 ### Layout on the droplet
 
-| Path in `/var/www/gallery.mathdad.me/` | Holds |
+| Path in `<web root>` | Holds |
 | --- | --- |
 | `app/`, `bootstrap/`, `config/`, `database/`, `resources/`, `routes/`, `vendor/`, `artisan`, `composer.*`, `openapi.json` | The Laravel app's code, replaced by each deploy |
 | `public/` | Apache's DocumentRoot: `index.php`, the built SPA assets, and the `media` link |
 | `.env`, `storage/` | Config and Laravel's runtime files, kept across deploys |
 | `db/`, `media/`, `dupes/` | The data: `gallery.db` (with `.backups/` snapshots), the media files and the ingest folder, the scan reports |
-| `backups/` | The pre-cutover backup, `ROLLBACK.txt` and the vhost files for a rollback; root-only |
-| `slim-rollback/` | The Slim app as it last ran, with links to `../db`, `../media` and `../dupes`, until Phase 8 deletes it |
+| `backups/` | The pre-cutover backup and `ROLLBACK.txt`; root-only |
+| `slim-rollback/` | The Slim app as it last ran, with links to `../db`, `../media` and `../dupes`; deleted 2026-11-16 |
 
 ### First cutover
 
@@ -441,19 +443,19 @@ The plan as written before the cutover. What was done instead, and why, is in Ph
 Phase 8's progress; the layout above is the result.
 
 1. **Move the data.** Snapshot the database with `VACUUM INTO`, then move `gallery.db` (with its
-   `-wal` and `-shm` files), `media/` and `dupes/` into `/var/www/gallery-data/`. Leave symlinks in
+   `-wal` and `-shm` files), `media/` and `dupes/` into `<data folder>/`. Leave symlinks in
    the old webroot so the old app keeps working, and confirm it still does.
-2. **Deploy Laravel to `/var/www/gallery-app/`.** In `.env`, point `DB_DATABASE` and the media and
+2. **Deploy Laravel to `<old app folder>/`.** In `.env`, point `DB_DATABASE` and the media and
    dupes paths at the data folder. Run `php artisan storage:link` once to create `public/media`.
 3. **Run `php artisan migrate --force`.** The baseline migration is a no-op on the live database and
    only adds Laravel's tables, so the old app is unaffected.
 4. **Test on a temporary subdomain** with its own vhost pointing at `gallery-app/public`. Add that
    origin to `GALLERY_ALLOWED_ORIGINS` while testing writes.
-5. **Switch.** Change the gallery vhost's DocumentRoot to `/var/www/gallery-app/public`, then run
+5. **Switch.** Change the gallery vhost's DocumentRoot to `<old app folder>/public`, then run
    `apachectl configtest` and reload Apache. To roll back, point it at the old webroot and reload.
-6. **Start background work.** Set `SCHEDULE_TIMEZONE` in `.env` to the droplet's timezone
+6. **Start background work.** Set `SCHEDULE_TIMEZONE` (now `GALLERY_SCHEDULE_TIMEZONE`) in `.env` to the droplet's timezone
    (`timedatectl`), so the ingest keeps `cron.php`'s midnight. Add the scheduler cron entry for
-   `www-data` (`* * * * * cd /var/www/gallery-app && php artisan schedule:run >> /dev/null 2>&1`)
+   `www-data` (`* * * * * cd <old app folder> && php artisan schedule:run >> /dev/null 2>&1`)
    and remove the old `cron.php` line. Run `php artisan queue:work --tries=3 --max-time=3600` as
    `www-data` under systemd or Supervisor so it restarts automatically. Before the switch, finish
    Phase 5's check on a copy of the media folder: run `cron.php` and `gallery:ingest` on the same

@@ -1,13 +1,16 @@
 import { defineConfig } from 'vitest/config'
 import { build, type Plugin, type ResolvedConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { vitestDefaults } from '../shared/test/web/vitest.js'
+
+const require = createRequire(import.meta.url)
 
 // Read the app version from package.json so the footer can display it without a
 // runtime request. createRequire avoids JSON import-assertion syntax churn.
-const pkg = createRequire(import.meta.url)('./package.json') as { version: string }
+const pkg = require('./package.json') as { version: string }
 
 /**
  * Builds the service worker (src/sw/sw.ts) into dist/sw.js once the app is
@@ -45,14 +48,45 @@ function serviceWorker(): Plugin {
   }
 }
 
+/**
+ * The API reference at /api/docs (the backend's SystemController::docs()): Swagger UI's
+ * browser bundle, its licence notices and its stylesheet, copied from swagger-ui-dist
+ * into dist/api-docs/, beside the script that points it at the API's description. The
+ * deploy puts them in the backend's public/, so the reference runs from the gallery's
+ * own origin under a Content-Security-Policy that admits nothing else.
+ */
+function apiReference(): Plugin {
+  const folder = dirname(require.resolve('swagger-ui-dist/package.json'))
+  const files = ['swagger-ui-bundle.js', 'swagger-ui-bundle.js.LICENSE.txt', 'swagger-ui.css']
+  return {
+    name: 'gallery-api-reference',
+    apply: 'build',
+    generateBundle() {
+      for (const file of files) {
+        this.emitFile({
+          type: 'asset',
+          fileName: `api-docs/${file}`,
+          source: readFileSync(resolve(folder, file)),
+        })
+      }
+      this.emitFile({
+        type: 'asset',
+        fileName: 'api-docs/reference.js',
+        source:
+          "SwaggerUIBundle({ url: '/api/openapi.json', dom_id: '#reference', deepLinking: true })\n",
+      })
+    },
+  }
+}
+
 // The Laravel app the dev server (and `vite preview`) sends the API and the media
-// files to: http://localhost, or GALLERY_BACKEND_URL (the end-to-end run's server,
-// e2e/env.ts).
+// files to: http://localhost, or GALLERY_BACKEND_URL (`php artisan serve`'s
+// http://127.0.0.1:8000, say).
 const backend = process.env.GALLERY_BACKEND_URL ?? 'http://localhost'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue(), serviceWorker()],
+  plugins: [vue(), serviceWorker(), apiReference()],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
@@ -64,6 +98,13 @@ export default defineConfig({
       '/media/full': { target: backend, changeOrigin: true },
       '/media/thumbs': { target: backend, changeOrigin: true },
     },
+  },
+  // Every <script> and <link> the build writes into index.html carries this nonce, and
+  // so does a <meta property="csp-nonce"> that Vite's preloads (and useTurnstile) read
+  // for the tags they add. The backend's SpaController puts a fresh nonce in its
+  // place in every answer, and names it in the page's Content-Security-Policy.
+  html: {
+    cspNonce: '__CSP_NONCE__',
   },
   build: {
     outDir: 'dist',

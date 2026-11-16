@@ -1,14 +1,17 @@
 const API_BASE_URL = '/api'
 
+/** What every problem type the API sends starts with; the failure's code follows it. */
+const PROBLEM_TYPE = 'tag:gallery.mathdad.me,2026:'
+
 /**
  * Custom error class that carries structured API error info.
  */
 export class ApiError extends Error {
   /** HTTP status code */
   status: number
-  /** Machine-readable error code from the API (e.g. 'MediaNotFound') */
+  /** The problem's machine-readable code (e.g. 'MediaNotFound') */
   code: string
-  /** A failed validation's messages, by the field they are about (e.g. `tag_name`). */
+  /** A failed validation's messages, by the field they are about (e.g. `tagName`). */
   fields: Partial<Record<string, string[]>>
 
   constructor(
@@ -44,61 +47,74 @@ export function getErrorCode(err: unknown): string {
 }
 
 /**
- * What a thrown ApiError says about one field of the request, or '' when it
- * says nothing (or the value isn't an ApiError).
+ * What a thrown ApiError says about one field of the request (its name as the
+ * request sends it, e.g. `tagName`), or '' when it says nothing (or the value
+ * isn't an ApiError).
  */
 export function getFieldError(err: unknown, field: string): string {
   return err instanceof ApiError ? (err.fields[field]?.[0] ?? '') : ''
 }
 
+const STATUS_MESSAGES: Partial<Record<number, string>> = {
+  400: 'The request was invalid.',
+  401: 'Authentication is required. Please log in.',
+  403: 'You do not have permission to perform this action.',
+  404: 'The requested resource was not found.',
+  409: 'That conflicts with something that already exists.',
+  422: 'Some of what was sent is not valid.',
+  429: 'Too many requests. Please wait a moment and try again.',
+  500: 'An internal server error occurred.',
+}
+
+/** A problem's `errors`, by field name: `body.tagName` is about `tagName`. */
+function fieldMessages(errors: unknown): Partial<Record<string, string[]>> {
+  const fields: Partial<Record<string, string[]>> = {}
+  if (!Array.isArray(errors)) {
+    return fields
+  }
+  for (const entry of errors as unknown[]) {
+    if (typeof entry !== 'object' || entry === null) {
+      continue
+    }
+    const { message, location } = entry as { message?: unknown; location?: unknown }
+    if (typeof message === 'string' && typeof location === 'string') {
+      const field = location.replace(/^(body|query|path|header)\./, '')
+      ;(fields[field] ??= []).push(message)
+    }
+  }
+  return fields
+}
+
 /**
- * Parse a failed API response into an ApiError.
- * Attempts to read the JSON body for a human-readable `message` field;
- * falls back to a generic description based on the HTTP status code.
+ * Parse a failed API response into an ApiError. Every API error is an RFC 9457
+ * problem details body: its `detail` is the message, its `type` names the failure
+ * (a tag URI ending in the code, `tag:gallery.mathdad.me,2026:MediaNotFound`), and
+ * a failed validation's `errors` are the field messages. A body that isn't one
+ * falls back to a description of the HTTP status.
  */
-async function parseApiError(response: Response, _url: string): Promise<ApiError> {
+async function parseApiError(response: Response): Promise<ApiError> {
   let code = 'UnknownError'
   let message = ''
   let fields: Partial<Record<string, string[]>> = {}
 
   try {
-    const body = await response.json()
-    if (body?.error) {
-      code = body.error
-    }
-    if (body?.message) {
-      message = body.message
-    }
-    if (body?.errors && typeof body.errors === 'object') {
-      fields = body.errors
+    const body: unknown = await response.json()
+    if (typeof body === 'object' && body !== null) {
+      const problem = body as { type?: unknown; detail?: unknown; errors?: unknown }
+      if (typeof problem.type === 'string' && problem.type.startsWith(PROBLEM_TYPE)) {
+        code = problem.type.slice(PROBLEM_TYPE.length)
+      }
+      if (typeof problem.detail === 'string') {
+        message = problem.detail
+      }
+      fields = fieldMessages(problem.errors)
     }
   } catch {
     // Response body wasn't valid JSON — fall through to defaults
   }
 
   if (!message) {
-    switch (response.status) {
-      case 400:
-        message = 'The request was invalid.'
-        break
-      case 401:
-        message = 'Authentication is required. Please log in.'
-        break
-      case 403:
-        message = 'You do not have permission to perform this action.'
-        break
-      case 404:
-        message = 'The requested resource was not found.'
-        break
-      case 429:
-        message = 'Too many requests. Please wait a moment and try again.'
-        break
-      case 500:
-        message = 'An internal server error occurred.'
-        break
-      default:
-        message = `Request failed (HTTP ${response.status}).`
-    }
+    message = STATUS_MESSAGES[response.status] ?? `Request failed (HTTP ${response.status}).`
   }
 
   return new ApiError(response.status, code, message, fields)
@@ -131,8 +147,15 @@ async function parseJsonBody<T>(response: Response): Promise<T | undefined> {
   return text ? (JSON.parse(text) as T) : undefined
 }
 
+/** A page of a longer list: its body, and how many items the whole list holds. */
+interface Page<T> {
+  data: T | undefined
+  /** The list's size (the X-Total-Count header), or null when the response doesn't say. */
+  total: number | null
+}
+
 export function useApi() {
-  async function request<T>(url: string, options: RequestInit = {}): Promise<T | undefined> {
+  async function send(url: string, options: RequestInit = {}): Promise<Response> {
     // The session cookie goes with every request to this origin.
     const response = await fetch(`${API_BASE_URL}${url}`, {
       credentials: 'same-origin',
@@ -142,13 +165,25 @@ export function useApi() {
       if (response.status === 401) {
         onUnauthorized?.()
       }
-      throw await parseApiError(response, url)
+      throw await parseApiError(response)
     }
-    return parseJsonBody<T>(response)
+    return response
+  }
+
+  async function request<T>(url: string, options: RequestInit = {}): Promise<T | undefined> {
+    return parseJsonBody<T>(await send(url, options))
   }
 
   function get<T>(url: string): Promise<T | undefined> {
     return request<T>(url)
+  }
+
+  /** A GET of a paged list, with the list's size from X-Total-Count. */
+  async function getPage<T>(url: string): Promise<Page<T>> {
+    const response = await send(url)
+    const header = response.headers.get('X-Total-Count')
+    const total = header === null || header === '' ? Number.NaN : Number(header)
+    return { data: await parseJsonBody<T>(response), total: Number.isFinite(total) ? total : null }
   }
 
   function post<T>(url: string, body: unknown): Promise<T | undefined> {
@@ -189,5 +224,5 @@ export function useApi() {
     return request<T>(url, { method: 'POST', body: formData })
   }
 
-  return { get, post, put, patch, del, upload }
+  return { get, getPage, post, put, patch, del, upload }
 }

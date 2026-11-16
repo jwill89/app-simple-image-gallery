@@ -29,6 +29,6 @@ final class LoginRequest extends ApiRequest
 
     protected function errorCodes(): array
     {
-        return ['username' => ['MissingCredentials', 400], 'password' => ['MissingCredentials', 400]];
+        return ['username' => ['MissingCredentials', 422], 'password' => ['MissingCredentials', 422]];
     }
 }

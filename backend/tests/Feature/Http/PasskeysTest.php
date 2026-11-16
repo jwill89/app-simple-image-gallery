@@ -64,7 +64,7 @@ test('an account adds a passkey with its password, then signs in with it alone',
     $browser = readerBrowser();
     $phone = new FakeAuthenticator();
 
-    expect(addPasskey($browser, $phone, 'My phone'))->toMatchArray(['name' => 'My phone', 'authenticator' => null, 'last_used_at' => null]);
+    expect(addPasskey($browser, $phone, 'My phone'))->toMatchArray(['name' => 'My phone', 'authenticator' => null, 'lastUsedAt' => null]);
     $browser->send('GET', '/api/account/passkeys')->assertOk()->assertJsonCount(1)->assertJsonPath('0.name', 'My phone');
 
     $elsewhere = new TestBrowser();
@@ -93,11 +93,11 @@ test('the sign-in challenge is for this site, needs the person, and names no acc
 test('adding a passkey needs the password, and a challenge this browser asked for', function (): void {
     $browser = readerBrowser();
 
-    $browser->send('POST', '/api/account/passkeys/options')->assertStatus(400)->assertJson(['error' => 'MissingCredentials']);
-    $browser->send('POST', '/api/account/passkeys/options', ['password' => 'not-it'])->assertStatus(403)->assertJson(['error' => 'IncorrectPassword']);
+    $browser->send('POST', '/api/account/passkeys/options')->assertStatus(422)->assertJson(['type' => problemType('MissingCredentials')]);
+    $browser->send('POST', '/api/account/passkeys/options', ['password' => 'not-it'])->assertStatus(403)->assertJson(['type' => problemType('IncorrectPassword')]);
     $browser->send('POST', '/api/account/passkeys', ['credential' => new FakeAuthenticator()->create(['challenge' => 'never-issued'])])
-        ->assertStatus(400)->assertJson(['error' => 'PasskeyExpired']);
-    $browser->send('POST', '/api/account/passkeys', ['credential' => ['id' => 'x']])->assertStatus(400)->assertJson(['error' => 'InvalidPasskey']);
+        ->assertStatus(422)->assertJson(['type' => problemType('PasskeyExpired')]);
+    $browser->send('POST', '/api/account/passkeys', ['credential' => ['id' => 'x']])->assertStatus(422)->assertJson(['type' => problemType('InvalidPasskey')]);
     fromGallery()->postJson('/api/account/passkeys/options', ['password' => 'long-enough'])->assertUnauthorized();
 
     expect(Passkey::query()->count())->toBe(0);
@@ -109,15 +109,15 @@ test('a passkey answering for another site, or a challenge already answered, isn
     $options = $browser->send('POST', '/api/account/passkeys/options', ['password' => 'long-enough'])->json();
 
     $browser->send('POST', '/api/account/passkeys', ['credential' => new FakeAuthenticator()->create($options, origin: 'https://evil.example')])
-        ->assertStatus(400)->assertJson(['error' => 'PasskeyRejected']);
+        ->assertStatus(422)->assertJson(['type' => problemType('PasskeyRejected')]);
     // That answer used the challenge up.
     $browser->send('POST', '/api/account/passkeys', ['credential' => new FakeAuthenticator()->create($options)])
-        ->assertStatus(400)->assertJson(['error' => 'PasskeyExpired']);
+        ->assertStatus(422)->assertJson(['type' => problemType('PasskeyExpired')]);
 
     /** @var array<string, mixed> $options */
     $options = $browser->send('POST', '/api/account/passkeys/options', ['password' => 'long-enough'])->json();
     $browser->send('POST', '/api/account/passkeys', ['credential' => new FakeAuthenticator(rpId: 'evil.example')->create($options)])
-        ->assertStatus(400)->assertJson(['error' => 'PasskeyRejected']);
+        ->assertStatus(422)->assertJson(['type' => problemType('PasskeyRejected')]);
 
     expect(Passkey::query()->count())->toBe(0);
 });
@@ -131,7 +131,7 @@ test('the same passkey isn\'t added twice', function (): void {
     $options = $browser->send('POST', '/api/account/passkeys/options', ['password' => 'long-enough'])->json();
     expect($options['excludeCredentials'][0]['id'] ?? null)->toBe(Base64UrlSafe::encodeUnpadded($phone->credentialId));
     $browser->send('POST', '/api/account/passkeys', ['credential' => $phone->create($options)])
-        ->assertStatus(400)->assertJson(['error' => 'PasskeyRejected']);
+        ->assertStatus(422)->assertJson(['type' => problemType('PasskeyRejected')]);
     expect(Passkey::query()->count())->toBe(1);
 });
 
@@ -143,7 +143,7 @@ test('a sign-in challenge waits five minutes, and is answered once', function ()
     /** @var array<string, mixed> $options */
     $options = $browser->send('POST', '/api/auth/passkey/options')->json();
     travel(6)->minutes();
-    $browser->send('POST', '/api/auth/passkey', ['credential' => $phone->get($options)])->assertStatus(400)->assertJson(['error' => 'PasskeyExpired']);
+    $browser->send('POST', '/api/auth/passkey', ['credential' => $phone->get($options)])->assertStatus(422)->assertJson(['type' => problemType('PasskeyExpired')]);
 
     /** @var array<string, mixed> $options */
     $options = $browser->send('POST', '/api/auth/passkey/options')->json();
@@ -153,7 +153,7 @@ test('a sign-in challenge waits five minutes, and is answered once', function ()
     // The same answer, sent again to a new challenge.
     $replay = new TestBrowser();
     $replay->send('POST', '/api/auth/passkey/options')->assertOk();
-    $replay->send('POST', '/api/auth/passkey', ['credential' => $answer])->assertStatus(401)->assertJson(['error' => 'PasskeyNotAccepted']);
+    $replay->send('POST', '/api/auth/passkey', ['credential' => $answer])->assertStatus(401)->assertJson(['type' => problemType('PasskeyNotAccepted')]);
     $replay->send('GET', '/api/auth/session')->assertExactJson(['user' => null]);
 });
 
@@ -167,12 +167,12 @@ test('a removed passkey, one for another site, or one never added signs no one i
     /** @var array<string, mixed> $options */
     $options = $stranger->send('POST', '/api/auth/passkey/options')->json();
     $stranger->send('POST', '/api/auth/passkey', ['credential' => $phone->get($options, origin: 'https://evil.example')])
-        ->assertStatus(401)->assertJson(['error' => 'PasskeyNotAccepted']);
-    signInWithPasskey(new TestBrowser(), new FakeAuthenticator())->assertStatus(401)->assertJson(['error' => 'PasskeyNotAccepted']);
+        ->assertStatus(401)->assertJson(['type' => problemType('PasskeyNotAccepted')]);
+    signInWithPasskey(new TestBrowser(), new FakeAuthenticator())->assertStatus(401)->assertJson(['type' => problemType('PasskeyNotAccepted')]);
     signInWithPasskey($stranger, $phone)->assertOk();
 
     $browser->send('DELETE', "/api/account/passkeys/{$added['id']}")->assertNoContent();
-    signInWithPasskey(new TestBrowser(), $phone)->assertStatus(401)->assertJson(['error' => 'PasskeyNotAccepted']);
+    signInWithPasskey(new TestBrowser(), $phone)->assertStatus(401)->assertJson(['type' => problemType('PasskeyNotAccepted')]);
 });
 
 test('a passkey sign-in can keep the browser signed in, and counts against the login limit', function (): void {
@@ -188,7 +188,7 @@ test('a passkey sign-in can keep the browser signed in, and counts against the l
     foreach (range(1, 8) as $ignored) {
         fromGallery()->postJson('/api/auth/login', ['username' => 'reader', 'password' => 'wrong-password'])->assertStatus(401);
     }
-    signInWithPasskey(new TestBrowser(), $phone)->assertStatus(429)->assertJson(['error' => 'TooManyAttempts']);
+    signInWithPasskey(new TestBrowser(), $phone)->assertStatus(429)->assertJson(['type' => problemType('TooManyAttempts')]);
 });
 
 test('an account renames and removes its own passkeys, and no one else\'s', function (): void {
@@ -197,16 +197,16 @@ test('an account renames and removes its own passkeys, and no one else\'s', func
     $path = "/api/account/passkeys/{$added['id']}";
 
     $browser->send('PATCH', $path, ['name' => '  Laptop  '])->assertOk()->assertJsonPath('name', 'Laptop');
-    $browser->send('PATCH', $path, ['name' => '   '])->assertStatus(400)->assertJson(['error' => 'InvalidPasskeyName']);
-    $browser->send('PATCH', $path, ['name' => str_repeat('x', 65)])->assertStatus(400)->assertJson(['error' => 'InvalidPasskeyName']);
+    $browser->send('PATCH', $path, ['name' => '   '])->assertStatus(422)->assertJson(['type' => problemType('InvalidPasskeyName')]);
+    $browser->send('PATCH', $path, ['name' => str_repeat('x', 65)])->assertStatus(422)->assertJson(['type' => problemType('InvalidPasskeyName')]);
 
     $other = User::factory()->create();
-    asAccount($other)->patchJson($path, ['name' => 'Mine'])->assertNotFound()->assertJson(['error' => 'PasskeyNotFound']);
+    asAccount($other)->patchJson($path, ['name' => 'Mine'])->assertNotFound()->assertJson(['type' => problemType('PasskeyNotFound')]);
     asAccount($other)->deleteJson($path)->assertNotFound();
     asAccount($other)->getJson('/api/account/passkeys')->assertExactJson([]);
 
     $browser->send('DELETE', $path)->assertNoContent();
-    $browser->send('DELETE', '/api/account/passkeys/999')->assertNotFound()->assertJson(['error' => 'PasskeyNotFound']);
+    $browser->send('DELETE', '/api/account/passkeys/999')->assertNotFound()->assertJson(['type' => problemType('PasskeyNotFound')]);
     $browser->send('GET', '/api/account/passkeys')->assertExactJson([]);
 });
 

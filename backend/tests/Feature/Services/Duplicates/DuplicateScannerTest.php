@@ -122,7 +122,7 @@ test('the region check rejects a variant and keeps a resaved copy', function ():
 test('a tuning run keeps dismissed pairs and leaves the report alone', function (): void {
     $a = scanImage(SCAN_BASE_BITS);
     $b = scanImage(SCAN_BASE_BITS);
-    DismissedDuplicate::insert(['media_id_1' => $a, 'media_id_2' => $b, 'dismissed_at' => 1]);
+    DismissedDuplicate::insert(['media_id_1' => $a, 'media_id_2' => $b, 'dismissed_at' => '2026-01-01T00:00:00Z']);
 
     $normal = app(DuplicateScanner::class)->run(new ScanSettings(2, null));
     $tuning = app(DuplicateScanner::class)->run(new ScanSettings(2, null, tuning: true));

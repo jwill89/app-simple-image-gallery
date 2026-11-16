@@ -1,167 +1,24 @@
 /* ═══════════════════════════════════════════════════════════
-   Gallery — design tokens + Bulma overrides
+   Gallery — Bulma overrides and the app's own styles
 
-   Three palettes, kept strictly apart:
-
-     1. Chrome    — neutral greys only. The artwork carries the colour;
-                    the interface deliberately carries none.
-     2. Semantic  — danger / success / warning / info. State, never decoration.
-     3. Tag       — the `--tag-*` scale below. Decoration, never state.
-
-   Palettes 2 and 3 must not borrow from each other. A category stored as a
-   Bulma semantic name (Artist = `danger`) would make the Artist chip and the
-   delete button the same red, and tie the tag palette to Bulma. Tag
-   categories live in their own `tag--<hue>` namespace.
-
-   Everything below reads from a token. Nothing hardcodes a hex outside the
-   :root blocks, so the Bulma overrides can be deleted without rewriting the
-   rules that read the tokens.
+   Every colour, size and space comes from a token in tokens.css, which
+   holds the palette and its three groups (chrome, semantic, tag). No
+   colour is written here but neutral black and white.
    ═══════════════════════════════════════════════════════════ */
-
-/* The palette itself: the one place a colour is written as a literal. */
-/* stylelint-disable color-no-hex, declaration-property-value-disallowed-list -- the palette is where colours are defined */
-:root {
-  /* ── Chrome: surfaces ─────────────────────────────────── */
-  --surface-0: #fff; /* page ground */
-  --surface-1: #f6f7f8; /* navbar, footer, raised panels */
-  --surface-2: #edeef0; /* hover, table stripe, inputs */
-  --surface-3: #e0e2e5; /* pressed / selected */
-  --border: #d8dade;
-  --border-strong: #b9bdc3;
-
-  /* ── Chrome: text ─────────────────────────────────────── */
-  --text-1: #16181c;
-  --text-2: #53575e;
-  --text-3: #676c74; /* ≥4.5:1 on surface-0/1/2 (5.28, 4.93, 4.55) */
-  --text-inverse: #fff;
-
-  /* ── Focus: functional, not a brand accent ────────────── */
-  --focus: #2f6f86;
-  --focus-ring: 0 0 0 2px rgb(47 111 134 / 32%);
-
-  /* ── Semantic: state only ─────────────────────────────── */
-  --danger: #b8392a;
-  --danger-fg: #fff;
-  --danger-soft: rgb(184 57 42 / 10%);
-  --success: #1c7047;
-  --success-fg: #fff;
-  --success-soft: rgb(28 112 71 / 10%);
-  --warning: #8a5a08;
-  --warning-fg: #fff;
-  --warning-soft: rgb(138 90 8 / 10%);
-  --info: #2a6079;
-  --info-fg: #fff;
-  --info-soft: rgb(42 96 121 / 10%);
-
-  /* ── Favourite: neither state nor tag; its own thing ──── */
-  --fav: #d8365c;
-
-  /* ── Tag category palette ─────────────────────────────────
-     Display only. Deliberately not named after states, so nobody
-     can wire "danger" to a category again. `--tag-ink` is the
-     text colour that sits on any filled chip. */
-  --tag-ink: #12161a;
-  --tag-rose: #f0729b;
-  --tag-amber: #e0a83c;
-  --tag-emerald: #4fc98a;
-  --tag-sky: #5bc0de;
-  --tag-violet: #b79ced;
-  --tag-teal: #45c8b8;
-  --tag-orange: #f0955a;
-  --tag-lime: #b6d95e;
-
-  /* `neutral` is the outline chip — General holds the overwhelming
-     majority of tags, so filling it drowns out the categorised ones. */
-
-  /* ── Type scale ───────────────────────────────────────── */
-  --t-xs: 0.6875rem; /* 11px   — micro labels, uppercase eyebrows */
-  /* stylelint-disable-next-line number-max-precision -- exactly 12.5px */
-  --t-sm: 0.78125rem; /* 12.5px — metadata, chips, table numerics */
-  --t-md: 0.875rem; /* 14px   — dense UI: tables, buttons, nav */
-  --t-base: 0.9375rem; /* 15px   — body copy */
-  --t-lg: 1.1875rem; /* 19px   — section headings */
-  --t-xl: 1.5625rem; /* 25px   — page titles */
-
-  --lh-tight: 1.25;
-  --lh-normal: 1.5;
-
-  /* ── Space scale ──────────────────────────────────────── */
-  --sp-1: 0.25rem;
-  --sp-2: 0.5rem;
-  --sp-3: 0.75rem;
-  --sp-4: 1rem;
-  --sp-5: 1.5rem;
-  --sp-6: 2rem;
-
-  /* ── Radius ───────────────────────────────────────────── */
-  --r-sm: 3px;
-  --r-md: 5px;
-  --r-lg: 8px;
-
-  /* ── Elevation ────────────────────────────────────────── */
-  --shadow-1: 0 1px 2px rgb(0 0 0 / 8%);
-  --shadow-2: 0 4px 12px rgb(0 0 0 / 12%);
-  --shadow-3: 0 8px 28px rgb(0 0 0 / 18%);
-
-  /* ── Type families ────────────────────────────────────── */
-  --font-sans:
-    Inter, 'SF Pro', 'Segoe UI', Roboto, Oxygen, Ubuntu, 'Helvetica Neue', Helvetica, Arial,
-    sans-serif;
-  --font-mono:
-    ui-monospace, 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', Menlo, Consolas, monospace;
-
-  /* ── Chrome geometry ──────────────────────────────────── */
-  --navbar-h: 48px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --surface-0: #131417;
-    --surface-1: #1a1c20;
-    --surface-2: #22252a;
-    --surface-3: #2c3037;
-    --border: #32363e;
-    --border-strong: #3e434c;
-
-    --text-1: #e6e8ea;
-    --text-2: #a0a5ac;
-    --text-3: #7c8188;
-    --text-inverse: #16181c;
-
-    --focus: #7fb3c8;
-    --focus-ring: 0 0 0 2px rgb(127 179 200 / 30%);
-
-    --danger: #e0614c;
-    --danger-fg: #1a0f0c;
-    --danger-soft: rgb(224 97 76 / 14%);
-    --success: #4fc98a;
-    --success-fg: #0b1a12;
-    --success-soft: rgb(79 201 138 / 14%);
-    --warning: #e0a83c;
-    --warning-fg: #1a1305;
-    --warning-soft: rgb(224 168 60 / 14%);
-    --info: #5bc0de;
-    --info-fg: #08161b;
-    --info-soft: rgb(91 192 222 / 14%);
-
-    --fav: #f0567a;
-
-    --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
-    --shadow-2: 0 4px 12px rgb(0 0 0 / 45%);
-    --shadow-3: 0 8px 28px rgb(0 0 0 / 55%);
-  }
-}
-/* stylelint-enable color-no-hex, declaration-property-value-disallowed-list */
 
 /* ═══════════════════════════════════════════════════════════
    Base
    ═══════════════════════════════════════════════════════════ */
 
 /* Bulma only sets the family on `body`, so anything outside that cascade
-   (and the document default) would fall back to Times New Roman. */
+   (and the document default) would fall back to Times New Roman.
+   The navbar is fixed over the top of the page, and the infinite scroll's
+   status over the bottom, so an element scrolled into view (by Tab, or a link
+   to it) stops clear of both rather than under them. */
 html {
   font-family: var(--font-sans);
   background-color: var(--surface-0);
+  scroll-padding-block: calc(var(--navbar-h) + var(--sp-4)) 4rem;
 }
 
 body {
@@ -175,6 +32,12 @@ body {
 :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
+}
+
+/* Bulma colours a focused link's or button's ring itself, by this selector. */
+a:focus-visible,
+button:focus-visible {
+  outline-color: var(--focus);
 }
 
 code,
@@ -192,6 +55,11 @@ code {
   padding: 0.1em 0.35em;
 }
 
+/* Bulma's link colour, from the palette rather than the framework's blue. */
+a {
+  color: var(--link);
+}
+
 /* A link inside a sentence must stand out by more than its colour, which sits
    too close to the text around it (WCAG 1.4.1). */
 p a:not(.button, .tag) {
@@ -199,10 +67,58 @@ p a:not(.button, .tag) {
   text-underline-offset: 2px;
 }
 
+/* The first stop for Tab on every page: hidden above the viewport until it
+   has focus, then over the navbar. */
+.skip-link {
+  position: fixed;
+  top: var(--sp-2);
+  left: var(--sp-2);
+  z-index: 100;
+  padding: var(--sp-2) var(--sp-3);
+  background-color: var(--surface-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  color: var(--text-1);
+  font-size: var(--t-md);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transform: translateY(calc(-100% - var(--sp-4)));
+}
+
+/* The shadow comes with focus, or it would show below the top edge while the
+   link waits out of sight. */
+.skip-link:focus {
+  box-shadow: var(--shadow-2);
+  transform: none;
+}
+
+.skip-link:hover {
+  color: var(--text-1);
+}
+
 hr {
   background-color: var(--border);
   height: 1px;
   margin: var(--sp-4) 0;
+}
+
+/* Bulma fades the colours of its links, buttons, fields, icons and page links,
+   and turns the navbar burger's bars into a cross. */
+@media (prefers-reduced-motion: reduce) {
+  a,
+  button,
+  .input,
+  .textarea,
+  .select select,
+  .select::after,
+  .icon,
+  .pagination-link,
+  .pagination-next,
+  .pagination-previous,
+  .navbar-burger span {
+    transition: none;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -343,6 +259,11 @@ hr {
   color: var(--text-2);
 }
 
+/* Bulma draws the burger in its link blue. */
+.navbar-burger {
+  color: var(--text-2);
+}
+
 /* Hover/selected styling is scoped to anchors only. Bulma also uses
    `.navbar-item` for the plain `<div>` wrappers around the search field, the
    toggles and the per-page select — highlighting those would make inert cells
@@ -354,10 +275,15 @@ a.navbar-item:hover {
   color: var(--text-1);
 }
 
+/* The current page is underlined as well as lit, so it doesn't rest on the
+   fill alone. */
 a.navbar-item.is-selected {
   background-color: var(--surface-3);
   color: var(--text-1);
   font-weight: 550;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
 }
 
 /* With infinite scroll the artwork passes under this bar continuously. The bar
@@ -391,6 +317,12 @@ a.navbar-item.is-selected {
     color 0.12s ease;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none;
+  }
+}
+
 .button:hover:not([disabled]) {
   background-color: var(--surface-3);
   border-color: var(--border-strong);
@@ -401,8 +333,13 @@ a.navbar-item.is-selected {
   box-shadow: var(--focus-ring);
 }
 
+/* Bulma paints a disabled button in its own colours, by variant. Here it keeps
+   its variant's look, faded; each variant below lists its disabled form. */
 .button[disabled],
 .button.is-disabled {
+  background-color: var(--surface-2);
+  border-color: var(--border-strong);
+  box-shadow: none;
   opacity: 0.45;
   cursor: not-allowed;
 }
@@ -419,7 +356,8 @@ a.navbar-item.is-selected {
 
 /* Primary = the one action that matters here. Colourless, but the highest
    contrast thing on screen, so it still wins the eye. */
-.button.is-primary {
+.button.is-primary,
+.button.is-primary[disabled] {
   background-color: var(--text-1);
   border-color: var(--text-1);
   color: var(--surface-0);
@@ -433,7 +371,9 @@ a.navbar-item.is-selected {
 
 /* Quiet: secondary actions that shouldn't compete. */
 .button.is-ghost,
-.button.is-light {
+.button.is-ghost[disabled],
+.button.is-light,
+.button.is-light[disabled] {
   background-color: transparent;
   border-color: transparent;
   color: var(--text-2);
@@ -446,27 +386,47 @@ a.navbar-item.is-selected {
   color: var(--text-1);
 }
 
-.button.is-danger {
+/* A text button: a link's look, for a row's quiet actions. */
+.button.is-text,
+.button.is-text[disabled] {
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--text-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.button.is-text:hover:not([disabled]) {
+  background-color: var(--surface-2);
+  color: var(--text-1);
+}
+
+.button.is-danger,
+.button.is-danger[disabled] {
   background-color: var(--danger);
   border-color: var(--danger);
   color: var(--danger-fg);
 }
 
+/* A filled button's hover moves its fill toward the body text: darker under the
+   light scheme's white label, lighter under the dark scheme's dark one, so the
+   label gains contrast either way. */
 .button.is-danger:hover:not([disabled]) {
-  background-color: color-mix(in srgb, var(--danger) 85%, black);
-  border-color: color-mix(in srgb, var(--danger) 85%, black);
+  background-color: color-mix(in srgb, var(--danger) 85%, var(--text-1));
+  border-color: color-mix(in srgb, var(--danger) 85%, var(--text-1));
   color: var(--danger-fg);
 }
 
-.button.is-warning {
+.button.is-warning,
+.button.is-warning[disabled] {
   background-color: var(--warning);
   border-color: var(--warning);
   color: var(--warning-fg);
 }
 
 .button.is-warning:hover:not([disabled]) {
-  background-color: color-mix(in srgb, var(--warning) 85%, black);
-  border-color: color-mix(in srgb, var(--warning) 85%, black);
+  background-color: color-mix(in srgb, var(--warning) 85%, var(--text-1));
+  border-color: color-mix(in srgb, var(--warning) 85%, var(--text-1));
   color: var(--warning-fg);
 }
 
@@ -476,7 +436,8 @@ a.navbar-item.is-selected {
   color: var(--text-1);
 }
 
-.button.is-danger.is-outlined {
+.button.is-danger.is-outlined,
+.button.is-danger.is-outlined[disabled] {
   background-color: transparent;
   border-color: var(--danger);
   color: var(--danger);
@@ -487,7 +448,8 @@ a.navbar-item.is-selected {
   color: var(--danger);
 }
 
-.button.is-warning.is-outlined {
+.button.is-warning.is-outlined,
+.button.is-warning.is-outlined[disabled] {
   background-color: transparent;
   border-color: var(--warning);
   color: var(--warning);
@@ -499,7 +461,8 @@ a.navbar-item.is-selected {
 }
 
 /* Favourite is its own affordance — not a state, not a category. */
-.button.is-fav {
+.button.is-fav,
+.button.is-fav[disabled] {
   background-color: transparent;
   border-color: color-mix(in srgb, var(--fav) 45%, transparent);
   color: var(--fav);
@@ -553,8 +516,18 @@ a.navbar-item.is-selected {
   color: var(--text-3);
 }
 
-.select::after {
-  border-color: var(--text-3);
+/* A field's icons, which Bulma draws from its own greys and, on focus, its
+   link blue. */
+.control.has-icons-left,
+.control.has-icons-right {
+  --bulma-input-icon-color: var(--text-3);
+  --bulma-input-icon-hover-color: var(--text-2);
+  --bulma-input-icon-focus-color: var(--text-2);
+}
+
+/* Bulma draws a select's arrow in its link blue, from this variable. */
+.select {
+  --bulma-arrow-color: var(--text-3);
 }
 
 .checkbox,
@@ -649,6 +622,44 @@ a.navbar-item.is-selected {
    toasts. Styling `.notification` would bring back ad-hoc banners coloured from
    the framework palette. Field validation stays on `.help.is-danger` beside its
    input. */
+
+/* ═══════════════════════════════════════════════════════════
+   Bulma's colour helpers, drawn from the palette
+   Bulma writes them !important, in its own colours (a fixed
+   grey, the framework's state hues), which fall short of the
+   contrast the tokens hold in one scheme or the other. Each one
+   the views use is matched here, !important as Bulma's is.
+   ═══════════════════════════════════════════════════════════ */
+
+.has-text-grey,
+.has-text-grey-light {
+  color: var(--text-3) !important;
+}
+
+.has-text-danger {
+  color: var(--danger) !important;
+}
+
+.has-text-warning {
+  color: var(--warning) !important;
+}
+
+.has-text-success {
+  color: var(--success) !important;
+}
+
+.has-text-info,
+.has-text-info-dark {
+  color: var(--info) !important;
+}
+
+.has-text-link {
+  color: var(--link) !important;
+}
+
+.has-background-danger-light {
+  background-color: var(--danger-soft) !important;
+}
 
 /* ═══════════════════════════════════════════════════════════
    Breadcrumb — small text that sits in the page header, not in a
@@ -825,37 +836,40 @@ a.navbar-item.is-selected {
   background-color: var(--tag-ink);
 }
 
-/* Matching text colours, for places that colour a tag name inline. */
+/* Matching text colours, for places that colour a tag name inline. A chip's
+   hue is too light to be text on the light surfaces, so the name takes a share
+   of it mixed into the body text, which holds 7:1 on every surface in either
+   scheme. */
 .tag-text--rose {
-  color: var(--tag-rose);
+  color: color-mix(in srgb, var(--tag-rose) 30%, var(--text-1));
 }
 
 .tag-text--amber {
-  color: var(--tag-amber);
+  color: color-mix(in srgb, var(--tag-amber) 30%, var(--text-1));
 }
 
 .tag-text--emerald {
-  color: var(--tag-emerald);
+  color: color-mix(in srgb, var(--tag-emerald) 30%, var(--text-1));
 }
 
 .tag-text--sky {
-  color: var(--tag-sky);
+  color: color-mix(in srgb, var(--tag-sky) 30%, var(--text-1));
 }
 
 .tag-text--violet {
-  color: var(--tag-violet);
+  color: color-mix(in srgb, var(--tag-violet) 30%, var(--text-1));
 }
 
 .tag-text--teal {
-  color: var(--tag-teal);
+  color: color-mix(in srgb, var(--tag-teal) 30%, var(--text-1));
 }
 
 .tag-text--orange {
-  color: var(--tag-orange);
+  color: color-mix(in srgb, var(--tag-orange) 30%, var(--text-1));
 }
 
 .tag-text--lime {
-  color: var(--tag-lime);
+  color: color-mix(in srgb, var(--tag-lime) 30%, var(--text-1));
 }
 
 .tag-text--neutral {
@@ -1189,6 +1203,24 @@ a.navbar-item.is-selected {
   flex: none;
 }
 
+/* A caption over a group of items, such as the theme's choices. */
+.menu-label {
+  padding: var(--sp-1) var(--sp-3);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* A choice's tick holds its place when unticked, so the names line up. */
+.menu-item-check {
+  display: inline-flex;
+  justify-content: center;
+  width: 1em;
+  flex: none;
+}
+
 /* ═══════════════════════════════════════════════════════════
    Layout
    ═══════════════════════════════════════════════════════════ */
@@ -1245,6 +1277,12 @@ a.navbar-item.is-selected {
   transition: filter 0.3s ease-in-out;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .thumb-blur {
+    transition: none;
+  }
+}
+
 .loading-container {
   display: flex;
   justify-content: center;
@@ -1264,6 +1302,25 @@ a.navbar-item.is-selected {
   }
 }
 
+/* The delay stays, so a quick load still shows no spinner; the fade at its
+   end becomes a cut. */
+@media (prefers-reduced-motion: reduce) {
+  .loading-container {
+    animation-timing-function: step-end;
+  }
+}
+
+/* Bulma's spinners on a loading button or field, and its loader, hold still
+   as a ring. */
+@media (prefers-reduced-motion: reduce) {
+  .button.is-loading::after,
+  .control.is-loading::after,
+  .select.is-loading::after,
+  .loader {
+    animation: none;
+  }
+}
+
 /* Page route transitions */
 .page-fade-enter-active,
 .page-fade-leave-active {
@@ -1275,12 +1332,11 @@ a.navbar-item.is-selected {
   opacity: 0;
 }
 
+/* Vue waits for the leaving page's transitionend before it brings in the
+   next, so the fade is cut short rather than removed. */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+  .page-fade-enter-active,
+  .page-fade-leave-active {
+    transition-duration: 1ms;
   }
 }

@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use App\Support\Timestamp;
 use Illuminate\Support\Str;
 use Laravel\Passkeys\Contracts\PasskeyUser;
 use Laravel\Passkeys\PasskeyAuthenticatable;
@@ -35,6 +36,9 @@ class User extends Authenticatable implements PasskeyUser
 
     /** The name of the list every account starts with. */
     public const string DEFAULT_LIST = 'Favorites';
+
+    #[\Override]
+    protected $dateFormat = Timestamp::FORMAT;
 
     /** @return HasMany<FavoriteList, $this> */
     public function favoriteLists(): HasMany

@@ -15,35 +15,35 @@ const emit = defineEmits<{
 const store = useGalleryStore()
 const favorites = useFavoritesStore()
 
-const baseName = computed(() => thumbnailBaseName(props.item.file_name))
-const thumbnailPath = computed(() => thumbnailUrl(props.item.file_name))
-const thumbnail2xPath = computed(() => thumbnailUrl(props.item.file_name, '2x'))
+const baseName = computed(() => thumbnailBaseName(props.item.fileName))
+const thumbnailPath = computed(() => thumbnailUrl(props.item.fileName))
+const thumbnail2xPath = computed(() => thumbnailUrl(props.item.fileName, '2x'))
 
 const isAnimated = computed(() => {
-  if (props.item.media_type === 'video') {
+  if (props.item.mediaType === 'video') {
     return true
   }
-  const ext = props.item.file_name.split('.').pop()?.toLowerCase()
+  const ext = props.item.fileName.split('.').pop()?.toLowerCase()
   return ext === 'gif'
 })
 
-const isFav = computed(() => favorites.isFavorite(props.item.media_id))
+const isFav = computed(() => favorites.isFavorite(props.item.mediaId))
 
 /** Descriptive text for the thumbnail / its link (filenames are all we have). */
 const altText = computed(() => {
-  const kind = props.item.media_type === 'video' ? 'Video' : 'Image'
+  const kind = props.item.mediaType === 'video' ? 'Video' : 'Image'
   return `${kind}: ${baseName.value}`
 })
 
 function toggleFavorite(e: Event) {
   e.stopPropagation()
-  void favorites.toggle(props.item.media_id)
+  void favorites.toggle(props.item.mediaId)
 }
 
 /** Activate the card (Enter / Space) for keyboard users, mirroring a click. */
 function onCardKey(e: KeyboardEvent) {
   e.preventDefault()
-  emit('click', props.item.media_id)
+  emit('click', props.item.mediaId)
 }
 </script>
 
@@ -53,7 +53,7 @@ function onCardKey(e: KeyboardEvent) {
     role="link"
     tabindex="0"
     :aria-label="altText"
-    @click="emit('click', item.media_id)"
+    @click="emit('click', item.mediaId)"
     @keydown.enter="onCardKey"
     @keydown.space="onCardKey"
   >
@@ -70,7 +70,7 @@ function onCardKey(e: KeyboardEvent) {
         <!-- Animated badge (videos and GIFs) -->
         <span v-if="isAnimated" class="gallery-card-badge">
           <font-awesome-icon
-            :icon="item.media_type === 'video' ? 'fa-solid fa-film' : 'fa-solid fa-play'"
+            :icon="item.mediaType === 'video' ? 'fa-solid fa-film' : 'fa-solid fa-play'"
           />
         </span>
         <!-- Favorite heart -->
@@ -143,6 +143,12 @@ function onCardKey(e: KeyboardEvent) {
     transform 0.2s ease;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .gallery-card-img {
+    transition: none;
+  }
+}
+
 /* `filter: blur()` fades toward transparent at the image edge; scaling the image
    up inside the clipped wrapper pushes those faded edges out of view so the blur
    fills the tile edge-to-edge. */
@@ -172,9 +178,9 @@ function onCardKey(e: KeyboardEvent) {
   position: absolute;
   top: 4px;
   right: 4px;
-  background: rgb(0 0 0 / 60%);
+  background: rgb(0 0 0 / 65%);
   border: none;
-  color: rgb(255 255 255 / 85%); /* ≥4.5:1 on the dark chip */
+  color: rgb(255 255 255 / 85%); /* ≥4.5:1 on the chip, even over a white thumbnail */
   font-size: 0.85rem;
   padding: 4px 6px;
   border-radius: 4px;
@@ -209,16 +215,30 @@ function onCardKey(e: KeyboardEvent) {
   opacity: 1;
 }
 
+/* The chip is dark over the artwork in either scheme, so the heart takes the
+   favourite's pink for a dark ground. */
 .gallery-card-heart.is-favorited {
-  color: var(--fav);
+  color: var(--fav-on-scrim);
 }
 
 .gallery-card-heart:hover {
-  color: var(--fav);
+  color: var(--fav-on-scrim);
   transform: scale(1.15);
 }
 
 .gallery-card-heart:active {
   transform: scale(0.9);
+}
+
+/* The heart still shows and changes colour, without fading or growing. */
+@media (prefers-reduced-motion: reduce) {
+  .gallery-card-heart {
+    transition: none;
+  }
+
+  .gallery-card-heart:hover,
+  .gallery-card-heart:active {
+    transform: none;
+  }
 }
 </style>

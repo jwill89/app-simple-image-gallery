@@ -18,7 +18,7 @@ export const useAccountStore = defineStore('account', () => {
 
   const blockedTags = ref<Tag[]>([])
   const searches = ref<SavedSearch[]>([])
-  const blockedIds = computed(() => new Set(blockedTags.value.map((t) => t.tag_id)))
+  const blockedIds = computed(() => new Set(blockedTags.value.map((t) => t.tagId)))
 
   async function load(): Promise<void> {
     const [tags, saved] = await Promise.all([
@@ -36,10 +36,10 @@ export const useAccountStore = defineStore('account', () => {
   }
 
   async function block(tag: Tag): Promise<void> {
-    await api.put(endpoints.account.blockedTag(tag.tag_id))
-    if (!blockedIds.value.has(tag.tag_id)) {
+    await api.put(endpoints.account.blockedTag(tag.tagId))
+    if (!blockedIds.value.has(tag.tagId)) {
       blockedTags.value = [...blockedTags.value, tag].sort((a, b) =>
-        a.tag_name.localeCompare(b.tag_name),
+        a.tagName.localeCompare(b.tagName),
       )
     }
     gallery.listingsChanged()
@@ -47,7 +47,7 @@ export const useAccountStore = defineStore('account', () => {
 
   async function unblock(tagId: number): Promise<void> {
     await api.del(endpoints.account.blockedTag(tagId))
-    blockedTags.value = blockedTags.value.filter((t) => t.tag_id !== tagId)
+    blockedTags.value = blockedTags.value.filter((t) => t.tagId !== tagId)
     gallery.listingsChanged()
   }
 
@@ -63,14 +63,14 @@ export const useAccountStore = defineStore('account', () => {
     const search = await api.patch<SavedSearch>(endpoints.savedSearches.byId(searchId), { name })
     if (search) {
       searches.value = searches.value
-        .map((s) => (s.search_id === searchId ? search : s))
+        .map((s) => (s.searchId === searchId ? search : s))
         .sort(byName)
     }
   }
 
   async function deleteSearch(searchId: number): Promise<void> {
     await api.del(endpoints.savedSearches.byId(searchId))
-    searches.value = searches.value.filter((s) => s.search_id !== searchId)
+    searches.value = searches.value.filter((s) => s.searchId !== searchId)
   }
 
   return {

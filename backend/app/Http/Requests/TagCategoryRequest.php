@@ -21,7 +21,7 @@ final class TagCategoryRequest extends ApiRequest
         $sometimes = $this->editing() !== null ? ['sometimes'] : [];
 
         return [
-            'category_name' => [
+            'categoryName' => [
                 ...$sometimes,
                 'required',
                 'string',
@@ -32,7 +32,7 @@ final class TagCategoryRequest extends ApiRequest
             ],
             'color' => [...$sometimes, 'required', Rule::in(TagCategory::COLORS)],
             'description' => ['nullable', 'string'],
-            'sort_order' => ['nullable', 'integer'],
+            'sortOrder' => ['nullable', 'integer'],
         ];
     }
 
@@ -40,9 +40,9 @@ final class TagCategoryRequest extends ApiRequest
     public function messages(): array
     {
         return [
-            'category_name.required' => 'Category name is required.',
-            'category_name.max' => 'Category name must be :max characters or fewer.',
-            'category_name.unique' => 'A category named ":input" already exists.',
+            'categoryName.required' => 'Category name is required.',
+            'categoryName.max' => 'Category name must be :max characters or fewer.',
+            'categoryName.unique' => 'A category named ":input" already exists.',
             'color' => 'The selected color is not valid.',
         ];
     }
@@ -56,33 +56,34 @@ final class TagCategoryRequest extends ApiRequest
     public function category(): array
     {
         $fields = [
-            'category_name' => $this->string('category_name')->toString(),
+            'category_name' => $this->string('categoryName')->toString(),
             'color' => $this->string('color')->toString(),
             'description' => $this->string('description')->toString(),
-            'sort_order' => $this->integer('sort_order'),
+            'sort_order' => $this->integer('sortOrder'),
         ];
+        $sent = ['category_name' => 'categoryName', 'color' => 'color', 'description' => 'description', 'sort_order' => 'sortOrder'];
 
-        return $this->editing() === null ? $fields : array_intersect_key($fields, $this->all());
+        return $this->editing() === null ? $fields : array_filter($fields, fn(string $column): bool => $this->has($sent[$column]), ARRAY_FILTER_USE_KEY);
     }
 
     protected function errorCodes(): array
     {
         return [
-            'category_name.max' => ['NameTooLong', 400],
-            'category_name.unique' => ['NameTaken', 400],
-            'color' => ['InvalidColor', 400],
+            'categoryName.max' => ['NameTooLong', 422],
+            'categoryName.unique' => ['NameTaken', 409],
+            'color' => ['InvalidColor', 422],
         ];
     }
 
     protected function prepareForValidation(): void
     {
-        $this->trimFields('category_name', 'color', 'description');
+        $this->trimFields('categoryName', 'color', 'description');
     }
 
     /** The category being edited, or null when one is being created. */
     private function editing(): ?TagCategory
     {
-        $category = $this->route('category_id');
+        $category = $this->route('categoryId');
 
         return $category instanceof TagCategory ? $category : null;
     }

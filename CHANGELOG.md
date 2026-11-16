@@ -4,6 +4,55 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.0.0] - 2026-11-16
+
+### Added
+
+- A colour scheme choice in the navbar: match the device, light or dark, remembered in this browser.
+- A Privacy page, linked from the footer, saying what the gallery keeps and what it loads from elsewhere.
+- An Accessibility page, linked from the footer: the WCAG 2.2 level the gallery's pages are built to, and a statement of partial conformance for the videos, which come from elsewhere without captions.
+- A "Skip to content" link at the top of every page; after moving to another page, the keyboard starts at its content.
+- The `GALLERY_CSP_REPORT_ONLY` setting turns the Content-Security-Policy to report-only without a deploy.
+
+### Changed
+
+- Needs steps at deploy (docs/ops.md, Upgrading to 8.0.0).
+- The API is at 8.0.0, and a 7.x client needs changing for it:
+  - Every error is an RFC 9457 problem details body (`application/problem+json`), named by its `type`. A failed validation answers 422, malformed JSON 400, a conflict 409, and a missing Turnstile token 403.
+  - JSON fields, query parameters and path parameters are camelCase.
+  - `GET /media` is the one media listing (`tags`, `untagged`, `limit` with `offset` or `cursor`), with the total in `X-Total-Count`; `/media/page`, `/media/untagged` and `/media/with-tags` are gone. `GET /tags` takes the Tags page's paging, filter and sort, and `/tags/display` is gone. A list's media pages by `limit` and `offset`.
+  - `PUT /tags/{tagId}` and `PUT /tag-categories/{categoryId}` are gone, since `PATCH` does the same, and a tag mapping is changed with `PATCH`.
+  - A value over a limit, such as more than 100 items a page, is refused instead of cut down.
+  - Times are RFC 3339 in UTC (`2026-11-16T09:18:09Z`) instead of Unix seconds.
+- The API reference at `/api/docs` is Swagger UI, served from the site's own files.
+- Colours are retuned so all text reaches AAA contrast in light and dark, and focus rings are solid.
+- Each animation follows the device's reduce-motion setting on its own; the page fade and loading spinners keep their place without moving.
+- Page titles name the page first, then "Gallery".
+- The navbar underlines the current page as well as lighting it.
+- The gallery's settings all start with `GALLERY_`: the Danbooru, duplicate-scan, Turnstile and schedule settings are renamed.
+- The deploy needs a `ServiceUser` setting, and takes the site's name and address from the `ServerName` and `SiteUrl` settings in place of `-PublicHost`.
+- The queue worker runs under an account of its own, at the lowest CPU and disk priority.
+- Each deploy brings a copy of the media folder on the dev machine up to date, the thumbnails left out.
+- A missing file under `/assets/`, `/media/full/` or `/media/thumbs/` answers 404 instead of the gallery's page.
+
+### Removed
+
+- The Slim app's leftover tables are dropped from the database.
+
+### Fixed
+
+- A message stayed on screen for only a few seconds even while you were reading or using it; it now waits while the pointer or keyboard is on it, and one with Undo stays until you use or close it.
+- The media page had no main heading for screen readers, and the account page's headings skipped a level.
+- Opening `/media` no longer redirects to `/media/` first.
+- A new list came back from the API with an empty `isDefault` instead of `false`.
+- A path with a trailing slash no longer redirects: `/tags/` shows the same page as `/tags`.
+
+### Security
+
+- Every page is served under an enforced Content-Security-Policy with a fresh nonce, and every response says `Referrer-Policy: same-origin`.
+- The site sends HSTS, and Apache takes each visitor's address from Cloudflare, so the rate limits count each visitor rather than each Cloudflare server.
+- The queue worker runs under systemd's hardening, writing only to the app's storage, the database and the media.
+
 ## [7.3.0] - 2026-11-11
 
 ### Changed
@@ -306,10 +355,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 No user-visible changes.
 
-## [2.0.1] - 2026-06-28
-
-No user-visible changes.
-
 ## [2.0.0] - 2026-06-28
 
 A complete rewrite as a Vue 3 single-page app on a PHP API, replacing the original jQuery and server-rendered version. This is the first release under semantic versioning.
@@ -347,6 +392,7 @@ A complete rewrite as a Vue 3 single-page app on a PHP API, replacing the origin
 
 Before 2.0.0 the gallery was a jQuery and server-rendered PHP app, never versioned. It browsed images and videos, had a first tagging system with a tag page and sorting by tag name, and imported media with a cron script.
 
+[8.0.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v7.3.0...v8.0.0
 [7.3.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v7.2.0...v7.3.0
 [7.2.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v7.1.0...v7.2.0
 [7.1.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v7.0.1...v7.1.0
@@ -359,6 +405,5 @@ Before 2.0.0 the gallery was a jQuery and server-rendered PHP app, never version
 [3.2.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v2.0.2...v3.0.0
-[2.0.2]: https://github.com/jwill89/app-simple-image-gallery/compare/v2.0.1...v2.0.2
-[2.0.1]: https://github.com/jwill89/app-simple-image-gallery/compare/v2.0.0...v2.0.1
+[2.0.2]: https://github.com/jwill89/app-simple-image-gallery/compare/v2.0.0...v2.0.2
 [2.0.0]: https://github.com/jwill89/app-simple-image-gallery/releases/tag/v2.0.0

@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\FavoriteListRequest;
+use App\Http\Requests\PageRequest;
 use App\Http\Resources\FavoriteListResource;
 use App\Http\Resources\MediaResource;
 use App\Models\FavoriteList;
@@ -17,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use App\OpenApi\ProblemJson;
 use OpenApi\Spec as OAS;
 
 /**
@@ -61,14 +63,11 @@ final class FavoriteListController extends Controller
         summary: 'Make a list',
         tags: ['Lists'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        requestBody: new OAS\RequestBody(
-            required: true,
-            content: new OAS\MediaType\Json(required: ['name'], properties: [new OAS\Property(property: 'name', schema: new OAS\Schema(type: 'string', maxLength: 60))]),
-        ),
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/FavoriteListBody')),
         responses: [
             new OAS\Response(response: 201, description: 'The list', content: new OAS\MediaType\Json(ref: '#/components/schemas/FavoriteList')),
-            new OAS\Response(response: 400, description: 'InvalidListName', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 409, description: 'ListExists', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 409, description: 'ListExists', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'InvalidListName', content: new ProblemJson()),
         ],
     )]
     public function store(FavoriteListRequest $request): JsonResponse
@@ -79,24 +78,21 @@ final class FavoriteListController extends Controller
     }
 
     /**
-     * PATCH /lists/{list_id} — Rename a list. Body: { name }.
+     * PATCH /lists/{listId} — Rename a list. Body: { name }.
      */
     #[OAS\Operation\Patch(
-        path: '/lists/{list_id}',
+        path: '/lists/{listId}',
         operationId: 'renameFavoriteList',
         summary: 'Rename a list',
         tags: ['Lists'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        parameters: [new OAS\Parameter(name: 'list_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
-        requestBody: new OAS\RequestBody(
-            required: true,
-            content: new OAS\MediaType\Json(required: ['name'], properties: [new OAS\Property(property: 'name', schema: new OAS\Schema(type: 'string', maxLength: 60))]),
-        ),
+        parameters: [new OAS\Parameter(name: 'listId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/FavoriteListBody')),
         responses: [
             new OAS\Response(response: 200, description: 'The list', content: new OAS\MediaType\Json(ref: '#/components/schemas/FavoriteList')),
-            new OAS\Response(response: 400, description: 'InvalidListName', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 404, description: 'ListNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 409, description: 'ListExists', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'ListNotFound', content: new ProblemJson()),
+            new OAS\Response(response: 409, description: 'ListExists', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'InvalidListName', content: new ProblemJson()),
         ],
     )]
     public function update(FavoriteListRequest $request, FavoriteList $list): FavoriteListResource
@@ -107,20 +103,20 @@ final class FavoriteListController extends Controller
     }
 
     /**
-     * DELETE /lists/{list_id} — Delete a list (not its media). The default
+     * DELETE /lists/{listId} — Delete a list (not its media). The default
      * list can't be.
      */
     #[OAS\Operation\Delete(
-        path: '/lists/{list_id}',
+        path: '/lists/{listId}',
         operationId: 'deleteFavoriteList',
         summary: 'Delete a list',
         tags: ['Lists'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        parameters: [new OAS\Parameter(name: 'list_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        parameters: [new OAS\Parameter(name: 'listId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
             new OAS\Response(response: 204, description: 'Deleted'),
-            new OAS\Response(response: 404, description: 'ListNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 409, description: 'DefaultList', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'ListNotFound', content: new ProblemJson()),
+            new OAS\Response(response: 409, description: 'DefaultList', content: new ProblemJson()),
         ],
     )]
     public function destroy(Request $request, FavoriteList $list): Response
@@ -134,18 +130,18 @@ final class FavoriteListController extends Controller
     }
 
     /**
-     * GET /lists/{list_id}/ids — Every media id in a list, for marking cards.
+     * GET /lists/{listId}/ids — Every media id in a list, for marking cards.
      */
     #[OAS\Operation\Get(
-        path: '/lists/{list_id}/ids',
+        path: '/lists/{listId}/ids',
         operationId: 'favoriteListIds',
         summary: 'The media ids in a list',
         tags: ['Lists'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        parameters: [new OAS\Parameter(name: 'list_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        parameters: [new OAS\Parameter(name: 'listId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
-            new OAS\Response(response: 200, description: 'The ids', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(type: 'integer'))),
-            new OAS\Response(response: 404, description: 'ListNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'The ids', content: new OAS\MediaType\Json(ref: '#/components/schemas/MediaIdList')),
+            new OAS\Response(response: 404, description: 'ListNotFound', content: new ProblemJson()),
         ],
     )]
     public function ids(Request $request, FavoriteList $list): JsonResponse
@@ -154,60 +150,58 @@ final class FavoriteListController extends Controller
     }
 
     /**
-     * GET /lists/{list_id}/media?page=&per_page= — A page of a list, the most
-     * recently added first. Media carrying a tag the account blocks is left
-     * out, as from every listing.
+     * GET /lists/{listId}/media?limit&offset — A page of a list, the most
+     * recently added first, with the list's size in X-Total-Count. Media
+     * carrying a tag the account blocks is left out, as from every listing.
      */
     #[OAS\Operation\Get(
-        path: '/lists/{list_id}/media',
+        path: '/lists/{listId}/media',
         operationId: 'favoriteListMedia',
         summary: 'A page of a list',
         tags: ['Lists'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [
-            new OAS\Parameter(name: 'list_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
-            new OAS\Parameter(name: 'page', in: 'query', required: false, schema: new OAS\Schema(type: 'integer', default: 1, minimum: 1)),
-            new OAS\Parameter(name: 'per_page', in: 'query', required: false, schema: new OAS\Schema(type: 'integer', default: 40, maximum: 200, minimum: 1)),
+            new OAS\Parameter(name: 'listId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'limit', in: 'query', required: false, schema: new OAS\Schema(type: 'integer', default: 40, maximum: 100, minimum: 1)),
+            new OAS\Parameter(name: 'offset', in: 'query', required: false, schema: new OAS\Schema(type: 'integer', default: 0, minimum: 0)),
         ],
         responses: [
-            new OAS\Response(response: 200, description: 'A page of the list', content: new OAS\MediaType\Json(ref: '#/components/schemas/MediaPage')),
-            new OAS\Response(response: 404, description: 'ListNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(
+                response: 200,
+                description: 'A page of the list',
+                headers: [new OAS\Header(header: 'X-Total-Count', description: 'How many items the list holds that the account may see.', schema: new OAS\Schema(type: 'integer'))],
+                content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(ref: '#/components/schemas/Media')),
+            ),
+            new OAS\Response(response: 404, description: 'ListNotFound', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'InvalidInput', content: new ProblemJson()),
         ],
     )]
-    public function media(Request $request, FavoriteList $list): JsonResponse
+    public function media(PageRequest $request, FavoriteList $list): JsonResponse
     {
         $query = self::own($request, $list)->media()->hidingTags(Viewer::hiddenTags($request));
-        $page = max(1, $request->integer('page', 1));
-        $perPage = min(max($request->integer('per_page', 40), 1), 200);
         $total = $query->count();
+        $items = $query->orderByPivot('added_at', 'desc')->orderBy('media.media_id', 'desc')->offset($request->offset())->limit($request->limit())->get();
 
-        return new JsonResponse([
-            'items' => MediaResource::collection(
-                $query->orderByPivot('added_at', 'desc')->orderBy('media.media_id', 'desc')->forPage($page, $perPage)->get(),
-            ),
-            'total_pages' => max(1, (int) ceil($total / $perPage)),
-            'current_page' => $page,
-            'next_cursor' => null,
-        ]);
+        return MediaResource::collection($items)->response($request)->header('X-Total-Count', (string) $total);
     }
 
     /**
-     * PUT /lists/{list_id}/media/{media_id} — Add media to a list. Adding it
+     * PUT /lists/{listId}/media/{mediaId} — Add media to a list. Adding it
      * again changes nothing.
      */
     #[OAS\Operation\Put(
-        path: '/lists/{list_id}/media/{media_id}',
+        path: '/lists/{listId}/media/{mediaId}',
         operationId: 'addToFavoriteList',
         summary: 'Add media to a list',
         tags: ['Lists'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [
-            new OAS\Parameter(name: 'list_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
-            new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'listId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'mediaId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
         ],
         responses: [
             new OAS\Response(response: 204, description: 'Added'),
-            new OAS\Response(response: 404, description: 'ListNotFound, MediaNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'ListNotFound, MediaNotFound', content: new ProblemJson()),
         ],
     )]
     public function add(Request $request, FavoriteList $list, Media $media): Response
@@ -218,35 +212,32 @@ final class FavoriteListController extends Controller
     }
 
     /**
-     * POST /lists/{list_id}/media — Add many media at once. Body:
-     * { media_ids: int[] } (at most 2000). Ids of media that don't exist are
+     * POST /lists/{listId}/media — Add many media at once. Body:
+     * { mediaIds: int[] } (at most 2000). Ids of media that don't exist are
      * skipped. Answers { added }, how many weren't in the list already.
      */
     #[OAS\Operation\Post(
-        path: '/lists/{list_id}/media',
+        path: '/lists/{listId}/media',
         operationId: 'addManyToFavoriteList',
         summary: 'Add many media to a list',
         tags: ['Lists'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        parameters: [new OAS\Parameter(name: 'list_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
-        requestBody: new OAS\RequestBody(
-            required: true,
-            content: new OAS\MediaType\Json(required: ['media_ids'], properties: [
-                new OAS\Property(property: 'media_ids', schema: new OAS\Schema(type: 'array', items: new OAS\Schema\Items(type: 'integer'), maxItems: 2000)),
-            ]),
-        ),
+        parameters: [new OAS\Parameter(name: 'listId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/ListItemsBody')),
         responses: [
-            new OAS\Response(response: 200, description: 'How many were added', content: new OAS\MediaType\Json(properties: [new OAS\Property(property: 'added', schema: new OAS\Schema(type: 'integer'))])),
-            new OAS\Response(response: 400, description: 'InvalidInput', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 404, description: 'ListNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'How many were added', content: new OAS\MediaType\Json(ref: '#/components/schemas/AddedCount')),
+            new OAS\Response(response: 404, description: 'ListNotFound', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'InvalidInput', content: new ProblemJson()),
         ],
     )]
     public function addMany(Request $request, FavoriteList $list): JsonResponse
     {
         self::own($request, $list);
-        $ids = $request->input('media_ids');
+        $ids = $request->input('mediaIds');
         if (!is_array($ids) || count($ids) > self::MAX_ADD) {
-            throw new ApiException('InvalidInput', 400, 'media_ids is a list of at most 2000 media IDs.');
+            $message = 'mediaIds is a list of at most 2000 media IDs.';
+
+            throw new ApiException('InvalidInput', 422, $message, [], [['message' => $message, 'location' => 'body.mediaIds']]);
         }
 
         $existing = Media::query()->whereKey(array_values(array_filter(array_map(intval(...), $ids), static fn(int $id): bool => $id > 0)))->pluck('media_id')->all();
@@ -256,21 +247,21 @@ final class FavoriteListController extends Controller
     }
 
     /**
-     * DELETE /lists/{list_id}/media/{media_id} — Take media out of a list.
+     * DELETE /lists/{listId}/media/{mediaId} — Take media out of a list.
      */
     #[OAS\Operation\Delete(
-        path: '/lists/{list_id}/media/{media_id}',
+        path: '/lists/{listId}/media/{mediaId}',
         operationId: 'removeFromFavoriteList',
         summary: 'Take media out of a list',
         tags: ['Lists'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [
-            new OAS\Parameter(name: 'list_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
-            new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'listId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'mediaId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
         ],
         responses: [
             new OAS\Response(response: 204, description: 'Removed'),
-            new OAS\Response(response: 404, description: 'ListNotFound, MediaNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 404, description: 'ListNotFound, MediaNotFound', content: new ProblemJson()),
         ],
     )]
     public function remove(Request $request, FavoriteList $list, Media $media): Response
@@ -281,19 +272,19 @@ final class FavoriteListController extends Controller
     }
 
     /**
-     * GET /media/{media_id}/lists — Which of the account's lists hold this
+     * GET /media/{mediaId}/lists — Which of the account's lists hold this
      * media, by id.
      */
     #[OAS\Operation\Get(
-        path: '/media/{media_id}/lists',
+        path: '/media/{mediaId}/lists',
         operationId: 'listsHoldingMedia',
         summary: 'Your lists that hold this media',
         tags: ['Lists'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        parameters: [new OAS\Parameter(name: 'media_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
+        parameters: [new OAS\Parameter(name: 'mediaId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer'))],
         responses: [
-            new OAS\Response(response: 200, description: 'The list ids', content: new OAS\MediaType\Json(type: 'array', items: new OAS\Schema\Items(type: 'integer'))),
-            new OAS\Response(response: 404, description: 'MediaNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 200, description: 'The list ids', content: new OAS\MediaType\Json(ref: '#/components/schemas/ListIdList')),
+            new OAS\Response(response: 404, description: 'MediaNotFound', content: new ProblemJson()),
         ],
     )]
     public function holding(Request $request, Media $media): JsonResponse

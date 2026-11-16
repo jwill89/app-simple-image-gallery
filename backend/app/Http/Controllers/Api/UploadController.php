@@ -13,11 +13,13 @@ use App\Services\Danbooru\DanbooruTagger;
 use App\Services\Media\MediaDerivative;
 use App\Services\Media\MediaIngest;
 use App\Support\TagImports;
+use App\Support\Timestamp;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use App\OpenApi\ProblemJson;
 use OpenApi\Spec as OAS;
 use Throwable;
 
@@ -25,7 +27,7 @@ use Throwable;
  * Uploads: each file is checked and added on its own, and reported on in the
  * results, so one bad file doesn't fail the rest. The request is 201 whatever
  * happened to its files. The slow work is queued so the request stays quick:
- * the thumbnails (ffmpeg) and, with fetch_tags, the Danbooru lookup, whose
+ * the thumbnails (ffmpeg) and, with fetchTags, the Danbooru lookup, whose
  * outcome GET /media/tag-imports reports.
  */
 final class UploadController extends Controller
@@ -51,25 +53,26 @@ final class UploadController extends Controller
                 mediaType: 'multipart/form-data',
                 schema: new OAS\Schema(
                     properties: [
-                        new OAS\Property(property: 'files[]', schema: new OAS\Schema(type: 'array', items: new OAS\Schema\Items(type: 'string', format: 'binary'))),
-                        new OAS\Property(property: 'fetch_tags', schema: new OAS\Schema(type: 'boolean', description: 'Fetch Danbooru tags for uploaded images.')),
+                        new OAS\Property(property: 'files[]', schema: new OAS\Schema(type: 'array', items: new OAS\Schema\Items(type: 'string', format: 'binary'), description: 'The files: images or videos, each at most 100 MB.')),
+                        new OAS\Property(property: 'fetchTags', schema: new OAS\Schema(type: 'boolean', description: 'Queue a Danbooru tag lookup for each file added.')),
                     ],
                 ),
             ),
         ),
         responses: [
             new OAS\Response(response: 201, description: 'Upload result', content: new OAS\MediaType\Json(ref: '#/components/schemas/UploadSummary')),
-            new OAS\Response(response: 400, description: 'NoFilesUploaded', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'Forbidden (not an admin)', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'NoFilesUploaded', content: new ProblemJson()),
         ],
     )]
     public function store(Request $request, MediaIngest $ingest): JsonResponse
     {
         $files = array_filter(array_values((array) $request->file('files', [])), static fn(mixed $file): bool => $file instanceof UploadedFile);
         if ($files === []) {
-            throw new ApiException('NoFilesUploaded', 400, 'No files were included in the upload request.');
+            throw new ApiException('NoFilesUploaded', 422, 'No files were included in the upload request.', [], [['message' => 'No files were included in the upload request.', 'location' => 'body.files']]);
         }
 
-        $fetchTags = $request->boolean('fetch_tags');
+        $fetchTags = $request->boolean('fetchTags');
         $danbooru = DanbooruTagger::isConfigured();
 
         $results = [];
@@ -80,9 +83,9 @@ final class UploadController extends Controller
                 if ($fetchTags && $danbooru) {
                     $this->imports->queued($media);
                     ImportDanbooruTags::dispatch($media);
-                    $result['tags_status'] = 'queued';
+                    $result['tagsStatus'] = 'queued';
                 } elseif ($fetchTags) {
-                    $result['tags_error'] = 'Danbooru is not set up on the server (DANBOORU_LOGIN and DANBOORU_API_KEY).';
+                    $result['tagsError'] = 'Danbooru is not set up on the server (GALLERY_DANBOORU_LOGIN and GALLERY_DANBOORU_API_KEY).';
                 }
             }
             $results[] = $result;
@@ -94,9 +97,9 @@ final class UploadController extends Controller
 
         return new JsonResponse([
             'results' => $results,
-            'total_uploaded' => $uploaded,
-            'total_duplicates' => $duplicates,
-            'total_failed' => count($results) - $uploaded - $duplicates,
+            'totalUploaded' => $uploaded,
+            'totalDuplicates' => $duplicates,
+            'totalFailed' => count($results) - $uploaded - $duplicates,
         ], 201);
     }
 
@@ -110,7 +113,7 @@ final class UploadController extends Controller
     private function upload(UploadedFile $file, MediaIngest $ingest): array
     {
         $originalName = $file->getClientOriginalName();
-        $error = static fn(string $message): array => [['file_name' => $originalName, 'status' => 'error', 'message' => $message], null];
+        $error = static fn(string $message): array => [['fileName' => $originalName, 'status' => 'error', 'message' => $message], null];
 
         if (!$file->isValid()) {
             return $error('Upload error code: ' . $file->getError());
@@ -161,11 +164,11 @@ final class UploadController extends Controller
         if (is_int($existingId)) {
             File::delete($path);
 
-            return [['file_name' => $originalName, 'status' => 'duplicate', 'existing_id' => $existingId, 'hash' => $hash], null];
+            return [['fileName' => $originalName, 'status' => 'duplicate', 'existingId' => $existingId, 'hash' => $hash], null];
         }
 
         try {
-            $media = $ingest->add($path, $name, $hash, now()->getTimestamp(), thumbnails: false);
+            $media = $ingest->add($path, $name, $hash, Timestamp::now(), thumbnails: false);
         } catch (Throwable $e) {
             File::delete($path);
             Log::error('Upload processing failed', ['file' => $originalName, 'error' => $e->getMessage()]);
@@ -173,6 +176,6 @@ final class UploadController extends Controller
             return $error('Processing failed: ' . $e->getMessage());
         }
 
-        return [['file_name' => $name, 'status' => 'success', 'id' => $media->media_id, 'hash' => $hash], $media];
+        return [['fileName' => $name, 'status' => 'success', 'id' => $media->media_id, 'hash' => $hash], $media];
     }
 }

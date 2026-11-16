@@ -38,7 +38,7 @@ test('new passwords are argon2id: signing up, an account\'s own change, an admin
     expect(hashInfo($reader->password)['algoName'])->toBe('argon2id')
         ->and($reader->password)->toStartWith('$argon2id$v=19$m=1024,t=1,p=1$');
 
-    asAccount($reader)->patchJson('/api/account/password', ['current_password' => 'long-enough', 'password' => 'another-one'])->assertNoContent();
+    asAccount($reader)->patchJson('/api/account/password', ['currentPassword' => 'long-enough', 'password' => 'another-one'])->assertNoContent();
     expect(hashInfo($reader->refresh()->password)['algoName'])->toBe('argon2id');
 
     asAdmin()->patchJson("/api/users/{$reader->id}", ['password' => 'reset-by-admin'])->assertOk();
@@ -107,6 +107,6 @@ test('a name no account has costs one hash check, against a hash made once', fun
 
     foreach (['nobody', 'no-one-either'] as $name) {
         fromGallery()->postJson('/api/auth/login', ['username' => $name, 'password' => 'long-enough'])
-            ->assertStatus(401)->assertJson(['error' => 'InvalidCredentials']);
+            ->assertStatus(401)->assertJson(['type' => problemType('InvalidCredentials')]);
     }
 });

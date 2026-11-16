@@ -42,16 +42,16 @@ function answer(form: FormData, received = Infinity) {
   const files = form.getAll('files[]') as File[]
   const results = files
     .slice(0, received)
-    .map((file, i) => ({ file_name: file.name, status: 'success', id: 1000 + i }))
-  return { results, total_uploaded: results.length, total_duplicates: 0, total_failed: 0 }
+    .map((file, i) => ({ fileName: file.name, status: 'success', id: 1000 + i }))
+  return { results, totalUploaded: results.length, totalDuplicates: 0, totalFailed: 0 }
 }
 
-/** The answer with each file's Danbooru lookup queued, as when fetch_tags is sent. */
+/** The answer with each file's Danbooru lookup queued, as when fetchTags is sent. */
 function queuedAnswer(form: FormData) {
   const response = answer(form)
   return {
     ...response,
-    results: response.results.map((r) => ({ ...r, tags_status: 'queued' })),
+    results: response.results.map((r) => ({ ...r, tagsStatus: 'queued' })),
   }
 }
 
@@ -66,9 +66,9 @@ function importsAnswer(statusFor: (id: number, poll: number) => Partial<TagImpor
     const ids = (new URLSearchParams(url.split('?')[1]).get('ids') ?? '').split(',').map(Number)
     return Promise.resolve(
       ids.map((id) => ({
-        media_id: id,
+        mediaId: id,
         status: 'queued',
-        tags_applied: 0,
+        tagsApplied: 0,
         error: null,
         ...statusFor(id, poll),
       })),
@@ -102,7 +102,7 @@ beforeEach(() => {
   pinia = createPinia()
   setActivePinia(pinia)
   // The page is an admin's.
-  useAuthStore().user = { id: 1, username: 'admin', is_admin: true, created_at: '' }
+  useAuthStore().user = { id: 1, username: 'admin', isAdmin: true, createdAt: '' }
   upload.mockReset()
   get.mockReset()
   get.mockResolvedValue(undefined)
@@ -171,7 +171,7 @@ describe('UploadView', () => {
   it('reports the tags applied, and the files with no post, once the lookups have run', async () => {
     upload.mockImplementation((_url: string, form: FormData) => Promise.resolve(queuedAnswer(form)))
     importsAnswer((id) =>
-      id === 1000 ? { status: 'applied', tags_applied: 12 } : { status: 'not_found' },
+      id === 1000 ? { status: 'applied', tagsApplied: 12 } : { status: 'not_found' },
     )
 
     const wrapper = await uploadThrough(images(3), { fetchTags: true })
@@ -211,7 +211,7 @@ describe('UploadView', () => {
   it('keeps asking while lookups are still queued, and only about those', async () => {
     upload.mockImplementation((_url: string, form: FormData) => Promise.resolve(queuedAnswer(form)))
     importsAnswer((id, n) =>
-      id === 1000 || n > 1 ? { status: 'applied', tags_applied: 2 } : { status: 'queued' },
+      id === 1000 || n > 1 ? { status: 'applied', tagsApplied: 2 } : { status: 'queued' },
     )
 
     await uploadThrough(images(2), { fetchTags: true })
@@ -241,7 +241,7 @@ describe('UploadView', () => {
       const response = answer(form)
       return Promise.resolve({
         ...response,
-        results: response.results.map((r) => ({ ...r, tags_error: notSetUp })),
+        results: response.results.map((r) => ({ ...r, tagsError: notSetUp })),
       })
     })
 

@@ -9,6 +9,7 @@ use App\Models\DanbooruCategoryMapping;
 use App\Models\DanbooruTagMapping;
 use App\Models\FavoriteList;
 use App\Models\Media;
+use App\Models\Passkey;
 use App\Models\SavedSearch;
 use App\Models\Tag;
 use App\Models\TagCategory;
@@ -24,7 +25,6 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\ServiceProvider;
-use Laravel\Passkeys\Passkey;
 use Laravel\Passkeys\Passkeys;
 
 class AppServiceProvider extends ServiceProvider
@@ -34,6 +34,8 @@ class AppServiceProvider extends ServiceProvider
         // Passkeys go through PasskeyController, under /api with the rest; the
         // package's own routes would keep the challenge in a web session.
         Passkeys::ignoreRoutes();
+        // Its passkeys keep their times in the gallery's form.
+        Passkeys::usePasskeyModel(Passkey::class);
     }
 
     public function boot(): void
@@ -64,18 +66,17 @@ class AppServiceProvider extends ServiceProvider
         // An id in a path is digits, and names a record that exists: anything
         // else is a 404 (ApiExceptionRenderer names the missing resource).
         $models = [
-            'media_id' => Media::class,
-            'tag_id' => Tag::class,
-            'target_tag_id' => Tag::class,
-            'implied_tag_id' => Tag::class,
-            'category_id' => TagCategory::class,
-            'danbooru_category_id' => DanbooruCategoryMapping::class,
-            // A Danbooru tag mapping's; the only route with a bare {id}.
-            'id' => DanbooruTagMapping::class,
-            'user_id' => User::class,
-            'list_id' => FavoriteList::class,
-            'search_id' => SavedSearch::class,
-            'passkey_id' => Passkey::class,
+            'mediaId' => Media::class,
+            'tagId' => Tag::class,
+            'targetTagId' => Tag::class,
+            'impliedTagId' => Tag::class,
+            'categoryId' => TagCategory::class,
+            'danbooruCategoryId' => DanbooruCategoryMapping::class,
+            'mappingId' => DanbooruTagMapping::class,
+            'userId' => User::class,
+            'listId' => FavoriteList::class,
+            'searchId' => SavedSearch::class,
+            'passkeyId' => Passkey::class,
         ];
         foreach ($models as $parameter => $model) {
             Route::pattern($parameter, '[0-9]+');
@@ -83,8 +84,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // Every /api route: 120 requests a minute per visitor (an IPv4 address, or an
-        // IPv6 /64: ClientAddress). A 429 says when to retry, in the body and in
-        // Retry-After.
+        // IPv6 /64: ClientAddress). A 429 says when to retry in Retry-After.
         RateLimiter::for('api', static fn(Request $request): Limit => Limit::perMinute(120)
             ->by(ClientAddress::key($request))
             ->response(static fn(Request $request, array $headers) => ApiException::response(
@@ -92,7 +92,6 @@ class AppServiceProvider extends ServiceProvider
                 429,
                 'Too many requests. Please wait a moment and try again.',
                 $headers,
-                ['retry_after' => (int) $headers['Retry-After']],
             )));
 
         // Queued Danbooru imports (ImportDanbooruTags): about one every two

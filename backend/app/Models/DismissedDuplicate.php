@@ -9,7 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * A pair of media marked as not duplicates, which the scanner and the report
- * leave out. Stored with the smaller id first.
+ * leave out. Stored with the smaller id first; dismissed_at is a timestamp in
+ * the stored form (App\Support\Timestamp).
  */
 #[Table(name: 'dismissed_duplicates', key: false, incrementing: false, timestamps: false)]
 class DismissedDuplicate extends Model
@@ -40,7 +41,6 @@ class DismissedDuplicate extends Model
         return [
             'media_id_1' => 'integer',
             'media_id_2' => 'integer',
-            'dismissed_at' => 'integer',
         ];
     }
 }

@@ -29,7 +29,7 @@ export function prefetchThumbnails(items: MediaItem[]): void {
   const size = cardsUse2x() ? '2x' : '1x'
   const message: PrefetchThumbnailsMessage = {
     type: 'PREFETCH_THUMBNAILS',
-    urls: items.map((item) => thumbnailUrl(item.file_name, size)),
+    urls: items.map((item) => thumbnailUrl(item.fileName, size)),
   }
   navigator.serviceWorker.controller.postMessage(message)
 }

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Exceptions\ApiException;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as LaravelTestCase;
@@ -18,6 +19,12 @@ pest()->extend(TestCase::class)->use(RefreshDatabase::class)->in('Feature');
 
 /** The gallery's own page, whose writes the tests' config allows. */
 const GALLERY_ORIGIN = 'https://gallery.test';
+
+/** The problem type an API error names its failure with (ApiException::type). */
+function problemType(string $errorCode): string
+{
+    return ApiException::type($errorCode);
+}
 
 /**
  * An Artisan command to set expectations on. artisan() is typed to return an

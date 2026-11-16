@@ -17,12 +17,18 @@ final class ContractFixture
     }
 
     /**
-     * The production schema as SQL (schema.sql): what the migrations must build
+     * The committed schema as SQL (schema.sql): what the migrations must build
      * and contract.sql is loaded on.
      */
-    public static function productionSchema(): string
+    public static function schema(): string
     {
         return (string) file_get_contents(self::path('schema.sql'));
+    }
+
+    /** The schema the Slim app left in production (slim-schema.sql), which the live database started from. */
+    public static function slimSchema(): string
+    {
+        return (string) file_get_contents(self::path('slim-schema.sql'));
     }
 
     /**

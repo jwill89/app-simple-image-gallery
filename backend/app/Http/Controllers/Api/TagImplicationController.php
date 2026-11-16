@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\OpenApi\ProblemJson;
 use OpenApi\Spec as OAS;
 
 /** "Tag A implies tag B": applying A applies B too, transitively. */
@@ -38,15 +39,15 @@ final class TagImplicationController extends Controller
         return $this->cache->remember(CacheGroup::Tags, 'implications', ResponseCache::TTL_MEDIUM, static fn() => DB::table('tag_implications')
             ->join('tags as tag', 'tag.tag_id', '=', 'tag_implications.tag_id')
             ->join('tags as implied', 'implied.tag_id', '=', 'tag_implications.implied_tag_id')
-            ->select(['tag_implications.tag_id', 'tag.tag_name', 'tag_implications.implied_tag_id', 'implied.tag_name as implied_tag_name'])
+            ->select(['tag_implications.tag_id as tagId', 'tag.tag_name as tagName', 'tag_implications.implied_tag_id as impliedTagId', 'implied.tag_name as impliedTagName'])
             ->orderBy('tag.tag_name')
             ->orderBy('implied.tag_name')
             ->get());
     }
 
     /**
-     * POST /tag-implications — Add "tag_id implies implied_tag_id".
-     * Body: { tag_id, implied_tag_id }. Rejects cycles and self-implication.
+     * POST /tag-implications — Add "tagId implies impliedTagId".
+     * Body: { tagId, impliedTagId }. Rejects cycles and self-implication.
      * Returns the created implication.
      */
     #[OAS\Operation\Post(
@@ -55,37 +56,32 @@ final class TagImplicationController extends Controller
         summary: 'Create a tag implication',
         tags: ['Tag Implications'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
-        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(
-            required: ['tag_id', 'implied_tag_id'],
-            properties: [
-                new OAS\Property(property: 'tag_id', schema: new OAS\Schema(type: 'integer')),
-                new OAS\Property(property: 'implied_tag_id', schema: new OAS\Schema(type: 'integer')),
-            ],
-        )),
+        requestBody: new OAS\RequestBody(required: true, content: new OAS\MediaType\Json(ref: '#/components/schemas/TagImplicationBody')),
         responses: [
             new OAS\Response(response: 201, description: 'The created implication', content: new OAS\MediaType\Json(ref: '#/components/schemas/TagImplication')),
-            new OAS\Response(response: 400, description: 'CannotImplySelf / CycleDetected', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
-            new OAS\Response(response: 404, description: 'TagNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'Forbidden (not an admin)', content: new ProblemJson()),
+            new OAS\Response(response: 409, description: 'CycleDetected', content: new ProblemJson()),
+            new OAS\Response(response: 422, description: 'InvalidTagID, CannotImplySelf, TagNotFound (either tag)', content: new ProblemJson()),
         ],
     )]
     public function store(Request $request): JsonResponse
     {
-        $tagId = $request->integer('tag_id');
-        $impliedId = $request->integer('implied_tag_id');
+        $tagId = $request->integer('tagId');
+        $impliedId = $request->integer('impliedTagId');
         if ($tagId <= 0 || $impliedId <= 0) {
-            throw new ApiException('InvalidTagID', 400, 'Both tag IDs must be positive numbers.');
+            throw self::invalid('InvalidTagID', 'Both tag IDs must be positive numbers.');
         }
         if ($tagId === $impliedId) {
-            throw new ApiException('CannotImplySelf', 400, 'A tag cannot imply itself.');
+            throw self::invalid('CannotImplySelf', 'A tag cannot imply itself.');
         }
 
         $tag = Tag::query()->find($tagId);
         $implied = Tag::query()->find($impliedId);
         if ($tag === null || $implied === null) {
-            throw new ApiException('TagNotFound', 404, 'One or both of the specified tags could not be found.');
+            throw self::invalid('TagNotFound', 'One or both of the specified tags could not be found.');
         }
         if (in_array($tagId, Tag::withImplied([$impliedId]), true)) {
-            throw new ApiException('CycleDetected', 400, 'This implication would create a circular dependency.');
+            throw new ApiException('CycleDetected', 409, 'This implication would create a circular dependency.');
         }
 
         // Adding one that exists already is not an error.
@@ -94,29 +90,35 @@ final class TagImplicationController extends Controller
         Log::info('Tag implication added', ['tag_id' => $tagId, 'implied_tag_id' => $impliedId]);
 
         return new JsonResponse([
-            'tag_id' => $tagId,
-            'tag_name' => $tag->tag_name,
-            'implied_tag_id' => $impliedId,
-            'implied_tag_name' => $implied->tag_name,
+            'tagId' => $tagId,
+            'tagName' => $tag->tag_name,
+            'impliedTagId' => $impliedId,
+            'impliedTagName' => $implied->tag_name,
         ], 201);
     }
 
+    private static function invalid(string $code, string $message): ApiException
+    {
+        return new ApiException($code, 422, $message, [], [['message' => $message, 'location' => 'body.impliedTagId']]);
+    }
+
     /**
-     * DELETE /tag-implications/{tag_id}/{implied_tag_id} — Remove an implication.
+     * DELETE /tag-implications/{tagId}/{impliedTagId} — Remove an implication.
      */
     #[OAS\Operation\Delete(
-        path: '/tag-implications/{tag_id}/{implied_tag_id}',
+        path: '/tag-implications/{tagId}/{impliedTagId}',
         operationId: 'deleteTagImplication',
         summary: 'Remove a tag implication',
         tags: ['Tag Implications'],
         security: [new OAS\Security\Requirement(scheme: 'sessionCookie')],
         parameters: [
-            new OAS\Parameter(name: 'tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
-            new OAS\Parameter(name: 'implied_tag_id', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'tagId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
+            new OAS\Parameter(name: 'impliedTagId', in: 'path', required: true, schema: new OAS\Schema(type: 'integer')),
         ],
         responses: [
             new OAS\Response(response: 204, description: 'Removed'),
-            new OAS\Response(response: 404, description: 'TagNotFound / ImplicationNotFound', content: new OAS\MediaType\Json(ref: '#/components/schemas/ErrorResponse')),
+            new OAS\Response(response: 403, description: 'Forbidden (not an admin)', content: new ProblemJson()),
+            new OAS\Response(response: 404, description: 'TagNotFound, ImplicationNotFound', content: new ProblemJson()),
         ],
     )]
     public function destroy(Tag $tag, Tag $implied): Response

@@ -69,7 +69,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/account/blocked-tags/{tag_id}": {
+    "/account/blocked-tags/{tagId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -79,14 +79,14 @@ export interface paths {
         get?: never;
         /**
          * Block a tag
-         * @description PUT /account/blocked-tags/{tag_id} — Block a tag: media carrying it
+         * @description PUT /account/blocked-tags/{tagId} — Block a tag: media carrying it
          *     leaves this account's listings. Blocking it again changes nothing.
          */
         put: operations["blockTag"];
         post?: never;
         /**
          * Unblock a tag
-         * @description DELETE /account/blocked-tags/{tag_id} — Unblock a tag.
+         * @description DELETE /account/blocked-tags/{tagId} — Unblock a tag.
          */
         delete: operations["unblockTag"];
         options?: never;
@@ -154,7 +154,7 @@ export interface paths {
         /**
          * Create an account
          * @description POST /auth/register — Create an account and sign this browser in as it.
-         *     Body: { username, password, remember?, turnstile_token? }.
+         *     Body: { username, password, remember?, turnstileToken? }.
          */
         post: operations["register"];
         delete?: never;
@@ -175,7 +175,7 @@ export interface paths {
         /**
          * Log in
          * @description POST /auth/login — Sign this browser in with a username and password.
-         *     Body: { username, password, remember?, turnstile_token? }.
+         *     Body: { username, password, remember?, turnstileToken? }.
          */
         post: operations["login"];
         delete?: never;
@@ -200,7 +200,7 @@ export interface paths {
         /**
          * Create a category mapping
          * @description POST /danbooru/category-mappings — Map a Danbooru category to a gallery
-         *     category. Body: { danbooru_category_id, danbooru_category_name, gallery_category_id }.
+         *     category. Body: { danbooruCategoryId, danbooruCategoryName, galleryCategoryId }.
          */
         post: operations["saveDanbooruCategoryMapping"];
         delete?: never;
@@ -209,7 +209,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/danbooru/category-mappings/{danbooru_category_id}": {
+    "/danbooru/category-mappings/{danbooruCategoryId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -221,7 +221,7 @@ export interface paths {
         post?: never;
         /**
          * Delete a category mapping
-         * @description DELETE /danbooru/category-mappings/{danbooru_category_id} — Remove a mapping.
+         * @description DELETE /danbooru/category-mappings/{danbooruCategoryId} — Remove a mapping.
          */
         delete: operations["deleteDanbooruCategoryMapping"];
         options?: never;
@@ -245,7 +245,7 @@ export interface paths {
         /**
          * Create a tag name mapping
          * @description POST /danbooru/tag-mappings — Map a Danbooru tag name to a gallery tag name.
-         *     Body: { danbooru_tag, gallery_tag }.
+         *     Body: { danbooruTag, galleryTag }.
          */
         post: operations["createDanbooruTagMapping"];
         delete?: never;
@@ -254,7 +254,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/danbooru/tag-mappings/{id}": {
+    "/danbooru/tag-mappings/{mappingId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -262,21 +262,21 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * Update a tag name mapping
-         * @description PUT /danbooru/tag-mappings/{id} — Update a tag-name mapping.
-         *     Body: { danbooru_tag, gallery_tag }.
-         */
-        put: operations["updateDanbooruTagMapping"];
+        put?: never;
         post?: never;
         /**
          * Delete a tag name mapping
-         * @description DELETE /danbooru/tag-mappings/{id} — Remove a tag-name mapping.
+         * @description DELETE /danbooru/tag-mappings/{mappingId} — Remove a tag-name mapping.
          */
         delete: operations["deleteDanbooruTagMapping"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update a tag name mapping (the fields given)
+         * @description PATCH /danbooru/tag-mappings/{mappingId} — Change a tag-name mapping.
+         *     Body: { danbooruTag?, galleryTag? }; a field left out stays as it is.
+         */
+        patch: operations["updateDanbooruTagMapping"];
         trace?: never;
     };
     "/duplicates/report": {
@@ -333,7 +333,7 @@ export interface paths {
         /**
          * Dismiss a duplicate pair
          * @description POST /duplicates/dismissals — Dismiss a pair of media items as not-duplicates.
-         *     Body: { media_id_1, media_id_2 }.
+         *     Body: { mediaId1, mediaId2 }.
          */
         post: operations["dismissDuplicatePair"];
         delete?: never;
@@ -366,7 +366,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/lists/{list_id}": {
+    "/lists/{listId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -378,7 +378,7 @@ export interface paths {
         post?: never;
         /**
          * Delete a list
-         * @description DELETE /lists/{list_id} — Delete a list (not its media). The default
+         * @description DELETE /lists/{listId} — Delete a list (not its media). The default
          *     list can't be.
          */
         delete: operations["deleteFavoriteList"];
@@ -386,12 +386,12 @@ export interface paths {
         head?: never;
         /**
          * Rename a list
-         * @description PATCH /lists/{list_id} — Rename a list. Body: { name }.
+         * @description PATCH /lists/{listId} — Rename a list. Body: { name }.
          */
         patch: operations["renameFavoriteList"];
         trace?: never;
     };
-    "/lists/{list_id}/ids": {
+    "/lists/{listId}/ids": {
         parameters: {
             query?: never;
             header?: never;
@@ -400,7 +400,7 @@ export interface paths {
         };
         /**
          * The media ids in a list
-         * @description GET /lists/{list_id}/ids — Every media id in a list, for marking cards.
+         * @description GET /lists/{listId}/ids — Every media id in a list, for marking cards.
          */
         get: operations["favoriteListIds"];
         put?: never;
@@ -411,7 +411,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/lists/{list_id}/media": {
+    "/lists/{listId}/media": {
         parameters: {
             query?: never;
             header?: never;
@@ -420,16 +420,16 @@ export interface paths {
         };
         /**
          * A page of a list
-         * @description GET /lists/{list_id}/media?page=&per_page= — A page of a list, the most
-         *     recently added first. Media carrying a tag the account blocks is left
-         *     out, as from every listing.
+         * @description GET /lists/{listId}/media?limit&offset — A page of a list, the most
+         *     recently added first, with the list's size in X-Total-Count. Media
+         *     carrying a tag the account blocks is left out, as from every listing.
          */
         get: operations["favoriteListMedia"];
         put?: never;
         /**
          * Add many media to a list
-         * @description POST /lists/{list_id}/media — Add many media at once. Body:
-         *     { media_ids: int[] } (at most 2000). Ids of media that don't exist are
+         * @description POST /lists/{listId}/media — Add many media at once. Body:
+         *     { mediaIds: int[] } (at most 2000). Ids of media that don't exist are
          *     skipped. Answers { added }, how many weren't in the list already.
          */
         post: operations["addManyToFavoriteList"];
@@ -439,7 +439,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/lists/{list_id}/media/{media_id}": {
+    "/lists/{listId}/media/{mediaId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -449,14 +449,14 @@ export interface paths {
         get?: never;
         /**
          * Add media to a list
-         * @description PUT /lists/{list_id}/media/{media_id} — Add media to a list. Adding it
+         * @description PUT /lists/{listId}/media/{mediaId} — Add media to a list. Adding it
          *     again changes nothing.
          */
         put: operations["addToFavoriteList"];
         post?: never;
         /**
          * Take media out of a list
-         * @description DELETE /lists/{list_id}/media/{media_id} — Take media out of a list.
+         * @description DELETE /lists/{listId}/media/{mediaId} — Take media out of a list.
          */
         delete: operations["removeFromFavoriteList"];
         options?: never;
@@ -464,7 +464,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/media/{media_id}/lists": {
+    "/media/{mediaId}/lists": {
         parameters: {
             query?: never;
             header?: never;
@@ -473,100 +473,13 @@ export interface paths {
         };
         /**
          * Your lists that hold this media
-         * @description GET /media/{media_id}/lists — Which of the account's lists hold this
+         * @description GET /media/{mediaId}/lists — Which of the account's lists hold this
          *     media, by id.
          */
         get: operations["listsHoldingMedia"];
         put?: never;
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/media/page/{page}/{per_page}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * A page of media
-         * @description GET /media/page/{page}[/{per_page}] — A page of media items.
-         *     Returns { items, total_pages, current_page }. per_page is clamped to 1..200.
-         */
-        get: operations["listMedia"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/media/untagged/{page}/{per_page}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * A page of untagged media
-         * @description GET /media/untagged/{page}[/{per_page}] — A page of media with no tags.
-         */
-        get: operations["listUntaggedMedia"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/media/with-tags/{tag_list}/{page}/{per_page}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * A page of media filtered by tags
-         * @description GET /media/with-tags/{tag_list}/{page}[/{per_page}] — A page of media
-         *     filtered by a comma-separated tag list; a leading '-' excludes a tag
-         *     (e.g. "cat,-dog"). Returns { items, total_pages, current_page }.
-         */
-        get: operations["searchMediaByTags"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/media/{media_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * A single media item
-         * @description GET /media/{media_id} — A single media item by ID.
-         */
-        get: operations["getMedia"];
-        put?: never;
-        post?: never;
-        /**
-         * Delete a media item
-         * @description DELETE /media/{media_id} — Delete a media item (DB row, file, thumbnails).
-         */
-        delete: operations["deleteMedia"];
         options?: never;
         head?: never;
         patch?: never;
@@ -580,14 +493,14 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Media after a cursor
-         * @description GET /media?cursor=…&per_page=…&tags=…|untagged=1 — The items after a
-         *     cursor (from a page's or a feed's next_cursor), newest first, in the
-         *     whole gallery, a tag search (as /media/with-tags) or the untagged items.
-         *     Unlike page numbers, a cursor isn't thrown off by items added or removed
-         *     meanwhile, which is what infinite scroll needs.
+         * List media
+         * @description GET /media — Media, newest first: the whole gallery, a tag search
+         *     (?tags=cat,-dog) or the items with no tags (?untagged=true). A numbered
+         *     page is ?limit&offset, with the listing's size in X-Total-Count; the
+         *     items after a page are ?cursor= with the nextCursor it ended with, which
+         *     items added or removed meanwhile don't throw off (infinite scroll).
          */
-        get: operations["listMediaAfterCursor"];
+        get: operations["listMedia"];
         put?: never;
         /**
          * Upload media (create)
@@ -596,6 +509,30 @@ export interface paths {
          */
         post: operations["uploadMedia"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{mediaId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A single media item
+         * @description GET /media/{mediaId} — A single media item by ID.
+         */
+        get: operations["getMedia"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a media item
+         * @description DELETE /media/{mediaId} — Delete a media item (DB row, file, thumbnails).
+         */
+        delete: operations["deleteMedia"];
         options?: never;
         head?: never;
         patch?: never;
@@ -652,9 +589,8 @@ export interface paths {
         put?: never;
         /**
          * Batch-fetch media by IDs
-         * @description POST /media/by-ids — Get multiple media items by an array of IDs.
-         *     Body: { ids: int[] } (max 200). Missing IDs are silently skipped.
-         *     A public batched read (uses POST only to carry a large id list).
+         * @description POST /media/by-ids — Media items by id, up to 200. Ids with no item are
+         *     skipped. A public read that is a POST only to carry a long id list.
          */
         post: operations["getMediaByIds"];
         delete?: never;
@@ -674,8 +610,9 @@ export interface paths {
         put?: never;
         /**
          * Bulk-delete media items
-         * @description POST /media/bulk-delete — Delete one or more media items by ID.
-         *     Body: { media_ids: int[] }. Returns the deleted and failed ID lists.
+         * @description POST /media/bulk-delete — Delete media items by id. Body: { mediaIds }.
+         *     Each is deleted on its own; the answer lists which were and which
+         *     weren't.
          */
         post: operations["bulkDeleteMedia"];
         delete?: never;
@@ -684,7 +621,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/media/{media_id}/tags": {
+    "/media/{mediaId}/tags": {
         parameters: {
             query?: never;
             header?: never;
@@ -693,7 +630,7 @@ export interface paths {
         };
         /**
          * A media item's tags
-         * @description GET /media/{media_id}/tags — Tags applied to a media item. Cached.
+         * @description GET /media/{mediaId}/tags — Tags applied to a media item. Cached.
          */
         get: operations["listMediaTags"];
         put?: never;
@@ -703,14 +640,14 @@ export interface paths {
         head?: never;
         /**
          * Add tags to a media item
-         * @description PATCH /media/{media_id}/tags — Apply tags to a media item (implications
-         *     resolved). Body: { tag_ids: int[] }. Returns the item's updated tag list.
+         * @description PATCH /media/{mediaId}/tags — Apply tags to a media item (implications
+         *     resolved). Body: { tagIds: int[] }. Returns the item's updated tag list.
          *     Public (anyone may tag).
          */
         patch: operations["addMediaTags"];
         trace?: never;
     };
-    "/media/{media_id}/tags/{tag_id}": {
+    "/media/{mediaId}/tags/{tagId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -722,7 +659,7 @@ export interface paths {
         post?: never;
         /**
          * Remove a tag from a media item
-         * @description DELETE /media/{media_id}/tags/{tag_id} — Remove a tag from a media item.
+         * @description DELETE /media/{mediaId}/tags/{tagId} — Remove a tag from a media item.
          *     Returns the item's updated tag list. Public (anyone may tag).
          */
         delete: operations["removeMediaTag"];
@@ -731,7 +668,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/media/{media_id}/danbooru-tags": {
+    "/media/{mediaId}/danbooru-tags": {
         parameters: {
             query?: never;
             header?: never;
@@ -742,8 +679,8 @@ export interface paths {
         put?: never;
         /**
          * Import Danbooru tags for a media item
-         * @description POST /media/{media_id}/danbooru-tags — Import tags from Danbooru for a
-         *     media item. Body: { danbooru_post_id? }. With a post ID, imports directly;
+         * @description POST /media/{mediaId}/danbooru-tags — Import tags from Danbooru for a
+         *     media item. Body: { danbooruPostId? }. With a post ID, imports directly;
          *     otherwise auto-looks-up by MD5 hash then IQDB visual similarity.
          */
         post: operations["importDanbooruTags"];
@@ -863,7 +800,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/account/passkeys/{passkey_id}": {
+    "/account/passkeys/{passkeyId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -875,7 +812,7 @@ export interface paths {
         post?: never;
         /**
          * Remove a passkey
-         * @description DELETE /account/passkeys/{passkey_id} — Remove a passkey: it no longer
+         * @description DELETE /account/passkeys/{passkeyId} — Remove a passkey: it no longer
          *     signs anyone in (the browser or password manager still lists it until
          *     it is deleted there).
          */
@@ -884,7 +821,7 @@ export interface paths {
         head?: never;
         /**
          * Rename a passkey
-         * @description PATCH /account/passkeys/{passkey_id} — Rename a passkey. Body: { name }.
+         * @description PATCH /account/passkeys/{passkeyId} — Rename a passkey. Body: { name }.
          */
         patch: operations["renamePasskey"];
         trace?: never;
@@ -913,7 +850,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/saved-searches/{search_id}": {
+    "/saved-searches/{searchId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -925,14 +862,14 @@ export interface paths {
         post?: never;
         /**
          * Delete a saved search
-         * @description DELETE /saved-searches/{search_id} — Delete a saved search.
+         * @description DELETE /saved-searches/{searchId} — Delete a saved search.
          */
         delete: operations["deleteSavedSearch"];
         options?: never;
         head?: never;
         /**
          * Change a saved search
-         * @description PATCH /saved-searches/{search_id} — Rename a search or change its query.
+         * @description PATCH /saved-searches/{searchId} — Rename a search or change its query.
          *     Body: { name?, query? }.
          */
         patch: operations["updateSavedSearch"];
@@ -989,8 +926,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Interactive API reference (Scalar)
-         * @description GET /docs — The interactive API reference (Scalar), pointed at the spec.
+         * Interactive API reference (Swagger UI)
+         * @description GET /docs — The interactive API reference (Swagger UI), pointed at the spec.
          */
         get: operations["getApiDocs"];
         put?: never;
@@ -1017,7 +954,7 @@ export interface paths {
         /**
          * Create a tag category
          * @description POST /tag-categories — Create a tag category. Returns the created category.
-         *     Body: { category_name, color?, description?, sort_order? }
+         *     Body: { categoryName, color, description?, sortOrder? }
          */
         post: operations["createTagCategory"];
         delete?: never;
@@ -1026,7 +963,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/tag-categories/{category_id}": {
+    "/tag-categories/{categoryId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1038,14 +975,15 @@ export interface paths {
         post?: never;
         /**
          * Delete a tag category
-         * @description DELETE /tag-categories/{category_id} — Delete a category that has no tags.
+         * @description DELETE /tag-categories/{categoryId} — Delete a category that has no tags.
          */
         delete: operations["deleteTagCategory"];
         options?: never;
         head?: never;
         /**
          * Update a tag category (the fields given)
-         * @description PUT is accepted too, and also leaves out fields as they are.
+         * @description PATCH /tag-categories/{categoryId} — Update a tag category: the
+         *     fields sent, the rest as they are. Returns the updated category.
          */
         patch: operations["updateTagCategory"];
         trace?: never;
@@ -1058,18 +996,19 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Find tags, or list them all
-         * @description GET /tags — Tags (id, name, category). With ?search= the best matches
-         *     for a name (exact, then prefix, then containing; ?limit= of them, 20 by
-         *     default, ?exclude= ids left out); with ?names= or ?ids= those tags;
-         *     with none, every tag (cached).
+         * List, find or look up tags
+         * @description GET /tags — A page of tags, by name unless ?sort says otherwise, with
+         *     how many match in X-Total-Count. ?search= ranks the matches for a name
+         *     (exact, then prefix, then containing), for pickers; ?filter= keeps tags
+         *     whose own or category's name contains it; ?ids= and ?names= look tags
+         *     up; ?exclude= leaves ids out. With ?include=counts each tag carries its
+         *     media and implication counts. Cached.
          */
         get: operations["listTags"];
         put?: never;
         /**
          * Create a tag
-         * @description POST /tags — Create a tag. Body: { tag_name, category_id? (default 1) }.
-         *     Returns the created tag.
+         * @description POST /tags — Create a tag. Body: { tagName, categoryId? (default 1) }.
          */
         post: operations["createTag"];
         delete?: never;
@@ -1078,30 +1017,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/tags/display": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * A page of tags with category and usage counts
-         * @description GET /tags/display — A page of tags with their category and usage and
-         *     implication counts, for the tag-management pages. ?search= matches tag
-         *     or category names; ?sort= tag_name, category_name or media_count (the
-         *     default), ?direction= asc or desc; ?ids= picks tags. Cached.
-         */
-        get: operations["listTagsForDisplay"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/tags/{tag_id}": {
+    "/tags/{tagId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1110,15 +1026,15 @@ export interface paths {
         };
         /**
          * A single tag
-         * @description GET /tags/{tag_id} — A single tag by ID.
+         * @description GET /tags/{tagId} — A single tag by ID.
          */
         get: operations["getTag"];
         put?: never;
         post?: never;
         /**
          * Delete a tag
-         * @description DELETE /tags/{tag_id} — Delete a tag.
-         *     DELETE /tags/{tag_id}/migrate-to/{target_tag_id} — move this tag's media
+         * @description DELETE /tags/{tagId} — Delete a tag.
+         *     DELETE /tags/{tagId}/migrate-to/{targetTagId} — move this tag's media
          *     to the target first, then delete this tag.
          */
         delete: operations["deleteTag"];
@@ -1126,12 +1042,13 @@ export interface paths {
         head?: never;
         /**
          * Update a tag (the fields given)
-         * @description PUT is accepted too, and also leaves out fields as they are.
+         * @description PATCH /tags/{tagId} — Rename and/or recategorize a tag. Body:
+         *     { tagName?, categoryId? }; a field left out stays as it is.
          */
         patch: operations["updateTag"];
         trace?: never;
     };
-    "/tags/{tag_id}/migrate-to/{target_tag_id}": {
+    "/tags/{tagId}/migrate-to/{targetTagId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1143,8 +1060,8 @@ export interface paths {
         post?: never;
         /**
          * Move a tag's media to another tag, then delete it
-         * @description DELETE /tags/{tag_id} — Delete a tag.
-         *     DELETE /tags/{tag_id}/migrate-to/{target_tag_id} — move this tag's media
+         * @description DELETE /tags/{tagId} — Delete a tag.
+         *     DELETE /tags/{tagId}/migrate-to/{targetTagId} — move this tag's media
          *     to the target first, then delete this tag.
          */
         delete: operations["migrateAndDeleteTag"];
@@ -1153,7 +1070,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/tags/{tag_id}/migrate": {
+    "/tags/{tagId}/migrate": {
         parameters: {
             query?: never;
             header?: never;
@@ -1164,9 +1081,9 @@ export interface paths {
         put?: never;
         /**
          * Move a tag's media to another tag, keeping it
-         * @description POST /tags/{tag_id}/migrate — Move all this tag's media to the target,
-         *     keeping this tag (now on no media). Body: { target_tag_id }. To move and
-         *     delete in one step, DELETE /tags/{tag_id}/migrate-to/{target_tag_id}.
+         * @description POST /tags/{tagId}/migrate — Move all this tag's media to the target,
+         *     keeping this tag (now on no media). Body: { targetTagId }. To move and
+         *     delete in one step, DELETE /tags/{tagId}/migrate-to/{targetTagId}.
          */
         post: operations["migrateTag"];
         delete?: never;
@@ -1190,8 +1107,8 @@ export interface paths {
         put?: never;
         /**
          * Create a tag implication
-         * @description POST /tag-implications — Add "tag_id implies implied_tag_id".
-         *     Body: { tag_id, implied_tag_id }. Rejects cycles and self-implication.
+         * @description POST /tag-implications — Add "tagId implies impliedTagId".
+         *     Body: { tagId, impliedTagId }. Rejects cycles and self-implication.
          *     Returns the created implication.
          */
         post: operations["createTagImplication"];
@@ -1201,7 +1118,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/tag-implications/{tag_id}/{implied_tag_id}": {
+    "/tag-implications/{tagId}/{impliedTagId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1213,7 +1130,7 @@ export interface paths {
         post?: never;
         /**
          * Remove a tag implication
-         * @description DELETE /tag-implications/{tag_id}/{implied_tag_id} — Remove an implication.
+         * @description DELETE /tag-implications/{tagId}/{impliedTagId} — Remove an implication.
          */
         delete: operations["deleteTagImplication"];
         options?: never;
@@ -1241,7 +1158,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/users/{user_id}": {
+    "/users/{userId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1253,7 +1170,7 @@ export interface paths {
         post?: never;
         /**
          * Delete an account
-         * @description DELETE /users/{user_id} — Delete an account, with its lists, blocked
+         * @description DELETE /users/{userId} — Delete an account, with its lists, blocked
          *     tags and saved searches.
          */
         delete: operations["deleteUser"];
@@ -1261,7 +1178,7 @@ export interface paths {
         head?: never;
         /**
          * Change an account
-         * @description PATCH /users/{user_id} — Make an account an admin or not, or set its
+         * @description PATCH /users/{userId} — Make an account an admin or not, or set its
          *     password (which signs it out everywhere).
          */
         patch: operations["updateUser"];
@@ -1271,101 +1188,311 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Media items to delete, by id. */
+        BulkDeleteBody: {
+            /** @description The ids to delete. */
+            mediaIds: number[];
+        };
+        /** @description Which gallery category a Danbooru category imports into; replaces any mapping it has. */
+        CategoryMappingBody: {
+            /** @description Danbooru's number for the category (0 is General). */
+            danbooruCategoryId: number;
+            /** @description Danbooru's name for it. */
+            danbooruCategoryName: string;
+            /** @description The gallery category its tags import into. */
+            galleryCategoryId: number;
+        };
+        /** @description Where to import Danbooru tags from. */
+        DanbooruImportBody: {
+            /** @description A Danbooru post id to import from; left out, the post is found by MD5, then by visual similarity. */
+            danbooruPostId?: number | null;
+        };
+        /** @description A pair of media items that aren't duplicates. */
+        DismissalBody: {
+            /** @description One item. */
+            mediaId1: number;
+            /** @description The other, a different item. */
+            mediaId2: number;
+        };
+        /** @description A list's name. */
+        FavoriteListBody: {
+            /** @description Unique among the account's lists, without regard to case. */
+            name: string;
+        };
+        /** @description Media items to add to a list, by id. */
+        ListItemsBody: {
+            /** @description Up to 2000 ids; ids with no item are skipped. */
+            mediaIds: number[];
+        };
+        /** @description A sign-in by username and password. */
+        LoginBody: {
+            /** @description Any case. */
+            username: string;
+            /** @description The account's password. */
+            password: string;
+            /** @description Keep this browser signed in for 30 days, not just until it closes. */
+            remember?: boolean;
+            /** @description The Turnstile widget's token (action "login"), when GET /auth/config gives a site key. */
+            turnstileToken?: string;
+        };
+        /** @description Media items to read, by id. */
+        MediaIdsBody: {
+            /** @description Up to 200 ids; ids with no item are skipped. */
+            ids: number[];
+        };
+        /** @description Tags to apply to a media item, with what they imply. */
+        MediaTagsBody: {
+            /** @description The tags' ids; every one must exist. */
+            tagIds: number[];
+        };
+        /** @description A new passkey's answer to the challenge. */
+        PasskeyAddBody: {
+            /** @description The PublicKeyCredential navigator.credentials.create() gave, as its toJSON() writes it. */
+            credential: {
+                [key: string]: unknown;
+            };
+            /** @description What to call it; left out, it is named after where it is kept, when its maker says. */
+            name?: string;
+        };
+        /** @description A passkey's new name. */
+        PasskeyNameBody: {
+            /** @description The new name. */
+            name: string;
+        };
+        /** @description A passkey's answer to the sign-in challenge. */
+        PasskeySignInBody: {
+            /** @description The PublicKeyCredential navigator.credentials.get() gave, as its toJSON() writes it. */
+            credential: {
+                [key: string]: unknown;
+            };
+            /** @description Keep this browser signed in for 30 days, not just until it closes. */
+            remember?: boolean;
+        };
+        /** @description The account's password, confirming who is asking. */
+        PasswordBody: {
+            /** @description The account's current password. */
+            password: string;
+        };
+        /** @description A new password for the signed-in account. */
+        PasswordChangeBody: {
+            /** @description The password now. */
+            currentPassword: string;
+            /** @description The new one, at least 8 characters. */
+            password: string;
+        };
+        /** @description A new account. */
+        RegisterBody: {
+            /** @description 3 to 32 letters, digits, dots, dashes or underscores; unique without regard to case. */
+            username: string;
+            /** @description At least 8 characters. */
+            password: string;
+            /** @description Keep this browser signed in for 30 days, not just until it closes. */
+            remember?: boolean;
+            /** @description The Turnstile widget's token (action "register"), when GET /auth/config gives a site key. */
+            turnstileToken?: string;
+        };
+        /** @description A search to keep. */
+        SavedSearchCreateBody: {
+            /** @description Unique among the account's searches, without regard to case. */
+            name: string;
+            /** @description As the gallery's URL writes it: "cat,-dog", or "untagged". */
+            query: string;
+        };
+        /** @description A saved search's changes: the fields sent change, the rest stay. */
+        SavedSearchUpdateBody: {
+            /** @description Unique among the account's searches, without regard to case. */
+            name?: string;
+            /** @description As the gallery's URL writes it: "cat,-dog", or "untagged". */
+            query?: string;
+        };
+        /** @description A new tag category. */
+        TagCategoryCreateBody: {
+            /** @description The name; unique without regard to case. */
+            categoryName: string;
+            /** @description A tag palette hue (TagCategory::COLORS). */
+            color: string;
+            /** @description What the category is for. */
+            description?: string | null;
+            /** @description Where its tags come in a tag list: lowest first. */
+            sortOrder?: number | null;
+        };
+        /** @description A category's changes: the fields sent change, the rest stay. */
+        TagCategoryUpdateBody: {
+            /** @description A new name; unique without regard to case. */
+            categoryName?: string;
+            /** @description A tag palette hue (TagCategory::COLORS). */
+            color?: string;
+            /** @description What the category is for. */
+            description?: string | null;
+            /** @description Where its tags come in a tag list: lowest first. */
+            sortOrder?: number | null;
+        };
+        /** @description A new tag. */
+        TagCreateBody: {
+            /** @description The name; stored lowercase and trimmed. */
+            tagName: string;
+            /**
+             * @description Its category; General (1) when left out.
+             * @default 1
+             */
+            categoryId: number;
+        };
+        /** @description A new implication: applying the tag applies the implied tag too. */
+        TagImplicationBody: {
+            /** @description The implying tag. */
+            tagId: number;
+            /** @description The implied tag; it may not lead back to the implying one. */
+            impliedTagId: number;
+        };
+        /** @description A Danbooru tag name and the gallery tag name it imports as. */
+        TagMappingCreateBody: {
+            /** @description The tag as Danbooru names it; one mapping each. */
+            danbooruTag: string;
+            /** @description The gallery tag name it imports as. */
+            galleryTag: string;
+        };
+        /** @description A mapping's changes: the fields sent change, the rest stay. */
+        TagMappingUpdateBody: {
+            /** @description The tag as Danbooru names it; one mapping each. */
+            danbooruTag?: string;
+            /** @description The gallery tag name it imports as. */
+            galleryTag?: string;
+        };
+        /** @description Where to move a tag's media. */
+        TagMigrateBody: {
+            /** @description The tag that receives the media. */
+            targetTagId: number;
+        };
+        /** @description A tag's changes: the fields sent change, the rest stay. */
+        TagUpdateBody: {
+            /** @description A new name; stored lowercase and trimmed. */
+            tagName?: string;
+            /** @description A new category. */
+            categoryId?: number;
+        };
+        /** @description An admin's changes to an account: the fields sent change, the rest stay. */
+        UserUpdateBody: {
+            /** @description Make it an admin, or not. */
+            isAdmin?: boolean;
+            /** @description A new password, which signs it out everywhere. */
+            password?: string;
+        };
+        /** @description How many media items a bulk add put in a list. */
+        AddedCount: {
+            /** @description Items added that weren't in the list already. */
+            added: number;
+        };
+        /** @description What the sign-up and sign-in pages need to know. */
+        AuthConfig: {
+            /** @description Whether anyone may make an account. */
+            signupOpen: boolean;
+            /** @description Cloudflare Turnstile's site key for the bot check; null while the server doesn't check. */
+            turnstileSiteKey: string | null;
+        };
         /** @description Outcome of a bulk media delete. */
         BulkDeleteResult: {
-            /** @description IDs successfully deleted. */
-            deleted?: number[];
-            /** @description IDs that could not be deleted. */
-            failed?: number[];
-            total_deleted?: number;
+            /** @description Ids deleted. */
+            deleted: number[];
+            /** @description Ids that could not be deleted (unknown, not a positive number, or failing). */
+            failed: number[];
+            /** @description How many were deleted. */
+            totalDeleted: number;
         };
-        /** @description A Danbooru-to-gallery category mapping. */
-        CategoryMapping: {
-            danbooru_category_id?: number;
-            danbooru_category_name?: string;
-            gallery_category_id?: number;
-            gallery_category_name?: string | null;
-        };
-        /** @description A count wrapper. */
+        /** @description How many media items the reader may see. */
         Count: {
-            count?: number;
+            /** @description The number of items, less any carrying a tag the account blocks. */
+            count: number;
         };
         /** @description Outcome of a Danbooru tag import. */
         DanbooruFetchResult: {
-            /** @description The media item's tags after import. */
-            tags?: components["schemas"]["Tag"][];
-            /** @description Lookup method used (md5 / iqdb / post). */
-            method?: string;
-            tags_applied?: number;
-            tags_created?: number;
+            /** @description The media item's tags after the import, in display order. */
+            tags: components["schemas"]["Tag"][];
+            /**
+             * @description How the post was found: by the file's MD5, by visual similarity (IQDB), or by the post id given.
+             * @enum {string}
+             */
+            method: "md5" | "iqdb" | "post";
+            /** @description Tags applied to the item. */
+            tagsApplied: number;
+            /** @description Tags the gallery did not have yet, created for it. */
+            tagsCreated: number;
         };
         /** @description A dismissed duplicate pair. */
         DismissResult: {
-            dismissed?: boolean;
-            media_id_1?: number;
-            media_id_2?: number;
+            /** @description Always true. */
+            dismissed: boolean;
+            /** @description The pair's smaller id. */
+            mediaId1: number;
+            /** @description The pair's larger id. */
+            mediaId2: number;
         };
         /** @description A duplicate media pair with similarity scores. */
         DuplicateMatch: {
-            media_1?: {
-                media_id?: number;
-                file_name?: string;
-                hash?: string;
-            };
-            media_2?: {
-                media_id?: number;
-                file_name?: string;
-                hash?: string;
-            };
-            /** @description Hamming distance between fingerprints. */
-            distance?: number | null;
+            /** @description The item with the smaller id. */
+            media1: components["schemas"]["DuplicateMedia"];
+            /** @description The item with the larger id. */
+            media2: components["schemas"]["DuplicateMedia"];
+            /** @description Hamming distance between their fingerprints. */
+            distance: number | null;
             /**
              * Format: float
-             * @description Structural similarity (SSIM) score.
+             * @description Structural similarity (SSIM) of their thumbnails; null in older reports.
              */
-            ssim?: number | null;
+            ssim: number | null;
+        };
+        /** @description A media item in a duplicate pair. */
+        DuplicateMedia: {
+            /** @description The item's id. */
+            mediaId: number;
+            /** @description Its file name. */
+            fileName: string;
+            /** @description MD5 hash of its file. */
+            hash: string;
         };
         /** @description The latest duplicate-detection report. */
         DuplicateReport: {
-            report_file?: string;
-            /** @description ISO timestamp the report was generated. */
-            generated_at?: string | null;
-            images_compared?: number | null;
-            duplicates_found?: number;
-            matches?: components["schemas"]["DuplicateMatch"][];
+            /** @description The report's file name (dupes-YYYY-MM-DD.json). */
+            reportFile: string;
+            /** @description When the scan ran, as the report writes it. */
+            generatedAt: string | null;
+            /** @description How many images the scan compared. */
+            imagesCompared: number | null;
+            /** @description How many pairs are listed. */
+            duplicatesFound: number;
+            /** @description The pairs not dismissed since, whose items both still exist. */
+            matches: components["schemas"]["DuplicateMatch"][];
         };
-        /** @description Standard error envelope. */
-        ErrorResponse: {
-            /** @description Stable PascalCase machine code (e.g. MediaNotFound). */
-            error?: string;
-            /** @description Human-readable message for display. */
-            message?: string;
+        /** @description One field a validation refused. */
+        ErrorDetail: {
+            /** @description What is wrong with the field, in words a person can read. */
+            message: string;
+            /** @description Where the field is: body.tagName, query.limit, path.mediaId. */
+            location: string;
         };
-        /** @description Media items after a cursor. */
-        MediaFeed: {
-            items?: components["schemas"]["Media"][];
-            /** @description Pass as ?cursor= for the items after these; null when nothing follows. */
-            next_cursor?: string | null;
-        };
-        /** @description A numbered page of media items. */
+        /** @description The ids of the account's lists that hold a media item. */
+        ListIdList: number[];
+        /** @description Every media id in a list. */
+        MediaIdList: number[];
+        /** @description A page of media items, newest first. */
         MediaPage: {
-            items?: components["schemas"]["Media"][];
-            total_pages?: number;
-            current_page?: number;
-            /** @description Continue after this page with GET /media?cursor=… (same listing); null when nothing follows. */
-            next_cursor?: string | null;
+            /** @description The page's items. */
+            items: components["schemas"]["Media"][];
+            /** @description Pass as ?cursor= (with the same filters) for the items after these; null when nothing follows. */
+            nextCursor: string | null;
         };
         /** @description A media item; with include=tags, also its tags in display order. */
         MediaWithTags: components["schemas"]["Media"] & {
+            /** @description Its tags by category sort order, then name (include=tags only). */
             tags?: components["schemas"]["Tag"][];
         };
         /** @description Outcome of a tag migration. */
         MigrateResult: {
-            migrated?: boolean;
-            /** @description The source tag (now deleted). */
-            source_tag_id?: number;
-            /** @description The target tag that received the media. */
-            target_tag_id?: number;
+            /** @description Always true. */
+            migrated: boolean;
+            /** @description The tag whose media moved; it is kept, on no media. */
+            sourceTagId: number;
+            /** @description The tag that received the media. */
+            targetTagId: number;
         };
         /** @description WebAuthn options for the browser (PublicKeyCredentialRequestOptionsJSON to sign in, PublicKeyCredentialCreationOptionsJSON to add a passkey), with a challenge this session answers once. */
         PasskeyOptions: {
@@ -1374,178 +1501,248 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description An RFC 9457 problem details body, sent as application/problem+json with every error. */
+        Problem: {
+            /**
+             * Format: uri
+             * @description What went wrong: a tag URI ending in a stable PascalCase name (tag:gallery.mathdad.me,2026:MediaNotFound), which a client may branch on. It names the failure and is never fetched.
+             */
+            type: string;
+            /** @description The HTTP status's reason phrase (Not Found, Unprocessable Content, …). */
+            title: string;
+            /** @description The HTTP status code, as the response has it. */
+            status: number;
+            /** @description Why it failed, in words a person can read; for display, and it may change. */
+            detail: string;
+            /** @description A failed validation's broken fields, one entry each; absent otherwise. */
+            errors?: components["schemas"]["ErrorDetail"][];
+        };
         /** @description Duplicate-scan summary statistics. */
         ScanResult: {
-            success?: boolean;
-            message?: string;
-            images_compared?: number;
-            lsh_candidates?: number;
-            duplicates_found?: number;
+            /** @description Always true. */
+            success: boolean;
+            /** @description A line to show. */
+            message: string;
+            /** @description How many images had fingerprints to compare. */
+            imagesCompared: number;
+            /** @description Pairs that shared a hash band, before the distance check. */
+            lshCandidates: number;
+            /** @description Pairs reported. */
+            duplicatesFound: number;
             /**
              * Format: float
-             * @description Execution time in seconds.
+             * @description How long the scan took, in seconds.
              */
-            execution_time?: number;
+            executionTime: number;
         };
         /** @description Who this browser is signed in as. */
         SessionResponse: {
-            /** @description Null when signed out. */
+            /** @description The account; null when signed out. */
             user: components["schemas"]["User"] | null;
         };
         /** @description The account this browser is now signed in as. */
         SignInResponse: {
+            /** @description The account. */
             user: components["schemas"]["User"];
         };
-        /** @description A tag implication (tag -> implied tag). */
+        /** @description A tag implication: applying the tag applies the implied tag too. */
         TagImplication: {
-            tag_id?: number;
-            tag_name?: string;
-            implied_tag_id?: number;
-            implied_tag_name?: string;
+            /** @description The implying tag. */
+            tagId: number;
+            /** @description Its name. */
+            tagName: string;
+            /** @description The implied tag. */
+            impliedTagId: number;
+            /** @description Its name. */
+            impliedTagName: string;
         };
         /** @description A media item's queued Danbooru import. */
         TagImportStatus: {
-            media_id?: number;
+            /** @description The item asked about. */
+            mediaId: number;
             /**
-             * @description none: no import was queued for it in the last day.
+             * @description Where it stands; none: no import was queued for it in the last day.
              * @enum {string}
              */
-            status?: "queued" | "applied" | "not_found" | "failed" | "none";
-            /** @description Tags applied (applied only). */
-            tags_applied?: number;
+            status: "queued" | "applied" | "not_found" | "failed" | "none";
+            /** @description Tags applied (applied only; otherwise 0). */
+            tagsApplied: number;
             /** @description Why it failed (failed only): blocked, refused, unreachable, …. */
-            error?: string | null;
+            error: string | null;
         };
-        /** @description A tag with category name and usage counts. */
-        TagListItem: {
-            tag_id?: number;
-            tag_name?: string;
-            category_id?: number;
-            category_name?: string | null;
-            /** @description Number of media items with this tag. */
-            media_count?: number;
-            /** @description Number of implications originating from this tag. */
-            implication_count?: number;
-        };
-        /** @description A page of tags with category and usage counts. */
-        TagListPage: {
-            items?: components["schemas"]["TagListItem"][];
-            /** @description Tags matching the search, on every page. */
-            total?: number;
-            current_page?: number;
-            total_pages?: number;
-        };
-        /** @description A Danbooru-to-gallery tag name mapping. */
-        TagMapping: {
-            id?: number;
-            danbooru_tag?: string;
-            gallery_tag?: string;
-        };
-        /** @description Per-file upload outcome. */
+        /** @description One uploaded file's outcome. */
         UploadResult: {
-            file_name?: string;
-            /** @enum {string} */
-            status?: "success" | "duplicate" | "error";
-            /** @description New media ID (on success). */
+            /** @description The file as uploaded, or as saved once it is. */
+            fileName: string;
+            /**
+             * @description What happened to it.
+             * @enum {string}
+             */
+            status: "success" | "duplicate" | "error";
+            /** @description The new media item's id (success only). */
             id?: number;
-            /** @description Existing media ID (on duplicate). */
-            existing_id?: number;
-            /** @description MD5 hash of the file. */
+            /** @description The item it duplicates (duplicate only). */
+            existingId?: number;
+            /** @description MD5 hash of the file (success and duplicate). */
             hash?: string;
-            /** @description Failure reason (on error). */
+            /** @description Why it failed (error only). */
             message?: string;
             /**
-             * @description With fetch_tags: the Danbooru lookup is queued; GET /media/tag-imports says how it went.
+             * @description With fetchTags: the Danbooru lookup is queued; GET /media/tag-imports says how it went.
              * @enum {string}
              */
-            tags_status?: "queued";
-            /** @description With fetch_tags: why no Danbooru lookup was queued (Danbooru is not set up on the server). The file is still uploaded. */
-            tags_error?: string;
+            tagsStatus?: "queued";
+            /** @description With fetchTags: why no Danbooru lookup was queued (Danbooru is not set up on the server). The file is still uploaded. */
+            tagsError?: string;
         };
-        /** @description Aggregate upload result. */
+        /** @description Every uploaded file's outcome, with totals. */
         UploadSummary: {
-            results?: components["schemas"]["UploadResult"][];
-            total_uploaded?: number;
-            total_duplicates?: number;
-            total_failed?: number;
+            /** @description One entry per file, in the order sent. */
+            results: components["schemas"]["UploadResult"][];
+            /** @description Files added. */
+            totalUploaded: number;
+            /** @description Files skipped as copies of items there already. */
+            totalDuplicates: number;
+            /** @description Files refused. */
+            totalFailed: number;
         };
         /** @description Application and API version. */
         VersionResponse: {
             /** @description Application version (SemVer). */
-            version?: string;
-            /** @description HTTP API contract version (SemVer). */
-            api_version?: string;
+            version: string;
+            /** @description HTTP API contract version (SemVer); moves only when the API changes. */
+            apiVersion: string;
         };
         /** @description A media item (image or video). */
         Media: {
-            media_id?: number;
-            /** @enum {string} */
-            media_type?: "image" | "video";
-            file_name?: string;
-            /** @description Unix timestamp the file was ingested. */
-            file_time?: number;
+            /** @description The item's id. */
+            mediaId: number;
+            /**
+             * @description An animated GIF is a video.
+             * @enum {string}
+             */
+            mediaType: "image" | "video";
+            /** @description The file under /media/full/; its thumbnails are /media/thumbs/<name without extension>.webp and @2x.webp. */
+            fileName: string;
+            /**
+             * Format: date-time
+             * @description When it was added (an upload) or last changed (an ingested file), RFC 3339 in UTC; listings are newest first by it.
+             */
+            fileTime: string;
             /** @description MD5 hash of the file contents. */
-            hash?: string;
-            /** @description Perceptual fingerprint (images only). */
-            bits_fingerprint?: string;
-            width?: number;
-            height?: number;
+            hash: string;
+            /** @description Perceptual fingerprint, 64 bits as 0s and 1s (images only; empty for videos). */
+            bitsFingerprint: string;
+            /** @description Width in pixels. */
+            width: number;
+            /** @description Height in pixels. */
+            height: number;
             /**
              * Format: float
              * @description Duration in seconds; 0 for still images.
              */
-            duration?: number;
+            duration: number;
             /** @description File size in bytes. */
-            file_size?: number;
+            fileSize: number;
         };
         /** @description A tag. */
         Tag: {
-            tag_id?: number;
-            category_id?: number;
-            tag_name?: string;
+            /** @description The tag's id. */
+            tagId: number;
+            /** @description The tag category it belongs to. */
+            categoryId: number;
+            /** @description Lowercase; unique without regard to case. */
+            tagName: string;
+            /** @description How many media items carry it (GET /tags with include=counts only). */
+            mediaCount?: number;
+            /** @description How many tags it implies directly (GET /tags with include=counts only). */
+            implicationCount?: number;
         };
-        /** @description A tag category (color, shortcode, sort order). */
+        /** @description A tag category (name, color, description, sort order). */
         TagCategory: {
-            category_id?: number;
-            category_name?: string;
+            /** @description The category's id. */
+            categoryId: number;
+            /** @description Unique without regard to case. */
+            categoryName: string;
             /** @description Tag palette hue. Display only — never a semantic state name. */
-            color?: string;
-            description?: string;
-            sort_order?: number;
+            color: string | null;
+            /** @description What the category is for. */
+            description: string | null;
+            /** @description Where its tags come in a media item's tag list: lowest first. */
+            sortOrder: number | null;
         };
         /** @description An account. */
         User: {
-            id?: number;
-            username?: string;
-            is_admin?: boolean;
-            /** Format: date-time */
-            created_at?: string;
+            /** @description The account's id. */
+            id: number;
+            /** @description What it signs in with; unique without regard to case. */
+            username: string;
+            /** @description Whether it may upload, delete and manage tags and accounts. */
+            isAdmin: boolean;
+            /**
+             * Format: date-time
+             * @description When it was made, RFC 3339 in UTC.
+             */
+            createdAt: string | null;
         };
         /** @description One of an account's lists of media. */
         FavoriteList: {
-            list_id?: number;
-            name?: string;
+            /** @description The list's id. */
+            listId: number;
+            /** @description Unique among the account's lists, without regard to case. */
+            name: string;
             /** @description The list the heart on a card adds to; it can be renamed, not deleted. */
-            is_default?: boolean;
-            media_count?: number;
+            isDefault: boolean;
+            /** @description How many media items it holds. */
+            mediaCount: number;
         };
         /** @description A tag search an account keeps by name. */
         SavedSearch: {
-            search_id?: number;
-            name?: string;
+            /** @description The search's id. */
+            searchId: number;
+            /** @description Unique among the account's searches, without regard to case. */
+            name: string;
             /** @description As the gallery's URL writes it: "cat,-dog", or "untagged". */
-            query?: string;
+            query: string;
         };
         /** @description A passkey an account signs in with. */
         Passkey: {
-            id?: number;
-            name?: string;
+            /** @description The passkey's id. */
+            id: number;
+            /** @description What the account calls it. */
+            name: string;
             /** @description Where it is kept (iCloud Keychain, Google Password Manager, Windows Hello…), when its maker says. */
-            authenticator?: string | null;
-            /** Format: date-time */
-            created_at?: string;
-            /** Format: date-time */
-            last_used_at?: string | null;
+            authenticator: string | null;
+            /**
+             * Format: date-time
+             * @description When it was added, RFC 3339 in UTC.
+             */
+            createdAt: string | null;
+            /**
+             * Format: date-time
+             * @description When it last signed in, RFC 3339 in UTC; null if it never has.
+             */
+            lastUsedAt: string | null;
+        };
+        /** @description Which gallery category a Danbooru tag category imports into. */
+        CategoryMapping: {
+            /** @description Danbooru's number for the category (0 is General). */
+            danbooruCategoryId: number;
+            /** @description Danbooru's name for it. */
+            danbooruCategoryName: string;
+            /** @description The gallery category its tags import into. */
+            galleryCategoryId: number;
+            /** @description That category's name. */
+            galleryCategoryName: string | null;
+        };
+        /** @description A Danbooru tag name imported under another gallery tag name. */
+        TagMapping: {
+            /** @description The mapping's id. */
+            id: number;
+            /** @description The tag as Danbooru names it; one mapping each. */
+            danbooruTag: string;
+            /** @description The gallery tag name it imports as. */
+            galleryTag: string;
         };
     };
     responses: never;
@@ -1565,10 +1762,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    current_password: string;
-                    password: string;
-                };
+                "application/json": components["schemas"]["PasswordChangeBody"];
             };
         };
         responses: {
@@ -1579,22 +1773,51 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description MissingCredentials, WeakPassword */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description IncorrectPassword */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description IncorrectPassword, ForbiddenOrigin */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description MissingCredentials, WeakPassword */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -1608,9 +1831,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    password: string;
-                };
+                "application/json": components["schemas"]["PasswordBody"];
             };
         };
         responses: {
@@ -1621,22 +1842,31 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description MissingCredentials */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description IncorrectPassword, OwnAdminAccount (an admin can't delete their own account) */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description IncorrectPassword, OwnAdminAccount (an admin can't delete their own account), ForbiddenOrigin */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description LastAdmin */
@@ -1645,7 +1875,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description MissingCredentials */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -1668,6 +1918,26 @@ export interface operations {
                     "application/json": components["schemas"]["Tag"][];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     blockTag: {
@@ -1675,7 +1945,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                tag_id: number;
+                tagId: number;
             };
             cookie?: never;
         };
@@ -1688,13 +1958,42 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description TagNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -1704,7 +2003,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                tag_id: number;
+                tagId: number;
             };
             cookie?: never;
         };
@@ -1717,13 +2016,42 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description TagNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -1743,10 +2071,18 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        signup_open?: boolean;
-                        turnstile_site_key?: string | null;
-                    };
+                    "application/json": components["schemas"]["AuthConfig"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -1767,6 +2103,17 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionResponse"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -1793,7 +2140,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -1807,14 +2174,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    username: string;
-                    password: string;
-                    /** @description Keep this browser signed in for 30 days, not just until it closes. */
-                    remember?: boolean;
-                    /** @description The Turnstile widget's token (action "register"), when GET /auth/config gives a site key. */
-                    turnstile_token?: string;
-                };
+                "application/json": components["schemas"]["RegisterBody"];
             };
         };
         responses: {
@@ -1827,22 +2187,22 @@ export interface operations {
                     "application/json": components["schemas"]["SignInResponse"];
                 };
             };
-            /** @description InvalidUsername, WeakPassword, CaptchaRequired */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description SignupClosed, CaptchaFailed */
+            /** @description SignupClosed, CaptchaRequired, CaptchaFailed, ForbiddenOrigin */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description UsernameTaken */
@@ -1851,16 +2211,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description TooManySignups */
-            429: {
+            /** @description InvalidUsername, WeakPassword */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description TooManySignups, RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until another sign-up is counted. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description CaptchaUnavailable */
@@ -1869,7 +2240,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -1883,14 +2254,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    username: string;
-                    password: string;
-                    /** @description Keep this browser signed in for 30 days, not just until it closes. */
-                    remember?: boolean;
-                    /** @description The Turnstile widget's token (action "login"), when GET /auth/config gives a site key. */
-                    turnstile_token?: string;
-                };
+                "application/json": components["schemas"]["LoginBody"];
             };
         };
         responses: {
@@ -1903,13 +2267,13 @@ export interface operations {
                     "application/json": components["schemas"]["SignInResponse"];
                 };
             };
-            /** @description MissingCredentials, CaptchaRequired */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description InvalidCredentials */
@@ -1918,25 +2282,36 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description CaptchaFailed */
+            /** @description CaptchaRequired, CaptchaFailed, ForbiddenOrigin */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description TooManyAttempts */
-            429: {
+            /** @description MissingCredentials */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description TooManyAttempts, RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until another attempt is counted. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description CaptchaUnavailable */
@@ -1945,7 +2320,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -1968,6 +2343,17 @@ export interface operations {
                     "application/json": components["schemas"]["CategoryMapping"][];
                 };
             };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     saveDanbooruCategoryMapping: {
@@ -1979,11 +2365,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    danbooru_category_id: number;
-                    danbooru_category_name: string;
-                    gallery_category_id: number;
-                };
+                "application/json": components["schemas"]["CategoryMappingBody"];
             };
         };
         responses: {
@@ -1996,22 +2378,51 @@ export interface operations {
                     "application/json": components["schemas"]["CategoryMapping"];
                 };
             };
-            /** @description InvalidInput */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description CategoryNotFound */
-            404: {
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidInput, CategoryNotFound (the gallery category) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2021,7 +2432,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                danbooru_category_id: number;
+                danbooruCategoryId: number;
             };
             cookie?: never;
         };
@@ -2034,13 +2445,42 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description MappingNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2063,6 +2503,17 @@ export interface operations {
                     "application/json": components["schemas"]["TagMapping"][];
                 };
             };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     createDanbooruTagMapping: {
@@ -2074,10 +2525,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    danbooru_tag: string;
-                    gallery_tag: string;
-                };
+                "application/json": components["schemas"]["TagMappingCreateBody"];
             };
         };
         responses: {
@@ -2090,60 +2538,60 @@ export interface operations {
                     "application/json": components["schemas"]["TagMapping"];
                 };
             };
-            /** @description InvalidInput / DuplicateMapping */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-        };
-    };
-    updateDanbooruTagMapping: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    danbooru_tag: string;
-                    gallery_tag: string;
-                };
-            };
-        };
-        responses: {
-            /** @description The updated mapping */
-            200: {
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TagMapping"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description InvalidInput / DuplicateMapping */
-            400: {
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description MappingNotFound */
-            404: {
+            /** @description DuplicateMapping */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidInput */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2153,7 +2601,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: number;
+                mappingId: number;
             };
             cookie?: never;
         };
@@ -2166,13 +2614,133 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description MappingNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    updateDanbooruTagMapping: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mappingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TagMappingUpdateBody"];
+            };
+        };
+        responses: {
+            /** @description The updated mapping */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagMapping"];
+                };
+            };
+            /** @description MalformedJson */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description MappingNotFound */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description DuplicateMapping */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidInput */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2195,13 +2763,33 @@ export interface operations {
                     "application/json": components["schemas"]["DuplicateReport"];
                 };
             };
-            /** @description NoReportsFound */
+            /** @description NoDupesDirectory, NoReportsFound */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidReport */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2224,13 +2812,42 @@ export interface operations {
                     "application/json": components["schemas"]["ScanResult"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description ScanFailed */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2244,10 +2861,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    media_id_1: number;
-                    media_id_2: number;
-                };
+                "application/json": components["schemas"]["DismissalBody"];
             };
         };
         responses: {
@@ -2260,13 +2874,51 @@ export interface operations {
                     "application/json": components["schemas"]["DismissResult"];
                 };
             };
-            /** @description InvalidInput */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidInput, MediaNotFound (an id with no item) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2289,6 +2941,26 @@ export interface operations {
                     "application/json": components["schemas"]["FavoriteList"][];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     createFavoriteList: {
@@ -2300,9 +2972,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    name: string;
-                };
+                "application/json": components["schemas"]["FavoriteListBody"];
             };
         };
         responses: {
@@ -2315,13 +2985,31 @@ export interface operations {
                     "application/json": components["schemas"]["FavoriteList"];
                 };
             };
-            /** @description InvalidListName */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description ListExists */
@@ -2330,7 +3018,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidListName */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2340,7 +3048,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                list_id: number;
+                listId: number;
             };
             cookie?: never;
         };
@@ -2353,13 +3061,31 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description ListNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description DefaultList */
@@ -2368,7 +3094,18 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2378,15 +3115,13 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                list_id: number;
+                listId: number;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": {
-                    name: string;
-                };
+                "application/json": components["schemas"]["FavoriteListBody"];
             };
         };
         responses: {
@@ -2399,13 +3134,31 @@ export interface operations {
                     "application/json": components["schemas"]["FavoriteList"];
                 };
             };
-            /** @description InvalidListName */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description ListNotFound */
@@ -2414,7 +3167,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description ListExists */
@@ -2423,7 +3176,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidListName */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2433,7 +3206,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                list_id: number;
+                listId: number;
             };
             cookie?: never;
         };
@@ -2445,7 +3218,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": number[];
+                    "application/json": components["schemas"]["MediaIdList"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description ListNotFound */
@@ -2454,7 +3236,18 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2462,12 +3255,12 @@ export interface operations {
     favoriteListMedia: {
         parameters: {
             query?: {
-                page?: number;
-                per_page?: number;
+                limit?: number;
+                offset?: number;
             };
             header?: never;
             path: {
-                list_id: number;
+                listId: number;
             };
             cookie?: never;
         };
@@ -2476,10 +3269,21 @@ export interface operations {
             /** @description A page of the list */
             200: {
                 headers: {
+                    /** @description How many items the list holds that the account may see. */
+                    "X-Total-Count"?: number;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MediaPage"];
+                    "application/json": components["schemas"]["Media"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description ListNotFound */
@@ -2488,7 +3292,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidInput */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2498,15 +3322,13 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                list_id: number;
+                listId: number;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": {
-                    media_ids: number[];
-                };
+                "application/json": components["schemas"]["ListItemsBody"];
             };
         };
         responses: {
@@ -2516,18 +3338,34 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        added?: number;
-                    };
+                    "application/json": components["schemas"]["AddedCount"];
                 };
             };
-            /** @description InvalidInput */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description ListNotFound */
@@ -2536,7 +3374,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidInput */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2546,8 +3404,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                list_id: number;
-                media_id: number;
+                listId: number;
+                mediaId: number;
             };
             cookie?: never;
         };
@@ -2560,13 +3418,42 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description ListNotFound, MediaNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2576,8 +3463,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                list_id: number;
-                media_id: number;
+                listId: number;
+                mediaId: number;
             };
             cookie?: never;
         };
@@ -2590,13 +3477,42 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description ListNotFound, MediaNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2606,7 +3522,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                media_id: number;
+                mediaId: number;
             };
             cookie?: never;
         };
@@ -2618,7 +3534,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": number[];
+                    "application/json": components["schemas"]["ListIdList"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description MediaNotFound */
@@ -2627,19 +3552,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
     };
     listMedia: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                page: number;
-                per_page: number;
+            query?: {
+                /** @description Comma-separated tag names, any case; a leading '-' excludes (cat,-dog). Names that aren't tags are skipped. */
+                tags?: string;
+                /** @description Only items with no tags. Not with tags. */
+                untagged?: boolean;
+                /** @description Items per page. */
+                limit?: number;
+                /** @description Items to skip: a numbered page. Not with cursor. */
+                offset?: number;
+                /** @description A nextCursor from this listing: the items after it. */
+                cursor?: string;
             };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -2647,85 +3591,99 @@ export interface operations {
             /** @description A page of media */
             200: {
                 headers: {
+                    /** @description How many items the whole listing holds (paging by offset only). */
+                    "X-Total-Count"?: number;
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["MediaPage"];
                 };
             };
-            /** @description InvalidPageNumber */
-            400: {
+            /** @description InvalidInput, InvalidCursor, NoValidTagsSupplied (none of the names is a tag) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
     };
-    listUntaggedMedia: {
+    uploadMedia: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                page: number;
-                per_page: number;
-            };
+            path?: never;
             cookie?: never;
         };
-        requestBody?: never;
-        responses: {
-            /** @description A page of untagged media */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MediaPage"];
-                };
-            };
-            /** @description InvalidPageNumber */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** @description The files: images or videos, each at most 100 MB. */
+                    "files[]"?: string[];
+                    /** @description Queue a Danbooru tag lookup for each file added. */
+                    fetchTags?: boolean;
                 };
             };
         };
-    };
-    searchMediaByTags: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Comma-separated tag names; a leading '-' excludes (e.g. cat,-dog). */
-                tag_list: string;
-                page: number;
-                per_page: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
-            /** @description A page of media */
-            200: {
+            /** @description Upload result */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MediaPage"];
+                    "application/json": components["schemas"]["UploadSummary"];
                 };
             };
-            /** @description NoValidTagsSupplied */
-            404: {
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description NoFilesUploaded */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2738,7 +3696,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                media_id: number;
+                mediaId: number;
             };
             cookie?: never;
         };
@@ -2759,7 +3717,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidInput (include names something else) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2769,7 +3747,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                media_id: number;
+                mediaId: number;
             };
             cookie?: never;
         };
@@ -2782,96 +3760,51 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description MediaNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-        };
-    };
-    listMediaAfterCursor: {
-        parameters: {
-            query?: {
-                /** @description A next_cursor; without one, the listing's start. */
-                cursor?: string;
-                per_page?: number;
-                /** @description Comma-separated tag names; a leading '-' excludes (as /media/with-tags). */
-                tags?: string;
-                /** @description Only items with no tags. */
-                untagged?: boolean;
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
             };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The next items */
-            200: {
+            /** @description DeleteFailed */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MediaFeed"];
-                };
-            };
-            /** @description InvalidCursor */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description NoValidTagsSupplied */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    uploadMedia: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": {
-                    "files[]"?: string[];
-                    /** @description Fetch Danbooru tags for uploaded images. */
-                    fetch_tags?: boolean;
-                };
-            };
-        };
-        responses: {
-            /** @description Upload result */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UploadSummary"];
-                };
-            };
-            /** @description NoFilesUploaded */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2894,13 +3827,24 @@ export interface operations {
                     "application/json": components["schemas"]["Media"];
                 };
             };
-            /** @description MediaNotFound */
+            /** @description MediaNotFound (no media to pick from) */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2923,6 +3867,17 @@ export interface operations {
                     "application/json": components["schemas"]["Count"];
                 };
             };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     getMediaByIds: {
@@ -2934,13 +3889,11 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    ids: number[];
-                };
+                "application/json": components["schemas"]["MediaIdsBody"];
             };
         };
         responses: {
-            /** @description Matching media items */
+            /** @description The items found, newest first */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2949,13 +3902,42 @@ export interface operations {
                     "application/json": components["schemas"]["Media"][];
                 };
             };
-            /** @description InvalidInput */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidInput (not a list of 1 to 200 ids) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2969,9 +3951,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    media_ids: number[];
-                };
+                "application/json": components["schemas"]["BulkDeleteBody"];
             };
         };
         responses: {
@@ -2984,13 +3964,51 @@ export interface operations {
                     "application/json": components["schemas"]["BulkDeleteResult"];
                 };
             };
-            /** @description InvalidInput */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidInput */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3000,7 +4018,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                media_id: number;
+                mediaId: number;
             };
             cookie?: never;
         };
@@ -3021,7 +4039,18 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3031,15 +4060,13 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                media_id: number;
+                mediaId: number;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": {
-                    tag_ids: number[];
-                };
+                "application/json": components["schemas"]["MediaTagsBody"];
             };
         };
         responses: {
@@ -3052,22 +4079,51 @@ export interface operations {
                     "application/json": components["schemas"]["Tag"][];
                 };
             };
-            /** @description InvalidTagList */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description MediaNotFound / TagNotFound */
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description MediaNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidTagList, TagNotFound (an id with no tag) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3077,8 +4133,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                media_id: number;
-                tag_id: number;
+                mediaId: number;
+                tagId: number;
             };
             cookie?: never;
         };
@@ -3093,13 +4149,33 @@ export interface operations {
                     "application/json": components["schemas"]["Tag"][];
                 };
             };
-            /** @description MediaNotFound / TagNotFound */
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description MediaNotFound, TagNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3109,15 +4185,13 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                media_id: number;
+                mediaId: number;
             };
             cookie?: never;
         };
         requestBody?: {
             content: {
-                "application/json": {
-                    danbooru_post_id?: number | null;
-                };
+                "application/json": components["schemas"]["DanbooruImportBody"];
             };
         };
         responses: {
@@ -3130,40 +4204,67 @@ export interface operations {
                     "application/json": components["schemas"]["DanbooruFetchResult"];
                 };
             };
-            /** @description MediaNotFound / NotFoundOnDanbooru */
+            /** @description MalformedJson */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description MediaNotFound, NotFoundOnDanbooru */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description DanbooruRateLimited */
+            /** @description DanbooruRateLimited, RateLimitExceeded */
             429: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description DanbooruNotConfigured / DanbooruAuthFailed */
+            /** @description DanbooruNotConfigured, DanbooruAuthFailed */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description DanbooruUnreachable / DanbooruUnavailable / DanbooruBlocked */
+            /** @description DanbooruUnreachable, DanbooruUnavailable, DanbooruBlocked */
             503: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3189,13 +4290,24 @@ export interface operations {
                     "application/json": components["schemas"]["TagImportStatus"][];
                 };
             };
-            /** @description InvalidInput */
-            400: {
+            /** @description InvalidInput (not 1 to 200 ids) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3218,6 +4330,26 @@ export interface operations {
                     "application/json": components["schemas"]["PasskeyOptions"];
                 };
             };
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     passkeySignIn: {
@@ -3229,14 +4361,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** @description The PublicKeyCredential navigator.credentials.get() gave, as its toJSON() writes it. */
-                    credential: {
-                        [key: string]: unknown;
-                    };
-                    /** @description Keep this browser signed in for 30 days, not just until it closes. */
-                    remember?: boolean;
-                };
+                "application/json": components["schemas"]["PasskeySignInBody"];
             };
         };
         responses: {
@@ -3249,13 +4374,13 @@ export interface operations {
                     "application/json": components["schemas"]["SignInResponse"];
                 };
             };
-            /** @description InvalidPasskey (the answer is unreadable), PasskeyExpired (no challenge waiting, or too old) */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description PasskeyNotAccepted */
@@ -3264,16 +4389,36 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description TooManyAttempts */
-            429: {
+            /** @description ForbiddenOrigin */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidPasskey (the answer is missing or unreadable), PasskeyExpired (no challenge waiting, or too old) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description TooManyAttempts, RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until another attempt is counted. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3296,6 +4441,26 @@ export interface operations {
                     "application/json": components["schemas"]["Passkey"][];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     addPasskey: {
@@ -3307,13 +4472,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** @description The PublicKeyCredential navigator.credentials.create() gave, as its toJSON() writes it. */
-                    credential: {
-                        [key: string]: unknown;
-                    };
-                    name?: string;
-                };
+                "application/json": components["schemas"]["PasskeyAddBody"];
             };
         };
         responses: {
@@ -3326,13 +4485,51 @@ export interface operations {
                     "application/json": components["schemas"]["Passkey"];
                 };
             };
-            /** @description InvalidPasskey, InvalidPasskeyName, PasskeyExpired, PasskeyRejected (its answer didn't check out, or it is already added) */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidPasskey, InvalidPasskeyName, PasskeyExpired, PasskeyRejected (its answer didn't check out, or it is already added) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3346,9 +4543,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    password: string;
-                };
+                "application/json": components["schemas"]["PasswordBody"];
             };
         };
         responses: {
@@ -3361,22 +4556,51 @@ export interface operations {
                     "application/json": components["schemas"]["PasskeyOptions"];
                 };
             };
-            /** @description MissingCredentials */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description IncorrectPassword */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description IncorrectPassword, ForbiddenOrigin */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description MissingCredentials */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3386,7 +4610,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                passkey_id: number;
+                passkeyId: number;
             };
             cookie?: never;
         };
@@ -3399,13 +4623,42 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description PasskeyNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3415,15 +4668,13 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                passkey_id: number;
+                passkeyId: number;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": {
-                    name: string;
-                };
+                "application/json": components["schemas"]["PasskeyNameBody"];
             };
         };
         responses: {
@@ -3436,13 +4687,31 @@ export interface operations {
                     "application/json": components["schemas"]["Passkey"];
                 };
             };
-            /** @description InvalidPasskeyName */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description PasskeyNotFound */
@@ -3451,7 +4720,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidPasskeyName */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3474,6 +4763,26 @@ export interface operations {
                     "application/json": components["schemas"]["SavedSearch"][];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     createSavedSearch: {
@@ -3485,10 +4794,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    name: string;
-                    query: string;
-                };
+                "application/json": components["schemas"]["SavedSearchCreateBody"];
             };
         };
         responses: {
@@ -3501,13 +4807,31 @@ export interface operations {
                     "application/json": components["schemas"]["SavedSearch"];
                 };
             };
-            /** @description InvalidSearchName, InvalidQuery */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description SearchExists */
@@ -3516,7 +4840,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidSearchName, InvalidQuery */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3526,7 +4870,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                search_id: number;
+                searchId: number;
             };
             cookie?: never;
         };
@@ -3539,13 +4883,42 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description SearchNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3555,16 +4928,13 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                search_id: number;
+                searchId: number;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": {
-                    name?: string;
-                    query?: string;
-                };
+                "application/json": components["schemas"]["SavedSearchUpdateBody"];
             };
         };
         responses: {
@@ -3577,13 +4947,31 @@ export interface operations {
                     "application/json": components["schemas"]["SavedSearch"];
                 };
             };
-            /** @description InvalidSearchName, InvalidQuery */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description SearchNotFound */
@@ -3592,7 +4980,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description SearchExists */
@@ -3601,7 +4989,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidSearchName, InvalidQuery */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3624,6 +5032,17 @@ export interface operations {
                     "application/json": components["schemas"]["VersionResponse"];
                 };
             };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     getOpenApiSpec: {
@@ -3635,19 +5054,34 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The OpenAPI document (JSON) */
+            /** @description The OpenAPI document */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
-            /** @description Spec not generated */
+            /** @description SpecNotFound: the spec has not been generated */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
             };
         };
     };
@@ -3666,6 +5100,17 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
             };
         };
     };
@@ -3687,6 +5132,17 @@ export interface operations {
                     "application/json": components["schemas"]["TagCategory"][];
                 };
             };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     createTagCategory: {
@@ -3698,12 +5154,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    category_name: string;
-                    color?: string;
-                    description?: string;
-                    sort_order?: number;
-                };
+                "application/json": components["schemas"]["TagCategoryCreateBody"];
             };
         };
         responses: {
@@ -3716,13 +5167,60 @@ export interface operations {
                     "application/json": components["schemas"]["TagCategory"];
                 };
             };
-            /** @description Validation error */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description NameTaken */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidInput, NameTooLong, InvalidColor */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3732,7 +5230,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                category_id: number;
+                categoryId: number;
             };
             cookie?: never;
         };
@@ -3745,13 +5243,22 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description CategoryInUse */
-            400: {
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description CategoryNotFound */
@@ -3760,7 +5267,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description CategoryInUse */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3770,18 +5297,13 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                category_id: number;
+                categoryId: number;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": {
-                    category_name?: string;
-                    color?: string;
-                    description?: string;
-                    sort_order?: number;
-                };
+                "application/json": components["schemas"]["TagCategoryUpdateBody"];
             };
         };
         responses: {
@@ -3794,13 +5316,31 @@ export interface operations {
                     "application/json": components["schemas"]["TagCategory"];
                 };
             };
-            /** @description NameTooLong / NameTaken / InvalidColor */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description CategoryNotFound */
@@ -3809,7 +5349,36 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description NameTaken */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidInput, NameTooLong, InvalidColor */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3817,16 +5386,22 @@ export interface operations {
     listTags: {
         parameters: {
             query?: {
-                /** @description Name to match; empty lists the first tags by name. */
+                /** @description A name to rank matches for: exact, then starting with it, then containing it. Empty ranks every tag by name. Not with filter or sort. */
                 search?: string;
-                /** @description How many matches (1-100, default 20). */
-                limit?: number;
-                /** @description Comma-separated tag ids to leave out of a search. */
-                exclude?: string;
-                /** @description Comma-separated tag names (any case) to look up. */
-                names?: string;
-                /** @description Comma-separated tag ids to look up. */
+                /** @description Keeps tags whose name, or whose category's name, contains this (any case). */
+                filter?: string;
+                /** @description Comma-separated tag ids to look up (at most 100). */
                 ids?: string;
+                /** @description Comma-separated tag names (any case) to look up (at most 100). */
+                names?: string;
+                /** @description Comma-separated tag ids to leave out. */
+                exclude?: string;
+                sort?: "tagName" | "categoryName" | "mediaCount";
+                direction?: "asc" | "desc";
+                limit?: number;
+                offset?: number;
+                /** @description "counts" adds each tag's mediaCount and implicationCount. */
+                include?: "counts";
             };
             header?: never;
             path?: never;
@@ -3834,13 +5409,35 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The tags */
+            /** @description A page of tags */
             200: {
                 headers: {
+                    /** @description How many tags match, on every page. */
+                    "X-Total-Count"?: number;
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["Tag"][];
+                };
+            };
+            /** @description InvalidInput */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3854,11 +5451,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    tag_name: string;
-                    /** @default 1 */
-                    category_id?: number;
-                };
+                "application/json": components["schemas"]["TagCreateBody"];
             };
         };
         responses: {
@@ -3871,42 +5464,60 @@ export interface operations {
                     "application/json": components["schemas"]["Tag"];
                 };
             };
-            /** @description InvalidTagName / TagNameTooLong / TagAlreadyExists / InvalidCategoryID */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-        };
-    };
-    listTagsForDisplay: {
-        parameters: {
-            query?: {
-                page?: number;
-                per_page?: number;
-                /** @description Matches tag or category names. */
-                search?: string;
-                sort?: "tag_name" | "category_name" | "media_count";
-                direction?: "asc" | "desc";
-                /** @description Comma-separated tag ids to show. */
-                ids?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description A page of tags with counts */
-            200: {
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TagListPage"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description TagAlreadyExists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidTagName, TagNameTooLong, InvalidCategoryID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3916,7 +5527,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                tag_id: number;
+                tagId: number;
             };
             cookie?: never;
         };
@@ -3937,7 +5548,18 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3947,7 +5569,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                tag_id: number;
+                tagId: number;
             };
             cookie?: never;
         };
@@ -3960,13 +5582,42 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description TagNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -3976,16 +5627,13 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                tag_id: number;
+                tagId: number;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": {
-                    tag_name?: string;
-                    category_id?: number;
-                };
+                "application/json": components["schemas"]["TagUpdateBody"];
             };
         };
         responses: {
@@ -3998,13 +5646,31 @@ export interface operations {
                     "application/json": components["schemas"]["Tag"];
                 };
             };
-            /** @description InvalidTagName / TagNameTooLong / TagAlreadyExists / InvalidCategoryID */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description TagNotFound */
@@ -4013,7 +5679,36 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description TagAlreadyExists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidTagName, TagNameTooLong, InvalidCategoryID */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -4023,9 +5718,9 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                tag_id: number;
+                tagId: number;
                 /** @description Move media to this tag before deleting. */
-                target_tag_id: number;
+                targetTagId: number;
             };
             cookie?: never;
         };
@@ -4038,13 +5733,22 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description CannotMigrateToSelf */
-            400: {
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description TagNotFound */
@@ -4053,7 +5757,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description CannotMigrateToSelf */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -4063,15 +5787,13 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                tag_id: number;
+                tagId: number;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": {
-                    target_tag_id: number;
-                };
+                "application/json": components["schemas"]["TagMigrateBody"];
             };
         };
         responses: {
@@ -4084,13 +5806,31 @@ export interface operations {
                     "application/json": components["schemas"]["MigrateResult"];
                 };
             };
-            /** @description InvalidTagID / CannotMigrateToSelf */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description TagNotFound */
@@ -4099,7 +5839,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidTagID, CannotMigrateToSelf, TagNotFound (the target) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -4122,6 +5882,17 @@ export interface operations {
                     "application/json": components["schemas"]["TagImplication"][];
                 };
             };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     createTagImplication: {
@@ -4133,10 +5904,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    tag_id: number;
-                    implied_tag_id: number;
-                };
+                "application/json": components["schemas"]["TagImplicationBody"];
             };
         };
         responses: {
@@ -4149,22 +5917,60 @@ export interface operations {
                     "application/json": components["schemas"]["TagImplication"];
                 };
             };
-            /** @description CannotImplySelf / CycleDetected */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description TagNotFound */
-            404: {
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description CycleDetected */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidTagID, CannotImplySelf, TagNotFound (either tag) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -4174,8 +5980,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                tag_id: number;
-                implied_tag_id: number;
+                tagId: number;
+                impliedTagId: number;
             };
             cookie?: never;
         };
@@ -4188,13 +5994,42 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description TagNotFound / ImplicationNotFound */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), ForbiddenOrigin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description TagNotFound, ImplicationNotFound */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -4217,13 +6052,33 @@ export interface operations {
                     "application/json": components["schemas"]["User"][];
                 };
             };
-            /** @description Forbidden */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin) */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -4233,7 +6088,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                user_id: number;
+                userId: number;
             };
             cookie?: never;
         };
@@ -4246,13 +6101,22 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Forbidden (not an admin), OwnAdminAccount (an admin can't delete their own account) */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), OwnAdminAccount (an admin can't delete their own account), ForbiddenOrigin */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description UserNotFound */
@@ -4261,7 +6125,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description LastAdmin */
@@ -4270,7 +6134,18 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -4280,16 +6155,13 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                user_id: number;
+                userId: number;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": {
-                    is_admin?: boolean;
-                    password?: string;
-                };
+                "application/json": components["schemas"]["UserUpdateBody"];
             };
         };
         responses: {
@@ -4302,22 +6174,31 @@ export interface operations {
                     "application/json": components["schemas"]["User"];
                 };
             };
-            /** @description WeakPassword */
+            /** @description MalformedJson */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Forbidden (not an admin), OwnAdminRole (an admin can't remove their own admin role) */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden (not an admin), OwnAdminRole (an admin can't remove their own admin role), ForbiddenOrigin */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description UserNotFound */
@@ -4326,7 +6207,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description LastAdmin */
@@ -4335,7 +6216,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description InvalidInput, WeakPassword */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description RateLimitExceeded */
+            429: {
+                headers: {
+                    /** @description Seconds until a request is counted again. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };

@@ -4,7 +4,7 @@ import { useApi, getErrorMessage, getErrorCode, getErrorStatus } from '../compos
 import { useToastStore } from '../stores/toast'
 import { useTagSearch } from '../composables/useTagSearch'
 import { endpoints } from '../api/endpoints'
-import type { Tag, TagListItem, TagListPage, TagImplication } from '../types'
+import type { Tag, TagImplication } from '../types'
 import {
   getTextClassById,
   getCategoryClassById,
@@ -31,17 +31,17 @@ const loading = ref(false)
 const loadFailed = ref(false)
 
 // Tag info
-const tagInfo = ref<TagListItem | null>(null)
+const tagInfo = ref<Tag | null>(null)
 
 // All implications (filtered client-side for this tag)
 const allImplications = ref<TagImplication[]>([])
 
 // Implications where this tag is the trigger
-const impliesOthers = computed(() => allImplications.value.filter((i) => i.tag_id === props.tagId))
+const impliesOthers = computed(() => allImplications.value.filter((i) => i.tagId === props.tagId))
 
 // Implications where this tag is implied by others
 const impliedByOthers = computed(() =>
-  allImplications.value.filter((i) => i.implied_tag_id === props.tagId),
+  allImplications.value.filter((i) => i.impliedTagId === props.tagId),
 )
 
 // Add implication modal state
@@ -60,13 +60,13 @@ async function loadData() {
   loading.value = true
   loadFailed.value = false
   try {
-    const [page, implications] = await Promise.all([
-      api.get<TagListPage>(endpoints.tags.display({ ids: [props.tagId] })),
+    const [found, implications] = await Promise.all([
+      api.get<Tag[]>(endpoints.tags.list({ ids: [props.tagId] })),
       api.get<TagImplication[]>(endpoints.tagImplications.list),
     ])
 
     allImplications.value = implications ?? []
-    tagInfo.value = page?.items[0] ?? null
+    tagInfo.value = found?.[0] ?? null
   } catch (e) {
     toastStore.error(getErrorMessage(e, 'Failed to load tag data'))
     loadFailed.value = true
@@ -88,8 +88,8 @@ function closeModal() {
 }
 
 function selectImplied(tag: Tag) {
-  impliedTagId.value = tag.tag_id
-  impliedSearch.value = tag.tag_name
+  impliedTagId.value = tag.tagId
+  impliedSearch.value = tag.tagName
 }
 
 async function submitImplication() {
@@ -100,7 +100,7 @@ async function submitImplication() {
   }
 
   // Check for duplicate
-  const exists = impliesOthers.value.some((i) => i.implied_tag_id === impliedTagId.value)
+  const exists = impliesOthers.value.some((i) => i.impliedTagId === impliedTagId.value)
   if (exists) {
     implHelp.value = 'This implication already exists.'
     implHelpClass.value = 'is-warning'
@@ -110,14 +110,14 @@ async function submitImplication() {
   implLoading.value = true
   try {
     await api.post<TagImplication>(endpoints.tagImplications.list, {
-      tag_id: props.tagId,
-      implied_tag_id: impliedTagId.value,
+      tagId: props.tagId,
+      impliedTagId: impliedTagId.value,
     })
     allImplications.value = (await api.get<TagImplication[]>(endpoints.tagImplications.list)) ?? []
     closeModal()
     toastStore.success('Implication added.')
   } catch (e) {
-    if (getErrorCode(e) === 'CycleDetected' || getErrorStatus(e) === 400) {
+    if (getErrorCode(e) === 'CycleDetected' || getErrorStatus(e) === 422) {
       implHelp.value = getErrorMessage(e, 'Cannot add this implication — it would create a cycle.')
       implHelpClass.value = 'is-danger'
     } else {
@@ -171,7 +171,7 @@ onMounted(loadData)
       </EmptyState>
 
       <template v-else>
-        <PageHeader :title="tagInfo.tag_name" :meta="tagInfo.category_name ?? ''">
+        <PageHeader :title="tagInfo.tagName" :meta="getCategoryNameById(tagInfo.categoryId)">
           <template v-if="authenticated" #actions>
             <button type="button" class="button is-primary" @click="openModal">
               <span class="icon"><font-awesome-icon icon="fa-solid fa-plus" /></span>
@@ -200,12 +200,12 @@ onMounted(loadData)
             </tr>
           </thead>
           <tbody>
-            <tr v-for="impl in impliesOthers" :key="impl.implied_tag_id">
+            <tr v-for="impl in impliesOthers" :key="impl.impliedTagId">
               <td>
                 <router-link
-                  :to="{ name: 'tag-implications', params: { tagId: impl.implied_tag_id } }"
+                  :to="{ name: 'tag-implications', params: { tagId: impl.impliedTagId } }"
                 >
-                  <span class="tag is-medium tag--neutral">{{ impl.implied_tag_name }}</span>
+                  <span class="tag is-medium tag--neutral">{{ impl.impliedTagName }}</span>
                 </router-link>
               </td>
               <td v-if="authenticated">
@@ -215,7 +215,7 @@ onMounted(loadData)
                     class="button is-small is-danger is-outlined"
                     aria-label="Remove implication"
                     @click="
-                      askRemoveImplication(impl.tag_id, impl.implied_tag_id, impl.implied_tag_name)
+                      askRemoveImplication(impl.tagId, impl.impliedTagId, impl.impliedTagName)
                     "
                   >
                     <span class="icon"><font-awesome-icon icon="fa-solid fa-trash" /></span>
@@ -245,10 +245,10 @@ onMounted(loadData)
             </tr>
           </thead>
           <tbody>
-            <tr v-for="impl in impliedByOthers" :key="impl.tag_id">
+            <tr v-for="impl in impliedByOthers" :key="impl.tagId">
               <td>
-                <router-link :to="{ name: 'tag-implications', params: { tagId: impl.tag_id } }">
-                  <span class="tag is-medium tag--neutral">{{ impl.tag_name }}</span>
+                <router-link :to="{ name: 'tag-implications', params: { tagId: impl.tagId } }">
+                  <span class="tag is-medium tag--neutral">{{ impl.tagName }}</span>
                 </router-link>
               </td>
               <td v-if="authenticated">
@@ -257,7 +257,7 @@ onMounted(loadData)
                     type="button"
                     class="button is-small is-danger is-outlined"
                     aria-label="Remove implication"
-                    @click="askRemoveImplication(impl.tag_id, impl.implied_tag_id, impl.tag_name)"
+                    @click="askRemoveImplication(impl.tagId, impl.impliedTagId, impl.tagName)"
                   >
                     <span class="icon"><font-awesome-icon icon="fa-solid fa-trash" /></span>
                   </button>
@@ -271,11 +271,11 @@ onMounted(loadData)
 
       <AppDialog
         :open="showModal"
-        :title="`Add Implication for ${tagInfo?.tag_name ?? ''}`"
+        :title="`Add Implication for ${tagInfo?.tagName ?? ''}`"
         @update:open="!$event && closeModal()"
       >
         <p class="mb-4">
-          When <strong>{{ tagInfo?.tag_name }}</strong> is added to a media item, the selected tag
+          When <strong>{{ tagInfo?.tagName }}</strong> is added to a media item, the selected tag
           will be automatically added too.
         </p>
         <div class="field">
@@ -292,15 +292,15 @@ onMounted(loadData)
           <div v-if="impliedOptions.length > 0" class="dropdown-list">
             <button
               v-for="t in impliedOptions"
-              :key="t.tag_id"
+              :key="t.tagId"
               class="dropdown-item"
-              :class="{ 'is-active': impliedTagId === t.tag_id }"
+              :class="{ 'is-active': impliedTagId === t.tagId }"
               type="button"
               @click="selectImplied(t)"
             >
-              <span :class="getTextClassById(t.category_id)">{{ t.tag_name }}</span>
-              <span class="tag is-small ml-2" :class="getCategoryClassById(t.category_id)">
-                {{ getCategoryNameById(t.category_id) }}
+              <span :class="getTextClassById(t.categoryId)">{{ t.tagName }}</span>
+              <span class="tag is-small ml-2" :class="getCategoryClassById(t.categoryId)">
+                {{ getCategoryNameById(t.categoryId) }}
               </span>
             </button>
           </div>

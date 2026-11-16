@@ -18,8 +18,8 @@ use Illuminate\Console\Command;
  */
 #[Description('Scan the images for duplicates and write the report')]
 #[Signature('gallery:dupes
-        {--max-distance= : Largest Hamming distance reported, 0 to 16 (default: DUPLICATE_MAX_DISTANCE, else 6)}
-        {--max-region-diff= : Largest difference, 0 to 255, in the region where a pair differs most; "off" reports every pair within the distance (default: DUPLICATE_MAX_REGION_DIFF, else 36)}
+        {--max-distance= : Largest Hamming distance reported, 0 to 16 (default: GALLERY_DUPLICATE_MAX_DISTANCE, else 6)}
+        {--max-region-diff= : Largest difference, 0 to 255, in the region where a pair differs most; "off" reports every pair within the distance (default: GALLERY_DUPLICATE_MAX_REGION_DIFF, else 36)}
         {--tune : Calibration run: keeps the pairs you dismissed (flagged), prints a distance by region-difference table, and writes tuning-<timestamp>.json instead of the report the Duplicates page reads}')]
 final class FindDuplicates extends Command
 {

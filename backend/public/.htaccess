@@ -15,10 +15,35 @@
     Require all denied
 </FilesMatch>
 
-# Browsers find a new service worker by fetching /sw.js again, so no cache may
-# keep it: Cloudflare caches .js files and would serve a deploy's old worker for
-# up to two hours. With no-cache, Cloudflare checks with the server every time.
+# The folder's only index is the front controller, so / is always the SPA shell.
+DirectoryIndex index.php
+
+# /media is the gallery's page and also the link to the media folder: without
+# this, Apache answers /media with a redirect to /media/ before the rewrite
+# below can send it to the app.
+<IfModule mod_dir.c>
+    <If "%{REQUEST_URI} == '/media'">
+        DirectorySlash Off
+    </If>
+</IfModule>
+
 <IfModule mod_headers.c>
+    # A file Apache serves is taken as the type it is sent as, and tells another
+    # site no more than that the visitor came from the gallery. PHP sends both on
+    # everything it answers (App\Http\Middleware\SecurityHeaders), and Apache keeps
+    # a PHP-FPM answer's headers in the table `always` acts on: `always set`
+    # replaces PHP's copy with the same value, where plain `set` would add a
+    # second. `always` also reaches Apache's own error answers.
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "same-origin"
+
+    # Apache's own 404 for a missing file (below), which PHP never sees.
+    Header always set Content-Security-Policy "default-src 'none'; frame-ancestors 'none'" env=GALLERY_MISSING_FILE
+    Header always set Cache-Control "no-cache" env=GALLERY_MISSING_FILE
+
+    # Browsers find a new service worker by fetching /sw.js again, so no cache may
+    # keep it: Cloudflare caches .js files and would serve a deploy's old worker for
+    # up to two hours. With no-cache, Cloudflare checks with the server every time.
     <Files "sw.js">
         Header set Cache-Control "no-cache"
     </Files>
@@ -39,14 +64,25 @@
     RewriteCond %{HTTP:x-xsrf-token} .
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
-    # Redirect Trailing Slashes If Not A Folder...
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} (.+)/$
-    RewriteRule ^ %1 [L,R=301]
+    # Every page goes through the app, which sends its Content-Security-Policy:
+    # an HTML file here, index.html included, is never served as it is.
+    RewriteRule \.html?$ index.php [NC,L]
+
+    # A path that can only name a file, when there is no such file, is a 404
+    # from Apache, never the SPA's page, which Cloudflare (caching by extension)
+    # would keep as the file: anything in assets/, api-docs/, media/full/ or
+    # media/thumbs/, and a top-level file with one of these extensions, the list
+    # App\Http\Controllers\SpaController::STATIC_EXTENSIONS holds for the same
+    # check in the app.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^(?:assets|api-docs|media/full|media/thumbs)/ - [R=404,L,E=GALLERY_MISSING_FILE:1]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^[^/]+\.(?:7z|apk|avi|avif|bin|bmp|bz2|class|css|csv|dmg|doc|docx|ejs|eot|eps|exe|flac|gif|gz|ico|iso|jar|jpeg|jpg|js|json|map|mid|midi|mjs|mkv|mp3|mp4|ogg|otf|pdf|pict|pls|png|ppt|pptx|ps|rar|svg|svgz|swf|tar|tif|tiff|ttf|txt|wasm|webm|webmanifest|webp|woff|woff2|xls|xlsx|xml|zip|zst)$ - [NC,R=404,L,E=GALLERY_MISSING_FILE:1]
 
     # Send Requests To Front Controller... Only real files are served as they
     # are (the built SPA, and media/ through its link), never a folder:
-    # /media is the gallery page, not the media folder.
+    # /media is the gallery page, not the media folder. A trailing slash is
+    # left on: the app answers /tags/ as /tags.
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>

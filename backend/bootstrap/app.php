@@ -5,9 +5,9 @@ declare(strict_types=1);
 use App\Exceptions\ApiException;
 use App\Exceptions\ApiExceptionRenderer;
 use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\RejectMalformedJson;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\VerifyOrigin;
-use App\Support\Cloudflare;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -18,7 +18,6 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Http\Middleware\TrimStrings;
-use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Session\Middleware\AuthenticateSession;
@@ -37,8 +36,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // The endpoints trim and sanitize what they need themselves; a password
         // or a tag name arrives exactly as sent.
         $middleware->remove([TrimStrings::class, ConvertEmptyStringsToNull::class]);
-        // The visitor's address, not Cloudflare's (App\Support\Cloudflare).
-        $middleware->trustProxies(at: Cloudflare::RANGES, headers: Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PROTO);
+        // No proxy is trusted, so $request->ip() is REMOTE_ADDR: Apache sets it
+        // to the visitor's address behind Cloudflare (mod_remoteip, in the vhost).
 
         // There is no login page to send a guest to: a request that isn't
         // signed in is answered 401, whatever it accepts.
@@ -57,6 +56,8 @@ return Application::configure(basePath: dirname(__DIR__))
             AuthenticateSession::class,
             PreventRequestForgery::class,
             'throttle:api',
+            // A body that says it is JSON and isn't is a 400.
+            RejectMalformedJson::class,
         ]);
         $middleware->preventRequestForgery(originOnly: true);
         // An admin account, after auth has found one (routes/api.php).
