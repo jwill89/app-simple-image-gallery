@@ -1,4 +1,6 @@
 {
   "extends": ["./tsconfig.app.json", "@jwill89/lint-web/tsconfig.vitest.json"],
-  "include": ["src/**/*.ts", "src/**/*.vue"]
+  "include": ["src/**/*.ts", "src/**/*.vue"],
+  // The service worker's entry needs a worker's globals (tsconfig.sw.json), as in tsconfig.app.json.
+  "exclude": ["src/sw/sw.ts"]
 }
