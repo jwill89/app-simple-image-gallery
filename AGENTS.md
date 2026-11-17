@@ -301,7 +301,7 @@ Then, from your machine through Cloudflare, it checks `/api/media/count` and tha
 
 Why the deploy builds beside the live code: until 2026-11-03 it deleted the code and unpacked the new code over the live folder, then ran Composer, the migration and `optimize`. For those 10–20 s every request failed: `bootstrap/cache` belonged to root, so Laravel couldn't boot, and its error page then died on `Target class [view] does not exist`. `public/media` was missing too, so thumbnail requests fell through to Laravel. A single deploy logged 75 fatal errors.
 
-It holds one SSH connection for the whole run (plink `-share`), to respect the droplet's `ufw limit ssh`, and opens a second only if that one drops.
+It holds one SSH connection for the whole run (plink `-share`), to respect the droplet's `ufw limit ssh`, and opens another only if that one drops or for an upload or download of 1 MB or more (the archive, the database, the media sync's batches), which takes a connection of its own for speed; the module opens at most four in any 30 seconds.
 
 Everything for the gallery lives in its web root on the droplet, `<web root>` below (the `WebRoot` setting):
 
