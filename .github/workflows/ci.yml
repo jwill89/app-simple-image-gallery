@@ -15,10 +15,25 @@ permissions:
 # The shared workflows, at the release the shared/ submodule holds (the docs job fails
 # if the two ever differ), and the release this repo makes of its own.
 jobs:
+  # Which areas this push or pull request changed: each job below runs when its area did,
+  # docs always, and every job when CI's own files, shared/ or the Taskfile change
+  # (changes.yml). `task shared:ci:changes` shows what a push would run.
+  changes:
+    uses: jwill89/shared-tooling/.github/workflows/changes.yml@v2.17.0
+    permissions:
+      contents: read
+      actions: read
+    with:
+      ignore: '**/*.md LICENSE LICENSE.* .gitignore .gitmodules .markdownlint-cli2.jsonc .vscode/** .claude/** .idea/** plans/** docs/**'
+      areas: |
+        app: frontend/** backend/** !**/*.md
+
   # The Laravel backend. Its tests replay the recorded API contract
   # (tests/Fixtures/contract/).
   backend:
-    uses: jwill89/shared-tooling/.github/workflows/php.yml@v2.16.1
+    needs: changes
+    if: fromJSON(needs.changes.outputs.areas).app
+    uses: jwill89/shared-tooling/.github/workflows/php.yml@v2.17.0
     with:
       dir: backend
       php-version: '8.5'
@@ -34,7 +49,9 @@ jobs:
   # The frontend's generated API types come from backend/openapi.json (gen:check). Its
   # icons come from the Font Awesome kit, on the Pro registry.
   frontend:
-    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.16.1
+    needs: changes
+    if: fromJSON(needs.changes.outputs.areas).app
+    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.17.0
     with:
       dir: frontend
       scripts: gen:check lint lint:css knip format:check build test:coverage
@@ -46,8 +63,9 @@ jobs:
   # API on a throwaway database holding the contract fixture, in the runner's Chrome.
   # Every main page must pass axe at WCAG 2.2 AA, and a new account must keep a favorite.
   e2e:
-    needs: [backend, frontend]
-    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.16.1
+    needs: [changes, backend, frontend]
+    if: fromJSON(needs.changes.outputs.areas).app
+    uses: jwill89/shared-tooling/.github/workflows/e2e.yml@v2.17.0
     with:
       dir: frontend
       php-version: '8.5'
@@ -60,15 +78,19 @@ jobs:
       FONTAWESOME_TOKEN: ${{ secrets.FONTAWESOME_NPM_TOKEN }}
 
   scripts:
-    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.16.1
+    needs: changes
+    if: fromJSON(needs.changes.outputs.areas).scripts
+    uses: jwill89/shared-tooling/.github/workflows/pwsh.yml@v2.17.0
 
   docs:
-    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.16.1
+    uses: jwill89/shared-tooling/.github/workflows/docs.yml@v2.17.0
 
   # OSV-Scanner over every lockfile. An osv-scanner.toml beside a lockfile passes over the
   # advisories that reach only lint, test or build tooling.
   osv:
-    uses: jwill89/shared-tooling/.github/workflows/osv.yml@v2.16.1
+    needs: changes
+    if: fromJSON(needs.changes.outputs.areas).lockfiles
+    uses: jwill89/shared-tooling/.github/workflows/osv.yml@v2.17.0
 
   # On a push to the default branch, AFTER the gate passes, tag + release the
   # project version if it has no release yet. Tag = v<version> (frontend/
@@ -77,8 +99,8 @@ jobs:
   # a version already released is skipped, so ordinary pushes are a no-op.
   release:
     name: Tag + release (on version bump)
-    needs: [backend, frontend, e2e, scripts, docs, osv]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    needs: [changes, backend, frontend, e2e, scripts, docs, osv]
+    if: ${{ !failure() && !cancelled() && (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) }}
     # A pull request from a fork runs on GitHub's runners, never on a self-hosted one.
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-24.04' || vars.CI_RUNNER || 'ubuntu-24.04' }}
     permissions:
@@ -92,3 +114,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash .github/scripts/release.sh
+
+  # When a job fails, one report of what failed and where: at the head of the run's page,
+  # and as the ci-report artifact `task shared:ci:report` prints (report.yml).
+  report:
+    needs: [changes, backend, frontend, e2e, scripts, docs, osv, release]
+    if: failure()
+    uses: jwill89/shared-tooling/.github/workflows/report.yml@v2.17.0
+    permissions:
+      contents: read
+      actions: read
