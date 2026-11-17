@@ -33,12 +33,21 @@ export function passkeyAutofillSupported(): Promise<boolean> {
 /**
  * Whether a passkey request ended without an answer: the person closed the
  * prompt, it timed out, or a newer request replaced it. Nothing to report.
+ * The browser says so with a NotAllowedError or AbortError, which
+ * @simplewebauthn/browser passes on as the cause of its own error.
  */
 export function passkeyCancelled(e: unknown): boolean {
-  return (
-    (e instanceof WebAuthnError && e.code === 'ERROR_CEREMONY_ABORTED') ||
-    (e instanceof DOMException && (e.name === 'NotAllowedError' || e.name === 'AbortError'))
-  )
+  if (e instanceof WebAuthnError) {
+    return (
+      e.code === 'ERROR_CEREMONY_ABORTED' ||
+      (e.code === 'ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY' && browserRefused(e.cause))
+    )
+  }
+  return browserRefused(e)
+}
+
+function browserRefused(e: unknown): boolean {
+  return e instanceof DOMException && (e.name === 'NotAllowedError' || e.name === 'AbortError')
 }
 
 /** What to tell the person about a passkey request that failed. */

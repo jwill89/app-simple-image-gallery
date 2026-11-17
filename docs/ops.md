@@ -49,7 +49,7 @@ The deploy config names `VpsHost`, `VpsUser`, `KeyPath`, `WebRoot`, `CertName`, 
 
 Who writes what: PHP-FPM and the scheduler run as www-data, the queue worker as `<service user>`, whose primary group is www-data, under `UMask=0002`. The folders they share are www-data's, setgid and group-writable, so either side can replace and remove what the other made; the app makes its log 0664 and its file cache 0770 (`config/logging.php`, `config/cache.php`), and SQLite gives the database's `-wal` and `-shm` the database file's own mode, 660.
 
-The queue worker's memory: its peak was 37.3 MB over 52 hourly runs, 2026-11-03 to 2026-11-16, none of them ingesting anything, so it has no `MemoryMax=` yet: decoding one of the largest originals (60 MP) takes about 229 MB, and a cap from that peak would stop the ingest. Upgrading to 8.0.0, step 6, measures the heavy path.
+The queue worker's memory, measured on the heaviest items under 8.0.0 on 2026-11-17 (UTC), rebuilding each one's thumbnails, fingerprint and metadata: 509 MB for the largest image (60 MP), and 1,226 MB of ffmpeg's own for the thumbnail of the largest video (2160×3840), where ffmpeg's `thumbnail` filter holds 100 full-size frames before they are scaled. With the scale before the filter, that video takes 136 MB and gives the same frame (37.5 dB PSNR between the two). Its hourly runs without such work peak near 38 MB. The thumbnailer scales first, and the unit's `MemoryMax=976M` is twice the image's peak, both since 8.0.1. Measure again when the worker's work changes.
 
 ### The server files
 
@@ -234,7 +234,7 @@ The API moves to 8.0.0 (its clients change with it, and the SPA ships with it). 
 
 5. **Check it** with the production-only checks above.
 
-6. **The worker's memory cap,** once it has done heavy work: queue a rebuild that decodes the largest originals (`sudo -u www-data php artisan gallery:regenerate fingerprints`), let it finish, then read the highest peak of its hourly runs with `journalctl -u gallery-queue --since today -o cat | grep -o '[0-9.]*[KMG] memory peak' | sort -h | tail -n 1`. Set `MemoryMax=` in `deploy/gallery-queue.service` to twice it, rounded up to a multiple of 16M, record the peak, the cap and the date under Host setup, and ship it with the next release.
+6. **The worker's memory cap,** once it has done heavy work: queue a rebuild that decodes the largest originals (`sudo -u www-data php artisan gallery:regenerate fingerprints`), let it finish, then read the highest peak of its hourly runs with `journalctl -u gallery-queue --since today -o cat | grep -o '[0-9.]*[KMG] memory peak' | sort -h | tail -n 1`. Set `MemoryMax=` in `deploy/gallery-queue.service` to twice it, rounded up to a multiple of 16M, record the peak, the cap and the date under Host setup, and ship it with the next release. Done on 2026-11-17 (UTC) by rebuilding the heaviest image, video and GIF one by one (Host setup has the numbers); the cap, 976M, ships in 8.0.1 with the thumbnailer scaling before ffmpeg's `thumbnail` filter.
 
 7. **A few days later, clean up** what nothing uses any more. Check it first, then:
 

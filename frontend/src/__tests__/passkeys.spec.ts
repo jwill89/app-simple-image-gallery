@@ -111,6 +111,22 @@ describe('when one fails', () => {
     expect(passkeyCancelled(new ApiError(401, 'PasskeyNotAccepted', 'Not accepted.'))).toBe(false)
   })
 
+  it('takes a closed or timed-out prompt passed on by the library as cancelled', () => {
+    const passedOn = (refusal: Error) =>
+      new WebAuthnError({
+        message: refusal.message,
+        code: 'ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY',
+        cause: refusal,
+      })
+
+    expect(
+      passkeyCancelled(passedOn(new DOMException('timed out or not allowed', 'NotAllowedError'))),
+    ).toBe(true)
+    expect(passkeyCancelled(passedOn(new DOMException('aborted', 'AbortError')))).toBe(true)
+    expect(passkeyCancelled(passedOn(new DOMException('wrong site', 'SecurityError')))).toBe(false)
+    expect(passkeyCancelled(passedOn(new Error('something else')))).toBe(false)
+  })
+
   it("says a passkey is already added, and passes the server's message on", () => {
     const again = new WebAuthnError({
       message: 'previously registered',

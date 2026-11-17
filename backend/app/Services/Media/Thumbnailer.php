@@ -13,8 +13,10 @@ use Symfony\Component\Process\Exception\RuntimeException;
  * A media item's WebP thumbnails, fitted within 200px and 400px (the @2x),
  * made with ffmpeg. An image's or GIF's comes from its first frame; a video's
  * from a representative frame (ffmpeg's thumbnail filter), or its first frame
- * when that fails on a very short video. Without ffmpeg there are none, and
- * the gallery shows its placeholder.
+ * when that fails on a very short video. The video's frames are scaled before
+ * the filter picks one: it holds a batch of 100, which at full size takes over
+ * a gigabyte for a 4K video. Without ffmpeg there are none, and the gallery
+ * shows its placeholder.
  */
 final class Thumbnailer
 {
@@ -32,7 +34,7 @@ final class Thumbnailer
             File::ensureDirectoryExists(dirname($thumbnail));
             $scale = "scale='min({$size},iw)':'min({$size},ih)':flags=lanczos:force_original_aspect_ratio=decrease";
 
-            if (!$fromVideo || !$this->ffmpeg($sourcePath, "thumbnail,{$scale}", $thumbnail)) {
+            if (!$fromVideo || !$this->ffmpeg($sourcePath, "{$scale},thumbnail", $thumbnail)) {
                 $this->ffmpeg($sourcePath, $scale, $thumbnail);
             }
         }

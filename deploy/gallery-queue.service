@@ -27,6 +27,9 @@ CPUSchedulingPolicy=idle
 IOSchedulingClass=idle
 # Files 664 and folders 775: group-writable, so PHP-FPM can replace and remove them.
 UMask=0002
+# Twice the heaviest job's peak, 509 MB, decoding a 60-megapixel original for its
+# fingerprint and thumbnails. Past it the kernel stops the worker, not the site.
+MemoryMax=976M
 
 # The standard hardening for a service unit. The worker writes the app's storage/
 # (cache and logs), the database's folder (SQLite's -wal and -shm beside it) and the

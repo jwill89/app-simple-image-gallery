@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [8.0.1] - 2026-11-16
+
+### Changed
+
+- A video's thumbnail is picked from frames already scaled down, so making one takes far less memory: 136 MB in place of 1.2 GB for a 4K video, with the same frame chosen.
+- The queue worker's memory is capped at 976M (`MemoryMax=`), twice its heaviest measured job; past it, the worker is stopped and restarted rather than the site running out of memory.
+
+### Fixed
+
+- Closing the passkey prompt, or the passkey offer in the username field timing out, no longer shows the browser's "The operation either timed out or was not allowed" message on the sign-in or Account page.
+
 ## [8.0.0] - 2026-11-16
 
 ### Added
@@ -392,6 +403,7 @@ A complete rewrite as a Vue 3 single-page app on a PHP API, replacing the origin
 
 Before 2.0.0 the gallery was a jQuery and server-rendered PHP app, never versioned. It browsed images and videos, had a first tagging system with a tag page and sorting by tag name, and imported media with a cron script.
 
+[8.0.1]: https://github.com/jwill89/app-simple-image-gallery/compare/v8.0.0...v8.0.1
 [8.0.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v7.3.0...v8.0.0
 [7.3.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v7.2.0...v7.3.0
 [7.2.0]: https://github.com/jwill89/app-simple-image-gallery/compare/v7.1.0...v7.2.0

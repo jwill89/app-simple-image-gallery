@@ -154,8 +154,9 @@ test('thumbnails and video metadata come from ffmpeg and ffprobe, called as cron
     $still = "{$folder}/still.png";
     Process::assertRan(static fn(PendingProcess $process): bool => $process->command === thumbnailCommand($still, scale(200), "{$folder}/thumbs/still.webp"));
     Process::assertRan(static fn(PendingProcess $process): bool => $process->command === thumbnailCommand($still, scale(400), "{$folder}/thumbs/still@2x.webp"));
-    // A video's frame is chosen by the thumbnail filter; it worked, so no first-frame retry.
-    Process::assertRan(static fn(PendingProcess $process): bool => $process->command === thumbnailCommand("{$folder}/clip.mp4", 'thumbnail,' . scale(200), "{$folder}/thumbs/clip.webp"));
+    // A video's frame is chosen by the thumbnail filter, from frames already scaled down;
+    // it worked, so no first-frame retry.
+    Process::assertRan(static fn(PendingProcess $process): bool => $process->command === thumbnailCommand("{$folder}/clip.mp4", scale(200) . ',thumbnail', "{$folder}/thumbs/clip.webp"));
     Process::assertNotRan(static fn(PendingProcess $process): bool => $process->command === thumbnailCommand("{$folder}/clip.mp4", scale(200), "{$folder}/thumbs/clip.webp"));
 
     expect(Media::query()->where('file_name', 'clip.mp4')->firstOrFail()->only(['media_type', 'width', 'height', 'duration']))
@@ -166,7 +167,7 @@ test('when the thumbnail filter fails on a video, its first frame is used', func
     $folder = config()->string('gallery.media_path');
     Process::fake(static function (PendingProcess $process): Illuminate\Contracts\Process\ProcessResult {
         $command = (array) $process->command;
-        if (str_starts_with((string) ($command[4] ?? ''), 'thumbnail,')) {
+        if (str_ends_with((string) ($command[4] ?? ''), ',thumbnail')) {
             return Process::result(errorOutput: 'too short', exitCode: 1);
         }
         File::put((string) end($command), 'webp');
