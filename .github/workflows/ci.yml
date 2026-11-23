@@ -19,7 +19,7 @@ jobs:
   # docs always, and every job when CI's own files, shared/ or the Taskfile change
   # (changes.yml). `task shared:ci:changes` shows what a push would run.
   changes:
-    uses: jwill89/shared-tooling/.github/workflows/changes.yml@v2.17.0
+    uses: jwill89/shared-tooling/.github/workflows/changes.yml@v2.18.0
     permissions:
       contents: read
       actions: read
