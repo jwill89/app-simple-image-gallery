@@ -51,7 +51,7 @@ jobs:
   frontend:
     needs: changes
     if: fromJSON(needs.changes.outputs.areas).app
-    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.17.0
+    uses: jwill89/shared-tooling/.github/workflows/web.yml@v2.18.0
     with:
       dir: frontend
       scripts: gen:check lint lint:css knip format:check build test:coverage
