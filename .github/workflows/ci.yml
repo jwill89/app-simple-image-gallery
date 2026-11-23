@@ -120,7 +120,7 @@ jobs:
   report:
     needs: [changes, backend, frontend, e2e, scripts, docs, osv, release]
     if: failure()
-    uses: jwill89/shared-tooling/.github/workflows/report.yml@v2.17.0
+    uses: jwill89/shared-tooling/.github/workflows/report.yml@v2.18.0
     permissions:
       contents: read
       actions: read
