@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type * as CacheModule from '../sw/cache'
+import { soon } from '../../../shared/test/web/wait.js'
 
 // The service worker's caching (src/sw/cache.ts), against an in-memory
 // CacheStorage and a fake network.
@@ -132,7 +133,7 @@ describe('cacheFirst', () => {
         }),
     )
     const prefetch = sw.prefetchThumbnails(['/media/thumbs/a.webp'])
-    await vi.waitFor(() => {
+    await soon(() => {
       expect(network).toHaveBeenCalledTimes(1)
     })
 
@@ -210,7 +211,7 @@ describe('prefetchThumbnails', () => {
     await sw.prefetchThumbnails(
       Array.from({ length: 100 }, (_, i) => `/media/thumbs/new-${String(i)}.webp`),
     )
-    await vi.waitFor(() => {
+    await soon(() => {
       expect(cache.entries.size).toBe(2000)
     })
 

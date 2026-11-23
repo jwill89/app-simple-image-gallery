@@ -104,7 +104,8 @@ tasks:
     desc: Check dependencies for known vulnerabilities
     cmds:
       - cd backend && composer audit
-      - cd frontend && npm audit --audit-level=high --omit=dev
+      - task: shared:web:audit
+        vars: { DIR: frontend }
       - task: shared:vuln
 
   test:coverage:
